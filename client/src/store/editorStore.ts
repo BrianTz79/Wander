@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 import type { Bloque, PerfilPropio, TemaPerfil, TipoBloque, UsuarioPerfil } from '../lib/perfil';
+import { buscarPlantilla, PLANTILLA_PERSONALIZADA } from '../lib/plantillas';
 
 /**
  * Estado del editor de perfil.
@@ -28,6 +29,7 @@ interface EstadoEditor {
 
   cargar: () => Promise<void>;
   cambiarTema: (tema: TemaPerfil) => void;
+  aplicarPlantilla: (id: string) => Promise<void>;
   guardarPerfil: (datos: {
     publicado?: boolean;
     displayName?: string;
@@ -71,8 +73,14 @@ export const useEditor = create<EstadoEditor>((set, get) => ({
     const { perfil } = get();
     if (!perfil) return;
 
-    // Vista previa inmediata…
-    set({ perfil: { ...perfil, tema }, guardado: 'guardando' });
+    // Vista previa inmediata. `plantilla` pasa a "personalizada" ya en
+    // local (es lo que hará el servidor) para que el selector deje de
+    // señalar el preset en el mismo momento en que se toca un color, no
+    // 600 ms después.
+    set({
+      perfil: { ...perfil, tema, plantilla: PLANTILLA_PERSONALIZADA },
+      guardado: 'guardando',
+    });
 
     // …y guardado con rebote.
     if (temporizadorTema) clearTimeout(temporizadorTema);
@@ -80,14 +88,51 @@ export const useEditor = create<EstadoEditor>((set, get) => ({
       api
         .patch<RespuestaMia>('/perfiles/mio', { tema })
         .then(({ data }) => {
-          // Solo se sincroniza el tema: pisar los bloques con una respuesta
-          // vieja desharía una edición hecha durante el rebote.
+          // Solo se sincronizan tema y plantilla: pisar los bloques con una
+          // respuesta vieja desharía una edición hecha durante el rebote.
           const actual = get().perfil;
-          if (actual) set({ perfil: { ...actual, tema: data.perfil.tema } });
+          if (actual) {
+            set({
+              perfil: { ...actual, tema: data.perfil.tema, plantilla: data.perfil.plantilla },
+            });
+          }
           marcarGuardado(set);
         })
         .catch(() => set({ guardado: 'error' }));
     }, 600);
+  },
+
+  async aplicarPlantilla(id) {
+    const { perfil } = get();
+    if (!perfil) return;
+
+    // Cancela el PATCH de tema pendiente: si saliera después del de la
+    // plantilla, un ajuste de color de hace medio segundo desharía el
+    // preset recién aplicado.
+    if (temporizadorTema) {
+      clearTimeout(temporizadorTema);
+      temporizadorTema = null;
+    }
+
+    const preset = buscarPlantilla(id);
+    // Vista previa inmediata con el tema local; la respuesta manda.
+    if (preset) set({ perfil: { ...perfil, tema: preset.tema, plantilla: id } });
+    set({ guardado: 'guardando' });
+
+    try {
+      const { data } = await api.patch<RespuestaMia>('/perfiles/mio', { plantilla: id });
+      const actual = get().perfil;
+      if (actual) {
+        set({
+          perfil: { ...actual, tema: data.perfil.tema, plantilla: data.perfil.plantilla },
+        });
+      }
+      marcarGuardado(set);
+    } catch {
+      // Se restaura el tema real: la vista previa optimista ya cambió.
+      set({ guardado: 'error' });
+      void get().cargar();
+    }
   },
 
   async guardarPerfil(datos) {

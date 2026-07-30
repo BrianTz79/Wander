@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IDS_PLANTILLA } from './plantillas';
 
 /**
  * Validación del perfil, su tema y sus bloques.
@@ -131,6 +132,9 @@ export const reordenarBloquesSchema = z
 export const actualizarPerfilSchema = z
   .object({
     tema: temaSchema.optional(),
+    // Aplicar una plantilla: el servidor resuelve el id contra el catálogo
+    // y escribe SU tema. Nunca se guarda un id que no exista.
+    plantilla: z.enum(IDS_PLANTILLA, { error: 'Esa plantilla no existe.' }).optional(),
     publicado: z.boolean().optional(),
     // Campos de User que se editan desde el editor. Viven aquí porque
     // para el usuario "mi perfil" es una sola cosa.

@@ -19,13 +19,18 @@ import { useEditor } from '../store/editorStore';
 import { mensajeError } from '../lib/api';
 import {
   FUENTES_ETIQUETAS,
-  TEMA_BASE,
   temaCompleto,
   varsDeTema,
   type Bloque,
   type TemaPerfil,
   type TipoBloque,
 } from '../lib/perfil';
+import {
+  PLANTILLAS,
+  PLANTILLA_PERSONALIZADA,
+  PLANTILLA_POR_DEFECTO,
+  type Plantilla,
+} from '../lib/plantillas';
 import { REGISTRO_BLOQUES, RenderBloque } from '../components/bloques/registro';
 
 /**
@@ -90,6 +95,7 @@ export function EditorPerfilPage() {
         {/* ── Columna de controles ── */}
         <div className="space-y-6">
           <PanelIdentidad />
+          <PanelPlantillas />
           <PanelTema />
           <PanelBloques />
         </div>
@@ -250,6 +256,104 @@ function PanelIdentidad() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+//  Panel: plantillas
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Selector de plantillas (Fase 4).
+ *
+ * Una plantilla solo cambia el TEMA — los bloques y su contenido no se
+ * tocan. Es lo que permite probar los cinco presets sin miedo: se puede
+ * ir y volver sin perder nada de lo escrito.
+ */
+function PanelPlantillas() {
+  const { perfil, aplicarPlantilla } = useEditor();
+  if (!perfil) return null;
+
+  return (
+    <section className="tarjeta">
+      <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-white">Plantillas</h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+        Un punto de partida. Cambia solo los colores y la tipografía: tus bloques se quedan como
+        están.
+      </p>
+
+      <ul className="grid grid-cols-2 gap-2">
+        {PLANTILLAS.map((plantilla) => {
+          const activa = perfil.plantilla === plantilla.id;
+          return (
+            <li key={plantilla.id}>
+              <button
+                type="button"
+                onClick={() => void aplicarPlantilla(plantilla.id)}
+                aria-pressed={activa}
+                title={plantilla.descripcion}
+                className={`w-full overflow-hidden rounded-xl border text-left transition-colors ${
+                  activa
+                    ? 'border-zinc-900 dark:border-white'
+                    : 'border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600'
+                }`}
+              >
+                <MiniaturaPlantilla plantilla={plantilla} />
+                <span className="flex items-center justify-between gap-1 px-2 py-1.5">
+                  <span className="truncate text-xs font-medium text-zinc-900 dark:text-white">
+                    {plantilla.nombre}
+                  </span>
+                  {activa && (
+                    <Check
+                      className="h-3.5 w-3.5 shrink-0 text-zinc-900 dark:text-white"
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {perfil.plantilla === PLANTILLA_PERSONALIZADA && (
+        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+          Tu tema está personalizado. Elegir una plantilla reemplazará los colores.
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Miniatura del preset: el propio tema pintado en pequeño, que dice más
+ *  que cinco cuadritos de color sueltos. */
+function MiniaturaPlantilla({ plantilla }: { plantilla: Plantilla }) {
+  const t = plantilla.tema;
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-16 flex-col justify-center gap-1.5 px-2.5"
+      style={{ backgroundColor: t.colorFondo }}
+    >
+      <span
+        className="flex items-center gap-1.5 px-1.5 py-1"
+        style={{
+          backgroundColor: t.colorTarjeta,
+          border: `1px solid ${t.colorBorde}`,
+          borderRadius: `${Math.min(t.radio, 10)}px`,
+        }}
+      >
+        <span
+          className="h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: t.colorAcento }}
+        />
+        <span className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: t.colorTexto, opacity: 0.8 }} />
+      </span>
+      <span
+        className="h-1.5 w-2/3 rounded-full"
+        style={{ backgroundColor: t.colorTexto, opacity: 0.35 }}
+      />
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 //  Panel: tema
 // ─────────────────────────────────────────────────────────────────────
 
@@ -262,7 +366,7 @@ const CAMPOS_COLOR: Array<{ clave: keyof TemaPerfil; etiqueta: string }> = [
 ];
 
 function PanelTema() {
-  const { perfil, cambiarTema } = useEditor();
+  const { perfil, cambiarTema, aplicarPlantilla } = useEditor();
   if (!perfil) return null;
 
   const tema = temaCompleto(perfil.tema);
@@ -275,9 +379,11 @@ function PanelTema() {
     <section className="tarjeta">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Tema</h2>
+        {/* Restaurar = volver a la plantilla base, no solo a sus colores:
+            así el perfil deja de estar marcado como "personalizada". */}
         <button
           type="button"
-          onClick={() => cambiarTema({ ...TEMA_BASE })}
+          onClick={() => void aplicarPlantilla(PLANTILLA_POR_DEFECTO)}
           className="btn-fantasma h-8 px-3 text-xs"
         >
           Restaurar

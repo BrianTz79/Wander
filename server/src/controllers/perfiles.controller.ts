@@ -11,6 +11,7 @@ import {
   type ReordenarBloquesInput,
   type TipoBloque,
 } from '../schemas/perfil.schema';
+import { buscarPlantilla, PLANTILLA_PERSONALIZADA } from '../schemas/plantillas';
 
 /**
  * Perfiles y bloques (Fase 3).
@@ -97,16 +98,36 @@ export async function miPerfil(req: Request, res: Response): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────
 export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
   const userId = req.usuario!.id;
-  const { tema, publicado, displayName, bio } = req.body as ActualizarPerfilInput;
+  const { tema, plantilla, publicado, displayName, bio } = req.body as ActualizarPerfilInput;
 
   // Asegura que el perfil exista antes del update.
   await perfilDe(userId);
+
+  /*
+   * Tema y plantilla escriben el mismo campo, así que el orden importa:
+   *
+   * - `plantilla` gana. El tema que se guarda es el DEL CATÁLOGO, no uno
+   *   que mande el cliente: elegir "retro-crt" no puede ser la puerta para
+   *   colar colores arbitrarios bajo un nombre conocido.
+   * - un `tema` suelto es una edición a mano → el perfil deja de ser una
+   *   plantilla y pasa a `personalizada`.
+   */
+  const preset = plantilla !== undefined ? buscarPlantilla(plantilla) : undefined;
+  if (plantilla !== undefined && !preset) {
+    throw errores.invalido('Esa plantilla no existe.');
+  }
+
+  const cambioDeTema = preset
+    ? { tema: preset.tema, plantilla: preset.id }
+    : tema !== undefined
+      ? { tema, plantilla: PLANTILLA_PERSONALIZADA }
+      : {};
 
   const [perfil, usuario] = await prisma.$transaction([
     prisma.perfil.update({
       where: { userId },
       data: {
-        ...(tema !== undefined ? { tema } : {}),
+        ...cambioDeTema,
         ...(publicado !== undefined ? { publicado } : {}),
       },
       select: SELECT_PERFIL_PROPIO,

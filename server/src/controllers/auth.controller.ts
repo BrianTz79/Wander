@@ -14,6 +14,7 @@ import {
 } from '../services/sesion.service';
 import { HANDLES_RESERVADOS } from '../schemas/auth.schema';
 import type { LoginInput, RegistroInput } from '../schemas/auth.schema';
+import { PLANTILLA_POR_DEFECTO } from '../schemas/plantillas';
 
 /**
  * Autenticación con correo y contraseña.
@@ -160,7 +161,7 @@ export async function registro(req: Request, res: Response): Promise<void> {
         // que manejar el caso "usuario sin perfil".
         perfil: {
           create: {
-            plantilla: 'base-oscuro',
+            plantilla: PLANTILLA_POR_DEFECTO,
             tema: {},
             bloques: {
               create: [

@@ -4,16 +4,16 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 29 de julio de 2026
+> **Última actualización:** 30 de julio de 2026
 
 ---
 
 ## 0. Estado del proyecto
 
-**Fases 1, 2 y 3 completas. La plataforma ya es usable: cualquiera puede registrarse,
-armar su perfil en el editor y publicarlo en `/u/<su-nombre>`.** Lo siguiente es la
-Fase 4 (tema y plantillas) — el panel de tema básico ya existe; faltan las plantillas
-prediseñadas para partir de algo bonito sin configurar nada.
+**Fases 1, 3 y 4 completas. La plataforma ya es usable: cualquiera puede registrarse,
+elegir una plantilla, armar su perfil en el editor y publicarlo en `/u/<su-nombre>`.**
+Lo siguiente es la Fase 5 (Steam), o cerrar lo que falta de la Fase 2 (Steam OpenID y
+verificación de correo).
 
 ### Resumen por fases
 
@@ -22,8 +22,8 @@ prediseñadas para partir de algo bonito sin configurar nada.
 | 1 | Andamio + deploy | ✅ **Completa** |
 | 2 | Auth | 🟡 Correo y contraseña listos; falta Steam OpenID |
 | 3 | Perfil mínimo | ✅ **Completa** |
-| 4 | Tema y plantillas | 🟡 **Siguiente** — panel de tema hecho; faltan las 5 plantillas seed y la selección de plantilla |
-| 5 | Steam | ⬜ |
+| 4 | Tema y plantillas | ✅ **Completa** |
+| 5 | Steam | ⬜ **Siguiente** |
 | 6 | Cuentas vinculadas | ⬜ |
 | 7 | Social | ⬜ |
 | 8 | Mensajería | ⬜ |
@@ -73,6 +73,24 @@ prediseñadas para partir de algo bonito sin configurar nada.
   `javascript:`, color no-hex, campo extra, bloque ajeno, reorden con ids colados,
   escritura anónima) + render real del frontend contra el stack vivo.
 
+**Tema y plantillas (Fase 4)**
+- **Cinco plantillas**: `base-oscuro`, `minimal-claro`, `cyber-violeta`, `retro-crt` y
+  `shooter-angular`. Viven **en código** (`server/src/schemas/plantillas.ts`, espejadas
+  en `client/src/lib/plantillas.ts`), no en una tabla: cambian solo al desplegar, y el
+  servidor necesita la lista de todos modos para validar el nombre.
+- Selector en el editor con **miniatura** de cada preset (el propio tema pintado en
+  pequeño, no cuadritos de color sueltos).
+- **Aplicar una plantilla solo cambia el tema; los bloques no se tocan.** Se pueden
+  probar las cinco sin perder nada de lo escrito.
+- El tema que se guarda es **el del catálogo del servidor**: mandar
+  `{plantilla: 'retro-crt', tema: {...}}` no cuela colores arbitrarios bajo un nombre
+  conocido — verificado en el E2E.
+- Editar un color a mano marca el perfil como `personalizada`, así el selector deja de
+  señalar un preset del que el tema ya se alejó. "Restaurar" vuelve a `base-oscuro`.
+- Probado E2E por HTTPS: 25 comprobaciones — flujo feliz, las 5 plantillas, y los casos
+  de seguridad (plantilla inventada, `personalizada` no elegible por el cliente, tema
+  colado junto a la plantilla, tipo no-string, campo extra, escritura anónima).
+
 **SEO de la landing (parte de la Fase 12)**
 - JSON-LD (`WebSite` + `WebApplication`), canónica, Open Graph y Twitter Card.
 - Tarjeta al compartir en PNG 1200×630 (`/og.png`).
@@ -86,15 +104,14 @@ prediseñadas para partir de algo bonito sin configurar nada.
 
 ### ⬜ Lo siguiente
 
-1. **Fase 4 — Tema y plantillas.** El panel de tema ya existe (Fase 3); falta: las
-   **5 plantillas seed** (presets de tema con nombre, p. ej. base-oscuro, base-claro,
-   neón, retro, minimal), el selector de plantilla en el editor, y guardar `plantilla`
-   al elegirla. Decidir si las plantillas viven en código compartido (constante en
-   cliente + validación de nombre en servidor) o en una tabla.
-2. **Terminar la Fase 2:** login con Steam OpenID y verificación de correo (requiere
+1. **Terminar la Fase 2:** login con Steam OpenID y verificación de correo (requiere
    decidir proveedor de email).
-3. Luego **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
+2. **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
    reales (actividad, estadísticas, favoritos).
+3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
+   también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
+   — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
+   y "solo cambia los colores" es una promesa mucho más fácil de cumplir.
 
 ### ⚠️ Pendientes que conviene no olvidar
 
@@ -109,9 +126,8 @@ prediseñadas para partir de algo bonito sin configurar nada.
   quieren perfiles indexables/citables por IA, se añade prerender + tarjetas OG del lado
   del servidor (encaja con la Fase 10).
 - **Política de derechos de autor** para la música de fondo, antes de abrir el registro.
-- **Crear el repositorio git.** Todo lo construido está sin control de versiones: un
-  `rm` desafortunado o un disco dañado y no hay vuelta atrás. `git init` + primer commit
-  (el `.gitignore` ya está listo y cubre `.env` y `pgdata/`).
+- **Repositorio git creado** (30/07), pero **solo local**: sigue sin remoto, así que un
+  disco dañado se lo lleva igual. Falta un `git remote add` a algo fuera de esta máquina.
 - **Términos y privacidad mínimos antes de abrir el registro.** El formulario obliga a
   aceptar `/terminos` y `/privacidad`… que hoy son páginas "en construcción". Aceptar
   documentos que no existen no protege a nadie; con una versión corta y honesta basta
@@ -470,8 +486,14 @@ URLs arbitrarias (o se rompe la CSP).
 
 `base-oscuro`, `cyber-violeta`, `retro-crt`, `minimal-claro`, `shooter-angular`.
 
-Son solo presets de ese JSON de tema + un set inicial de bloques. De ahí que no
-encierren a nadie: se editan libremente después de aplicarlas.
+Son presets de ese JSON de tema. De ahí que no encierren a nadie: se editan libremente
+después de aplicarlas, y aplicarlas **no toca los bloques** — solo los colores, la
+tipografía y la redondez. Se puede probar las cinco sin perder nada de lo escrito.
+
+Viven en `server/src/schemas/plantillas.ts`, con un espejo en
+`client/src/lib/plantillas.ts` para el selector. La copia del servidor es la
+autoritativa: al aplicar una, el tema que se guarda es el suyo, nunca el que mande el
+cliente. Un perfil cuyo tema se ha editado a mano queda marcado como `personalizada`.
 
 ### CSS propio — la parte delicada
 
@@ -739,7 +761,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 1 | ✅ **Andamio + deploy** | Compose con 4 servicios, Prisma inicial, "Hola" en el front, `/api/health`, túnel arriba. Valida la cadena completa antes de escribir features. |
 | 2 | 🟡 **Auth** | Correo+contraseña (zod, bcrypt, JWT en cookie httpOnly, rate limit) + Steam OpenID. Registro, login, logout, sesión persistente. |
 | 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
-| 4 | 🟡 **Tema y plantillas** | `PanelTema` ✅ y vista previa en vivo ✅ (salieron con la Fase 3); faltan las 5 plantillas seed y el selector. |
+| 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
 | 5 | **Steam** | `steam.service.ts` (XML + Web API, filtrando `vacBanned`), `cache.service.ts` con TTL, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
 | 6 | **Cuentas vinculadas** | Discord y Google OAuth, `/configuracion` con consentimiento granular, vincular/desvincular, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
 | 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. |
@@ -753,6 +775,21 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**30/07/2026 — Fase 4 desplegada: plantillas**
+
+- Catálogo de 5 plantillas en código (`server/src/schemas/plantillas.ts` + espejo en el
+  cliente). Se descartó la tabla: son constantes que solo cambian al desplegar, y el
+  servidor necesitaba la lista igualmente para validar el nombre.
+- Selector en el editor con miniatura de cada preset. Aplicar una plantilla cambia el
+  tema y **no** toca los bloques.
+- Decisión de seguridad: `PATCH /perfiles/mio` con `plantilla` escribe el tema **del
+  catálogo del servidor**, ignorando cualquier `tema` que venga en la misma petición.
+  Sin esto, "elegir una plantilla" sería un hueco para guardar colores arbitrarios con
+  un nombre de preset legítimo.
+- `Perfil.plantilla` pasa a `personalizada` en cuanto se edita un color a mano — es un
+  valor que solo escribe el servidor, no está en el enum del schema.
+- E2E por HTTPS: 25 comprobaciones, incluidas 6 de seguridad. Todas en verde.
 
 **30/07/2026 — Fase 3 desplegada: la plataforma es usable**
 
