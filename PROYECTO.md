@@ -277,13 +277,25 @@ propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comenta
 - **Política de derechos de autor** para la música de fondo, antes de abrir el registro.
 - **Repositorio git creado** (30/07), pero **solo local**: sigue sin remoto, así que un
   disco dañado se lo lleva igual. Falta un `git remote add` a algo fuera de esta máquina.
-- **Términos y privacidad mínimos antes de abrir el registro.** El formulario obliga a
-  aceptar `/terminos` y `/privacidad`… que hoy son páginas "en construcción". Aceptar
-  documentos que no existen no protege a nadie; con una versión corta y honesta basta
-  para empezar.
+- ~~**Términos y privacidad mínimos antes de abrir el registro.**~~ ✅ **Hecho (30/07).**
+  Ambas páginas son reales: `/privacidad` salió con la Fase 6 y `/terminos` se escribió
+  justo después, al detectar el usuario que el formulario obligaba a aceptar un documento
+  que seguía "en construcción". Los términos **no prometen backups** a propósito, porque
+  todavía no los hay — ver el pendiente de más abajo.
 - **Backups de Postgres.** `pgdata/` es un bind-mount sin ninguna estrategia de
   respaldo: un fallo de disco se lleva todos los usuarios. Un `pg_dump` diario a otro
-  disco (cron del host o contenedor dedicado) es suficiente al principio.
+  disco (cron del host o contenedor dedicado) es suficiente al principio. **Los términos
+  evitan a propósito prometer copias de seguridad** mientras esto siga pendiente.
+- **Al correr suites E2E: limpiar después y contar con el límite de registro.**
+  `limiteRegistro` son 5 cuentas por hora **y por IP**, así que una tanda de pruebas deja
+  al usuario real sin poder registrarse desde su propia conexión — pasó el 30/07. El
+  contador vive **en memoria**: `docker compose restart backend` lo pone a cero. Las
+  cuentas de prueba se borran con
+  `DELETE FROM "User" WHERE email LIKE '%@ejemplo.test';` y el `onDelete: Cascade` se
+  lleva perfil, bloques, sesiones y caché (verificado: quedaron 0 huérfanos).
+  Ojo también con **`CF-Connecting-IP`: Cloudflare devuelve 403** si llega falsificada
+  desde fuera, así que simular varias IPs solo funciona desde dentro de la red Docker
+  (`WANDER_INTERNO=1` en la suite).
 - **Verificación de correo — aplazada a propósito (30/07).** No hay SMTP ni proveedor en
   `.env`, y `emailVerified` existe en el schema pero hoy nadie lo pone a `true`. La
   decisión fue no dar de alta un proveedor mientras no haya usuarios reales. Cuando toque,

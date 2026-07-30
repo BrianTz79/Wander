@@ -15,6 +15,7 @@ import { NoEncontradaPage } from './pages/NoEncontradaPage';
 import { EnConstruccionPage } from './pages/EnConstruccionPage';
 import { ConfiguracionPage } from './pages/ConfiguracionPage';
 import { PrivacidadPage } from './pages/PrivacidadPage';
+import { TerminosPage } from './pages/TerminosPage';
 
 /**
  * Raíz de la aplicación: comprobación de sesión, layout y rutas.
@@ -91,7 +92,7 @@ export function App() {
           <Route path="/explorar" element={<EnConstruccionPage titulo="Explorar" fase="Fase 7" />} />
           <Route path="/u/:handle" element={<PerfilPublicoPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />
-          <Route path="/terminos" element={<EnConstruccionPage titulo="Términos" fase="Fase 10" />} />
+          <Route path="/terminos" element={<TerminosPage />} />
 
           <Route
             path="/feed"
