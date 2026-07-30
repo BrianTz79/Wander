@@ -10,11 +10,12 @@
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3 y 4 completas, y la 2 al 90 %. La plataforma ya es usable: cualquiera puede
-entrar con correo o con Steam, elegir una plantilla, armar su perfil y publicarlo en
-`/u/<su-nombre>`.** Lo único que le falta a la Fase 2 es la verificación de correo, que
+**Fases 1, 3, 4 y 5 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
+central: quien entra con Steam ve sus juegos, sus horas y su actividad en el perfil sin
+escribir nada.** Lo único que le falta a la Fase 2 es la verificación de correo, que
 **se aplazó a propósito** (30/07): sin usuarios reales todavía, no compensa dar de alta
-un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
+un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 6 (cuentas
+vinculadas: Discord y Google)**.
 
 ### Resumen por fases
 
@@ -24,8 +25,8 @@ un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
 | 2 | Auth | 🟡 Correo+contraseña y Steam OpenID listos; la verificación de correo queda aplazada (decisión del 30/07) |
 | 3 | Perfil mínimo | ✅ **Completa** |
 | 4 | Tema y plantillas | ✅ **Completa** |
-| 5 | Steam | ⬜ **Siguiente** |
-| 6 | Cuentas vinculadas | ⬜ |
+| 5 | Steam | ✅ **Completa** |
+| 6 | Cuentas vinculadas | ⬜ **Siguiente** |
 | 7 | Social | ⬜ |
 | 8 | Mensajería | ⬜ |
 | 9 | CSS propio | ⬜ |
@@ -115,6 +116,43 @@ un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
   de seguridad (plantilla inventada, `personalizada` no elegible por el cliente, tema
   colado junto a la plantilla, tipo no-string, campo extra, escritura anónima).
 
+**Datos de Steam (Fase 5)**
+- **`cache.service.ts`** — `obtenerConCache` con TTL por clave. La regla que ordena toda
+  la fase: **el render de un perfil nunca llama a Steam**; lee de Postgres. Si el refresco
+  falla, **se sigue sirviendo el dato viejo** marcado como tal (`hayDatosViejos`), porque
+  datos de hace tres horas valen infinitamente más que un hueco.
+- **Circuit breaker**: tras 5 fallos seguidos se deja de reintentar durante 30 min. Si la
+  API key se revoca o el perfil se vuelve privado, insistir en cada visita solo gasta
+  latencia. Un éxito pone el contador a cero — mide fallos *consecutivos*.
+- **`steam.service.ts`** — resumen, jugados recientes, biblioteca y nivel, cada uno con su
+  TTL (15 min / 30 min / 6 h / 24 h). Nada de Steam se pasa tal cual: cada respuesta se
+  recorta a una forma nuestra, así un campo nuevo de Valve no acaba publicado por accidente.
+- **`vacBanned` no se publica** (§2), y no por omisión al pintar: `GetPlayerBans` **ni se
+  llama** y el campo no entra en la estructura, así que no está ni en la respuesta HTTP ni
+  en `CacheExterno`. Lo que no se guarda no se puede filtrar después por descuido. La
+  cuenta de pruebas tiene `VACBanned: true`, así que el filtro se ejercita de verdad.
+- **Tres bloques nuevos**: Actividad (jugado en 2 semanas), Estadísticas (juegos, horas,
+  nivel) y Favoritos. Su `config` guarda **solo preferencias, nunca datos de Steam** —
+  Favoritos guarda appids y resuelve nombre, carátula y horas contra la caché. Si el config
+  guardara las horas, cada perfil tendría una copia congelada que el usuario podría editar
+  para inventarse sus estadísticas.
+- La biblioteca se pide entera (942 juegos en la cuenta real) pero **se guardan solo los 24
+  más jugados** + los totales: §2 decidió "destacados curados, sin biblioteca navegable".
+- **Endpoint aparte** (`GET /api/externo/steam/:handle`), no dentro del perfil: así el
+  perfil se pinta enseguida desde la DB y los bloques de Steam rellenan al llegar. Usa la
+  **misma regla de visibilidad y el mismo 404 indistinguible** que el perfil — si fuera más
+  permisivo, sería la vía para saber qué handles existen con perfil oculto.
+- El editor deja **elegir favoritos de la biblioteca real**, no teclear appids: pedirle a
+  alguien el "appid" es pedirle que abra Steam y copie un número de la URL.
+- **Job de refresco** cada 10 min (por delante del TTL más corto), en lotes de 20, en serie
+  y **solo sobre perfiles publicados**: refrescar cuentas que nadie puede ver gastaría cuota
+  para nada.
+- **Arreglo de un fallo latente de la Fase 2:** la Web API devuelve hoy los avatares desde
+  `avatars.steamstatic.com`, host que **no estaba en `img-src`**. El backend ya lo aceptaba,
+  así que el avatar de quien entraba con Steam se bloqueaba en el navegador sin ningún error
+  en el servidor. Detectado sondeando la respuesta real, no leyendo el código.
+- Probado E2E por HTTPS: 37 comprobaciones + la prueba de Steam caído (ver §11).
+
 **SEO de la landing (parte de la Fase 12)**
 - JSON-LD (`WebSite` + `WebApplication`), canónica, Open Graph y Twitter Card.
 - Tarjeta al compartir en PNG 1200×630 (`/og.png`).
@@ -128,13 +166,18 @@ un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
 
 ### ⬜ Lo siguiente
 
-1. **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
-   reales (actividad, estadísticas, favoritos). Ya hay una base:
-   `services/steamAuth.service.ts` tiene `resumenJugador()` contra `GetPlayerSummaries`,
-   y `CuentaVinculada` guarda el SteamID de quien entra con Steam.
+1. **Fase 6 — Cuentas vinculadas**: Discord y Google por OAuth 2.0 con PKCE,
+   `/configuracion` con consentimiento granular, vincular/desvincular y `/privacidad`.
+   La Fase 5 ya dejó puesta media infraestructura: `cache.service.ts` es agnóstico del
+   proveedor y `borrarCache(userId, proveedor)` existe justo para que desvincular borre
+   de verdad (§14).
 2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
-3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
+3. Pendiente heredado de la Fase 5: **el vínculo de Steam solo se crea al *entrar* con
+   Steam.** Quien se registró con correo no tiene forma de vincular su cuenta sin cerrar
+   sesión y volver a entrar por Steam. Se arregla en la Fase 6, que es donde vive
+   "vincular con sesión activa" — es el mismo flujo para los tres proveedores.
+4. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
    y "solo cambia los colores" es una promesa mucho más fácil de cumplir.
@@ -143,6 +186,12 @@ un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
 
 - **Regenerar la Steam API key** en `steamcommunity.com/dev/apikey` antes de abrir el
   registro: la actual se compartió por chat durante la planeación.
+- **Logros e insignias de Steam: no implementados.** §1 y §5 los mencionan, y la Fase 5
+  entregó juegos, horas, nivel y actividad, pero **no logros**. Se dejaron fuera porque
+  `GetPlayerAchievements` es *una llamada por juego*: con 942 juegos, un solo perfil serían
+  942 peticiones. Traerlos de verdad exige decidir antes un alcance acotado (solo los
+  juegos destacados, o solo el total de `GetBadges`), no es un "añadir otra clave a la
+  caché". La estructura ya lo admite: `CacheExterno.clave` contempla `logros`.
 - **Borrar un registro DNS sobrante.** Al crear el túnel, `cloudflared` generó por error
   `wander.ourocore.net.idolrevenant.com` (el `cert.pem` local está atado a la zona
   `idolrevenant.com`). No afecta a nada, pero conviene limpiarlo desde el panel de
@@ -583,9 +632,9 @@ likes, comentarios.
 | Bloque | Qué muestra | Origen |
 |---|---|---|
 | Hero | Avatar, banner, tagline, estado | Manual + Steam |
-| Estadísticas | Contadores (juegos, horas, logros) | Steam |
-| Actividad Steam | Jugado recientemente + horas | Steam |
-| Juegos favoritos | Curados, con arte del CDN de Steam | Manual (appid) |
+| Estadísticas ✅ | Contadores (juegos, horas, nivel) | Steam |
+| Actividad Steam ✅ | Jugado recientemente + horas | Steam |
+| Juegos favoritos ✅ | Curados, con arte del CDN de Steam | Manual (appid) |
 | Setup PC | Componentes con especificaciones | Manual |
 | Enlaces / redes | Iconos a todos tus perfiles | Manual |
 | Texto libre | Bio extendida, lo que quieras | Manual |
@@ -809,7 +858,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 2 | 🟡 **Auth** | Correo+contraseña (zod, argon2id, JWT en cookie httpOnly, rate limit) ✅ + Steam OpenID ✅. Registro, login, logout y sesión persistente ✅. Falta solo la verificación de correo, aplazada (ver §0). |
 | 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
 | 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
-| 5 | **Steam** | `steam.service.ts` (XML + Web API, filtrando `vacBanned`), `cache.service.ts` con TTL, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
+| 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
 | 6 | **Cuentas vinculadas** | Discord y Google OAuth, `/configuracion` con consentimiento granular, vincular/desvincular, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
 | 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. |
 | 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. |
@@ -822,6 +871,32 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**30/07/2026 — Fase 5 desplegada: los datos de Steam**
+
+- `cache.service.ts` (get-or-fetch con TTL por clave) y `steam.service.ts` (resumen,
+  recientes, biblioteca, nivel). El render de un perfil **nunca** sale a la red de Valve.
+- Tres bloques nuevos: Actividad, Estadísticas y Favoritos. `GET /api/externo/steam/:handle`
+  para leer y `POST /api/externo/steam/sincronizar` (con `limiteExterno`) para forzar.
+- Decisión de forma: los bloques guardan **preferencias, no datos**. Favoritos guarda
+  appids y resuelve todo lo demás contra la caché, así las horas suben solas.
+- Decisión de privacidad: `GetPlayerBans` no se llama y `vacBanned` no existe en ninguna
+  estructura. No se filtra al pintar — **no se guarda**.
+- **Prueba de Steam caído**, que era el requisito de §14 y la que de verdad valida el
+  diseño: con `api.steampowered.com` apuntado a una IP no enrutable desde el contenedor y
+  las 4 claves de caché vencidas a mano, el perfil **siguió sirviendo los 942 juegos** de
+  la caché vieja con `hayDatosViejos: true`. Ni error, ni hueco.
+  El circuit breaker se ve en los tiempos: 8.165 ms mientras reintenta contra un Steam
+  muerto, y **83 ms en la sexta petición**, cuando deja de insistir. Al restaurar la red,
+  `intentosFallo` volvió a 0 y la caché se refrescó sola, sin tocar nada.
+- E2E por HTTPS: 37 comprobaciones en verde, incluidas las de aislamiento (los dos 404 —
+  perfil oculto y handle inexistente — son **byte a byte idénticos**) y las de forma (no se
+  filtran campos crudos de Steam ni la API key; las 73 URLs de imagen vienen de hosts de
+  Valve). Borrar la cuenta se llevó en cascada sus 4 filas de `CacheExterno`.
+- **Fallo latente de la Fase 2, encontrado y corregido:** los avatares llegan hoy desde
+  `avatars.steamstatic.com`, que **no estaba en `img-src`**. El backend lo aceptaba, así que
+  el avatar se bloqueaba en el navegador y el servidor no registraba nada. Salió de sondear
+  la respuesta real de `GetPlayerSummaries`, no de leer el código.
 
 **30/07/2026 — Login con Steam (cierre práctico de la Fase 2)**
 
@@ -1018,10 +1093,13 @@ comentarios, mensajes y config de bloques. Cargar el perfil público → no debe
 `grep -rE "STEAM_API_KEY|CLIENT_SECRET|ENCRYPTION_KEY" client/dist/` → cero resultados.
 Confirmar en la DB que los tokens OAuth están cifrados, no en claro.
 
-### Steam
-`steam.service.ts` contra el SteamID64 real `76561198079804890`. Verificar que
-`vacBanned` **no** aparece en la respuesta de la API. Simular Steam caído → el perfil
-debe renderizar con caché viejo, no romperse.
+### Steam ✅ (30/07)
+`steam.service.ts` contra el SteamID64 real `76561198079804890`: 942 juegos y el nivel 65
+reales. `vacBanned` **no** aparece en la respuesta — comprobado buscando `/vac|banned/i`
+en el JSON completo, y la cuenta tiene un ban de 2016, así que el filtro se ejerce.
+Steam caído simulado apuntando `api.steampowered.com` a `203.0.113.1` desde el contenedor,
+con las 4 claves de caché vencidas: el perfil renderizó con la caché vieja. Repetir así si
+se cambia el servicio.
 
 ### Mensajería
 Dos navegadores con usuarios distintos, mensaje en vivo en ambos lados. Matar el backend

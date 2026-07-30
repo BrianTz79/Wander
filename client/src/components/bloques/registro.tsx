@@ -1,9 +1,12 @@
 import type { ComponentType } from 'react';
-import { Link2, Type, User } from 'lucide-react';
+import { BarChart3, Gamepad2, Link2, Star, Type, User } from 'lucide-react';
 import type { Bloque, TipoBloque, UsuarioPerfil } from '../../lib/perfil';
 import { BloqueHero } from './BloqueHero';
 import { BloqueTexto } from './BloqueTexto';
 import { BloqueEnlaces } from './BloqueEnlaces';
+import { BloqueSteamActividad } from './BloqueSteamActividad';
+import { BloqueEstadisticas } from './BloqueEstadisticas';
+import { BloqueFavoritos } from './BloqueFavoritos';
 
 /**
  * Registro de tipos de bloque. Un solo lugar que conocen el editor (para
@@ -23,6 +26,9 @@ interface DefinicionBloque {
   Icono: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
   configInicial: Record<string, unknown>;
   Componente: ComponentType<PropsBloque>;
+  /** El bloque necesita datos de Steam. Sirve para no pedirlos en perfiles
+   *  que no tienen ningún bloque de Steam. */
+  requiereSteam?: boolean;
 }
 
 export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
@@ -47,7 +53,42 @@ export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
     configInicial: { titulo: '', enlaces: [] },
     Componente: BloqueEnlaces,
   },
+  'steam-actividad': {
+    nombre: 'Actividad de Steam',
+    descripcion: 'Lo que has jugado estas dos semanas. Se actualiza solo.',
+    Icono: Gamepad2,
+    configInicial: { titulo: '', limite: 6, mostrarHorasTotales: true },
+    Componente: BloqueSteamActividad,
+    requiereSteam: true,
+  },
+  estadisticas: {
+    nombre: 'Estadísticas',
+    descripcion: 'Tus juegos, horas y nivel de Steam en números.',
+    Icono: BarChart3,
+    configInicial: {
+      titulo: '',
+      mostrarNivel: true,
+      mostrarTotalJuegos: true,
+      mostrarHoras: true,
+    },
+    Componente: BloqueEstadisticas,
+    requiereSteam: true,
+  },
+  favoritos: {
+    nombre: 'Juegos favoritos',
+    descripcion: 'Los juegos que quieres destacar, con su carátula.',
+    Icono: Star,
+    configInicial: { titulo: '', appids: [] },
+    Componente: BloqueFavoritos,
+    requiereSteam: true,
+  },
 };
+
+/** ¿Alguno de estos bloques necesita datos de Steam? Si no, el perfil se
+ *  ahorra la petición al endpoint externo. */
+export function necesitaSteam(bloques: Array<{ tipo: TipoBloque; visible?: boolean }>): boolean {
+  return bloques.some((b) => REGISTRO_BLOQUES[b.tipo]?.requiereSteam);
+}
 
 /** Pinta un bloque según su tipo; los tipos desconocidos (de una versión
  *  futura) se omiten en silencio en vez de romper el perfil entero. */

@@ -23,7 +23,13 @@ export interface TemaPerfil {
   radio?: number;
 }
 
-export type TipoBloque = 'hero' | 'texto' | 'enlaces';
+export type TipoBloque =
+  | 'hero'
+  | 'texto'
+  | 'enlaces'
+  | 'steam-actividad'
+  | 'estadisticas'
+  | 'favoritos';
 
 export interface Bloque {
   id: string;

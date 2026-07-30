@@ -10,13 +10,15 @@ import {
   ExternalLink,
   Loader2,
   Plus,
+  RefreshCw,
   Trash2,
   X,
 } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
 import { useEditor } from '../store/editorStore';
-import { mensajeError } from '../lib/api';
+import { api, mensajeError } from '../lib/api';
+import { horasDe } from '../lib/steam';
 import {
   FUENTES_ETIQUETAS,
   temaCompleto,
@@ -31,7 +33,8 @@ import {
   PLANTILLA_POR_DEFECTO,
   type Plantilla,
 } from '../lib/plantillas';
-import { REGISTRO_BLOQUES, RenderBloque } from '../components/bloques/registro';
+import { necesitaSteam, REGISTRO_BLOQUES, RenderBloque } from '../components/bloques/registro';
+import { ProveedorSteam, useSteam } from '../lib/steamContexto';
 
 /**
  * Editor de perfil (Fase 3) — el corazón de Wander.
@@ -70,6 +73,10 @@ export function EditorPerfilPage() {
   }
 
   return (
+    /* La vista previa pide los datos reales de Steam del dueño: el editor
+       tiene que enseñar lo que verá un visitante, no un maniquí. El propio
+       usuario siempre puede leer su perfil aunque esté sin publicar. */
+    <ProveedorSteam handle={usuarioAuth?.handle} activo={necesitaSteam(perfil.bloques)}>
     <div className="contenedor-app py-8">
       {/* Cabecera: título, estado de guardado y publicación */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -130,6 +137,7 @@ export function EditorPerfilPage() {
         </div>
       </div>
     </div>
+    </ProveedorSteam>
   );
 }
 
@@ -601,6 +609,9 @@ function TarjetaBloque({
           {bloque.tipo === 'hero' && <FormHero bloque={bloque} />}
           {bloque.tipo === 'texto' && <FormTexto bloque={bloque} />}
           {bloque.tipo === 'enlaces' && <FormEnlaces bloque={bloque} />}
+          {bloque.tipo === 'steam-actividad' && <FormSteamActividad bloque={bloque} />}
+          {bloque.tipo === 'estadisticas' && <FormEstadisticas bloque={bloque} />}
+          {bloque.tipo === 'favoritos' && <FormFavoritos bloque={bloque} />}
         </div>
       )}
     </li>
@@ -815,5 +826,354 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
         Solo se aceptan enlaces http(s).
       </p>
     </form>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Formularios de los bloques de Steam (Fase 5)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Aviso común a los tres: si no hay Steam vinculado, el bloque no pintará
+ * nada. Decirlo aquí evita el desconcierto de añadir un bloque y ver un
+ * hueco sin ninguna explicación.
+ */
+function AvisoSinSteam() {
+  const { vinculado, cargando } = useSteam();
+  if (cargando || vinculado) return null;
+
+  return (
+    <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+      No tienes Steam vinculado, así que este bloque no se mostrará en tu perfil. Entra con Steam
+      desde el inicio de sesión para traer tus datos.
+    </p>
+  );
+}
+
+/** Casilla reutilizable de los formularios de Steam. */
+function Casilla({
+  id,
+  etiqueta,
+  valor,
+  alCambiar,
+}: {
+  id: string;
+  etiqueta: string;
+  valor: boolean;
+  alCambiar: (v: boolean) => void;
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+      <input
+        id={id}
+        type="checkbox"
+        checked={valor}
+        onChange={(e) => alCambiar(e.target.checked)}
+        className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
+      />
+      {etiqueta}
+    </label>
+  );
+}
+
+function FormSteamActividad({ bloque }: { bloque: Bloque }) {
+  const { actualizarBloque } = useEditor();
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [limite, setLimite] = useState(
+    typeof bloque.config['limite'] === 'number' ? bloque.config['limite'] : 6
+  );
+  const [mostrarTotales, setMostrarTotales] = useState(
+    bloque.config['mostrarHorasTotales'] !== false
+  );
+  const [error, setError] = useState('');
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, {
+        config: { titulo: titulo.trim(), limite, mostrarHorasTotales: mostrarTotales },
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+      <AvisoSinSteam />
+
+      <div>
+        <label htmlFor={`sa-tit-${bloque.id}`} className="etiqueta">
+          Título
+        </label>
+        <input
+          id={`sa-tit-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder="Jugando últimamente"
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`sa-lim-${bloque.id}`} className="etiqueta">
+          Cuántos juegos mostrar: {limite}
+        </label>
+        <input
+          id={`sa-lim-${bloque.id}`}
+          type="range"
+          min={1}
+          max={12}
+          value={limite}
+          onChange={(e) => setLimite(Number(e.target.value))}
+          className="w-full accent-zinc-900 dark:accent-white"
+        />
+      </div>
+
+      <Casilla
+        id={`sa-tot-${bloque.id}`}
+        etiqueta="Mostrar también las horas totales"
+        valor={mostrarTotales}
+        alCambiar={setMostrarTotales}
+      />
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        Guardar bloque
+      </button>
+      <BotonSincronizar />
+    </form>
+  );
+}
+
+function FormEstadisticas({ bloque }: { bloque: Bloque }) {
+  const { actualizarBloque } = useEditor();
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [nivel, setNivel] = useState(bloque.config['mostrarNivel'] !== false);
+  const [juegos, setJuegos] = useState(bloque.config['mostrarTotalJuegos'] !== false);
+  const [horas, setHoras] = useState(bloque.config['mostrarHoras'] !== false);
+  const [error, setError] = useState('');
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, {
+        config: {
+          titulo: titulo.trim(),
+          mostrarNivel: nivel,
+          mostrarTotalJuegos: juegos,
+          mostrarHoras: horas,
+        },
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+      <AvisoSinSteam />
+
+      <div>
+        <label htmlFor={`es-tit-${bloque.id}`} className="etiqueta">
+          Título
+        </label>
+        <input
+          id={`es-tit-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder="En números"
+        />
+      </div>
+
+      <Casilla
+        id={`es-jue-${bloque.id}`}
+        etiqueta="Total de juegos"
+        valor={juegos}
+        alCambiar={setJuegos}
+      />
+      <Casilla id={`es-hor-${bloque.id}`} etiqueta="Horas jugadas" valor={horas} alCambiar={setHoras} />
+      <Casilla id={`es-niv-${bloque.id}`} etiqueta="Nivel de Steam" valor={nivel} alCambiar={setNivel} />
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        Guardar bloque
+      </button>
+      <BotonSincronizar />
+    </form>
+  );
+}
+
+/**
+ * Favoritos: se eligen de la biblioteca real, no tecleando appids.
+ *
+ * Pedirle a alguien el "appid" de un juego es pedirle que se vaya a Steam,
+ * abra la ficha y copie un número de la URL. Con la biblioteca ya cacheada
+ * en el servidor, elegir de una lista es gratis para nosotros y trivial
+ * para el usuario.
+ */
+function FormFavoritos({ bloque }: { bloque: Bloque }) {
+  const { actualizarBloque } = useEditor();
+  const { datos, vinculado } = useSteam();
+
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [appids, setAppids] = useState<number[]>(
+    Array.isArray(bloque.config['appids'])
+      ? (bloque.config['appids'] as unknown[]).filter((a): a is number => typeof a === 'number')
+      : []
+  );
+  const [error, setError] = useState('');
+
+  const biblioteca = datos?.masJugados ?? [];
+  const MAXIMO = 12;
+
+  function alternar(appid: number) {
+    setAppids((lista) =>
+      lista.includes(appid)
+        ? lista.filter((a) => a !== appid)
+        : lista.length < MAXIMO
+          ? [...lista, appid]
+          : lista
+    );
+  }
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, { config: { titulo: titulo.trim(), appids } });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+      <AvisoSinSteam />
+
+      <div>
+        <label htmlFor={`fa-tit-${bloque.id}`} className="etiqueta">
+          Título
+        </label>
+        <input
+          id={`fa-tit-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder="Juegos favoritos"
+        />
+      </div>
+
+      {vinculado && biblioteca.length > 0 && (
+        <fieldset>
+          <legend className="etiqueta">
+            Elige tus destacados ({appids.length}/{MAXIMO})
+          </legend>
+          <ul className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-zinc-200 p-1.5 dark:border-zinc-800">
+            {biblioteca.map((juego) => {
+              const elegido = appids.includes(juego.appid);
+              return (
+                <li key={juego.appid}>
+                  <button
+                    type="button"
+                    onClick={() => alternar(juego.appid)}
+                    aria-pressed={elegido}
+                    disabled={!elegido && appids.length >= MAXIMO}
+                    className={`flex w-full items-center gap-2 rounded-md p-1.5 text-left text-xs transition-colors
+                                disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  elegido
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                    : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-medium">{juego.nombre}</span>
+                    <span className="shrink-0 tabular-nums opacity-60">
+                      {horasDe(juego.minutosTotales)}
+                    </span>
+                    {elegido && <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+            Ordenados por horas jugadas. Las horas se actualizan solas: aquí solo eliges cuáles
+            destacar.
+          </p>
+        </fieldset>
+      )}
+
+      {vinculado && biblioteca.length === 0 && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Todavía no hemos podido leer tu biblioteca. Si tu perfil de Steam es privado, sus juegos
+          no son visibles ni siquiera para nosotros.
+        </p>
+      )}
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        Guardar bloque
+      </button>
+      <BotonSincronizar />
+    </form>
+  );
+}
+
+/**
+ * "Sincronizar ahora": salta el TTL y repide a Steam.
+ *
+ * Existe porque los TTLs son largos a propósito (6 h la biblioteca) y
+ * alguien que acaba de comprar un juego quiere verlo ya. El backend lo
+ * limita con `limiteExterno`, así que pulsarlo en bucle no nos quema la
+ * cuota de la API.
+ */
+function BotonSincronizar() {
+  const { vinculado } = useSteam();
+  const [estado, setEstado] = useState<'listo' | 'sincronizando' | 'hecho' | 'error'>('listo');
+
+  if (!vinculado) return null;
+
+  async function sincronizar() {
+    setEstado('sincronizando');
+    try {
+      await api.post('/externo/steam/sincronizar');
+      setEstado('hecho');
+      // Los datos se recargan al volver a montar el proveedor; recargar la
+      // página es lo más simple y lo que menos sorprende.
+      window.location.reload();
+    } catch {
+      setEstado('error');
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => void sincronizar()}
+        disabled={estado === 'sincronizando'}
+        className="btn-fantasma h-8 w-full text-xs"
+      >
+        <RefreshCw
+          className={`h-3.5 w-3.5 ${estado === 'sincronizando' ? 'animate-spin' : ''}`}
+          aria-hidden="true"
+        />
+        {estado === 'sincronizando' ? 'Sincronizando…' : 'Sincronizar con Steam ahora'}
+      </button>
+      {estado === 'error' && (
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+          No se pudo sincronizar. Espera un momento y vuelve a intentar.
+        </p>
+      )}
+    </div>
   );
 }

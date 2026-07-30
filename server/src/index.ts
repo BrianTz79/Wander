@@ -13,10 +13,12 @@ import { esperarDb, prisma } from './config/prisma';
 import { manejadorErrores, noEncontrado } from './middlewares/errores.middleware';
 import { limiteGeneral } from './middlewares/rateLimit.middleware';
 import { limpiarSesionesViejas } from './services/sesion.service';
+import { INTERVALO_REFRESCO_MS, refrescarCachesSteam } from './jobs/refrescarCaches';
 
 import authRoutes from './routes/auth.routes';
 import seoRoutes from './routes/seo.routes';
 import perfilesRoutes from './routes/perfiles.routes';
+import externoRoutes from './routes/externo.routes';
 
 const app = express();
 
@@ -151,6 +153,10 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/perfiles', perfilesRoutes);
 
+// Datos de proveedores externos (Steam en la Fase 5). Sirve de la caché
+// de Postgres: el render de un perfil nunca sale a la red de Valve.
+app.use('/api/externo', externoRoutes);
+
 // SEO: nginx proxea /sitemap.xml aquí. Se genera al vuelo porque crece
 // con cada perfil publicado.
 app.use('/api/seo', seoRoutes);
@@ -193,6 +199,21 @@ async function arrancar(): Promise<void> {
     6 * 60 * 60 * 1000
   );
   intervalo.unref();
+
+  // Refresco de las cachés de Steam. Va por delante del TTL para que el
+  // visitante no pague nunca la espera de la llamada externa.
+  if (env.integraciones.steam) {
+    const refresco = setInterval(() => {
+      refrescarCachesSteam()
+        .then((n) => {
+          if (n > 0) logger.info({ refrescados: n }, 'Cachés de Steam refrescadas');
+        })
+        .catch((error) => logger.error({ error }, 'Fallo en el job de refresco de Steam'));
+    }, INTERVALO_REFRESCO_MS);
+    refresco.unref();
+  } else {
+    logger.warn('Sin STEAM_API_KEY: el job de refresco de Steam queda desactivado.');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────

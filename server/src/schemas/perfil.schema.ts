@@ -82,6 +82,47 @@ const enlacesConfigSchema = z
   })
   .strict();
 
+// ── Bloques de Steam (Fase 5) ────────────────────────────────────────
+//
+// Estos tres bloques no guardan DATOS de Steam en su `config`, solo
+// PREFERENCIAS de presentación. Los datos viven en `CacheExterno` y se
+// piden aparte. Si el config guardara las horas jugadas, cada perfil
+// tendría una copia congelada que envejece sin que nadie la refresque, y
+// el usuario podría editarla a mano para inventarse sus estadísticas.
+
+const steamActividadConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    // Cuántos juegos recientes enseñar. El servicio trae 12 como mucho.
+    limite: z.number().int().min(1).max(12).default(6),
+    mostrarHorasTotales: z.boolean().optional(),
+  })
+  .strict();
+
+const estadisticasConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    mostrarNivel: z.boolean().optional(),
+    mostrarTotalJuegos: z.boolean().optional(),
+    mostrarHoras: z.boolean().optional(),
+  })
+  .strict();
+
+/**
+ * Favoritos: el usuario CURA la lista (§2, "destacados curados"), así que
+ * lo que se guarda son appids. El nombre, la carátula y las horas se
+ * resuelven contra la caché de Steam al pintar — nunca se confía en un
+ * nombre que mande el cliente.
+ */
+const favoritosConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    // Un appid es un entero positivo. Máximo 12 para que el bloque siga
+    // siendo "destacados" y no una biblioteca entera.
+    appids: z.array(z.number().int().positive().max(20_000_000)).max(12).default([]),
+  })
+  .strict();
+
 /**
  * Registro de tipos de bloque de la v1. Añadir un tipo = añadir su schema
  * aquí; cualquier otro string se rechaza con la lista de válidos.
@@ -90,6 +131,9 @@ export const SCHEMAS_BLOQUE = {
   hero: heroConfigSchema,
   texto: textoConfigSchema,
   enlaces: enlacesConfigSchema,
+  'steam-actividad': steamActividadConfigSchema,
+  estadisticas: estadisticasConfigSchema,
+  favoritos: favoritosConfigSchema,
 } as const;
 
 export type TipoBloque = keyof typeof SCHEMAS_BLOQUE;
