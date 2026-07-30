@@ -123,6 +123,29 @@ const favoritosConfigSchema = z
   })
   .strict();
 
+// ── Bloques de Discord (Fase 6) ──────────────────────────────────────
+//
+// Misma regla que los de Steam: solo PREFERENCIAS, ningún dato. La
+// presencia se pide a `/api/externo/discord/:handle` y cambia cada minuto;
+// congelarla en el config sería mostrar "jugando a algo" para siempre.
+
+const discordEstadoConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    mostrarActividad: z.boolean().optional(),
+    /** Avatar y nombre de Discord junto al estado. */
+    mostrarAvatar: z.boolean().optional(),
+  })
+  .strict();
+
+const spotifyConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    /** Barra de progreso de la canción. Es puramente visual. */
+    mostrarProgreso: z.boolean().optional(),
+  })
+  .strict();
+
 /**
  * Registro de tipos de bloque de la v1. Añadir un tipo = añadir su schema
  * aquí; cualquier otro string se rechaza con la lista de válidos.
@@ -134,6 +157,8 @@ export const SCHEMAS_BLOQUE = {
   'steam-actividad': steamActividadConfigSchema,
   estadisticas: estadisticasConfigSchema,
   favoritos: favoritosConfigSchema,
+  'discord-estado': discordEstadoConfigSchema,
+  spotify: spotifyConfigSchema,
 } as const;
 
 export type TipoBloque = keyof typeof SCHEMAS_BLOQUE;

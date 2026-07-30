@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { BarChart3, Gamepad2, Link2, Star, Type, User } from 'lucide-react';
+import { BarChart3, Gamepad2, Link2, MessageCircle, Music, Star, Type, User } from 'lucide-react';
 import type { Bloque, TipoBloque, UsuarioPerfil } from '../../lib/perfil';
 import { BloqueHero } from './BloqueHero';
 import { BloqueTexto } from './BloqueTexto';
@@ -7,6 +7,8 @@ import { BloqueEnlaces } from './BloqueEnlaces';
 import { BloqueSteamActividad } from './BloqueSteamActividad';
 import { BloqueEstadisticas } from './BloqueEstadisticas';
 import { BloqueFavoritos } from './BloqueFavoritos';
+import { BloqueDiscordEstado } from './BloqueDiscordEstado';
+import { BloqueSpotify } from './BloqueSpotify';
 
 /**
  * Registro de tipos de bloque. Un solo lugar que conocen el editor (para
@@ -29,6 +31,8 @@ interface DefinicionBloque {
   /** El bloque necesita datos de Steam. Sirve para no pedirlos en perfiles
    *  que no tienen ningún bloque de Steam. */
   requiereSteam?: boolean;
+  /** Igual para la presencia de Discord (Fase 6). */
+  requiereDiscord?: boolean;
 }
 
 export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
@@ -82,12 +86,33 @@ export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
     Componente: BloqueFavoritos,
     requiereSteam: true,
   },
+  'discord-estado': {
+    nombre: 'Estado de Discord',
+    descripcion: 'Si estás en línea y a qué juegas, en vivo.',
+    Icono: MessageCircle,
+    configInicial: { titulo: '', mostrarActividad: true, mostrarAvatar: true },
+    Componente: BloqueDiscordEstado,
+    requiereDiscord: true,
+  },
+  spotify: {
+    nombre: 'Spotify',
+    descripcion: 'La canción que suena ahora mismo. Se oculta si no escuchas nada.',
+    Icono: Music,
+    configInicial: { titulo: '', mostrarProgreso: true },
+    Componente: BloqueSpotify,
+    requiereDiscord: true,
+  },
 };
 
 /** ¿Alguno de estos bloques necesita datos de Steam? Si no, el perfil se
  *  ahorra la petición al endpoint externo. */
 export function necesitaSteam(bloques: Array<{ tipo: TipoBloque; visible?: boolean }>): boolean {
   return bloques.some((b) => REGISTRO_BLOQUES[b.tipo]?.requiereSteam);
+}
+
+/** Lo mismo para la presencia de Discord. */
+export function necesitaDiscord(bloques: Array<{ tipo: TipoBloque; visible?: boolean }>): boolean {
+  return bloques.some((b) => REGISTRO_BLOQUES[b.tipo]?.requiereDiscord);
 }
 
 /** Pinta un bloque según su tipo; los tipos desconocidos (de una versión

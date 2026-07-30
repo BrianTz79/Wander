@@ -16,6 +16,8 @@ import { limpiarSesionesViejas } from './services/sesion.service';
 import { INTERVALO_REFRESCO_MS, refrescarCachesSteam } from './jobs/refrescarCaches';
 
 import authRoutes from './routes/auth.routes';
+import oauthRoutes from './routes/oauth.routes';
+import cuentasRoutes from './routes/cuentas.routes';
 import seoRoutes from './routes/seo.routes';
 import perfilesRoutes from './routes/perfiles.routes';
 import externoRoutes from './routes/externo.routes';
@@ -150,6 +152,13 @@ app.get('/api/health/completo', async (_req, res) => {
 app.use('/api', limiteGeneral);
 
 app.use('/api/auth', authRoutes);
+
+// OAuth de Discord y Google (Fase 6). Va aparte de /api/auth porque la
+// misma ruta sirve para entrar y para vincular con sesión activa.
+app.use('/api/oauth', oauthRoutes);
+
+// Gestión de cuentas vinculadas desde /configuracion.
+app.use('/api/cuentas', cuentasRoutes);
 
 app.use('/api/perfiles', perfilesRoutes);
 

@@ -29,7 +29,9 @@ export type TipoBloque =
   | 'enlaces'
   | 'steam-actividad'
   | 'estadisticas'
-  | 'favoritos';
+  | 'favoritos'
+  | 'discord-estado'
+  | 'spotify';
 
 export interface Bloque {
   id: string;

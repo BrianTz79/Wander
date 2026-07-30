@@ -4,7 +4,7 @@ import { Compass, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
 import { erroresPorCampo, mensajeError } from '../lib/api';
-import { BotonSteam, SeparadorO } from '../components/BotonSteam';
+import { BotonDiscord, BotonGoogle, BotonSteam, SeparadorO } from '../components/BotonSteam';
 
 /**
  * Mensajes con los que puede volver el callback de Steam. Se traducen aquí
@@ -14,9 +14,24 @@ import { BotonSteam, SeparadorO } from '../components/BotonSteam';
  * Se leen de una tabla fija a propósito — pintar en pantalla un texto que
  * venga de la URL sería un XSS reflejado servido en bandeja.
  */
-const ERRORES_STEAM: Record<string, string> = {
+/** Códigos que puede devolver cualquiera de los flujos externos (Steam por
+ *  OpenID, Discord y Google por OAuth). Se traducen aquí para que la URL
+ *  nunca enseñe jerga técnica al usuario. */
+const ERRORES_EXTERNOS: Record<string, string> = {
   steam: 'No se pudo verificar tu cuenta de Steam. Inténtalo de nuevo.',
   suspendido: 'Esa cuenta está suspendida.',
+  proveedor: 'No se pudo hablar con el proveedor. Inténtalo en un momento.',
+  state: 'La conexión caducó o no se pudo verificar. Inténtalo otra vez.',
+  'sin-codigo': 'El proveedor no devolvió lo necesario para continuar.',
+  creacion: 'No se pudo crear la cuenta. Inténtalo de nuevo.',
+  sesion: 'Tu sesión cambió durante el proceso. Vuelve a intentarlo.',
+  /*
+   * El caso importante: ya existe una cuenta con ese correo. NO se unen
+   * automáticamente (eso permitiría apropiarse de una cuenta ajena con solo
+   * controlar el correo), así que se explica exactamente qué hacer.
+   */
+  'correo-en-uso':
+    'Ya hay una cuenta de Wander con ese correo. Entra con tu contraseña y vincula el proveedor desde configuración.',
 };
 
 export function LoginPage() {
@@ -25,8 +40,11 @@ export function LoginPage() {
   const ubicacion = useLocation();
   const [parametros] = useSearchParams();
 
-  const errorSteam = ERRORES_STEAM[parametros.get('error') ?? ''] ?? '';
-  const canceloSteam = parametros.get('steam') === 'cancelado';
+  const errorSteam = ERRORES_EXTERNOS[parametros.get('error') ?? ''] ?? '';
+  const canceloSteam =
+    parametros.get('steam') === 'cancelado' ||
+    parametros.get('discord') === 'cancelado' ||
+    parametros.get('google') === 'cancelado';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -183,7 +201,11 @@ export function LoginPage() {
           </button>
 
           <SeparadorO />
-          <BotonSteam />
+          <div className="space-y-2">
+            <BotonSteam />
+            <BotonDiscord />
+            <BotonGoogle />
+          </div>
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">

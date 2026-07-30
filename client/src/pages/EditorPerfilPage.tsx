@@ -33,8 +33,14 @@ import {
   PLANTILLA_POR_DEFECTO,
   type Plantilla,
 } from '../lib/plantillas';
-import { necesitaSteam, REGISTRO_BLOQUES, RenderBloque } from '../components/bloques/registro';
+import {
+  necesitaDiscord,
+  necesitaSteam,
+  REGISTRO_BLOQUES,
+  RenderBloque,
+} from '../components/bloques/registro';
 import { ProveedorSteam, useSteam } from '../lib/steamContexto';
+import { ProveedorDiscord, useDiscord } from '../lib/discordContexto';
 
 /**
  * Editor de perfil (Fase 3) — el corazón de Wander.
@@ -77,6 +83,7 @@ export function EditorPerfilPage() {
        tiene que enseñar lo que verá un visitante, no un maniquí. El propio
        usuario siempre puede leer su perfil aunque esté sin publicar. */
     <ProveedorSteam handle={usuarioAuth?.handle} activo={necesitaSteam(perfil.bloques)}>
+    <ProveedorDiscord handle={usuarioAuth?.handle} activo={necesitaDiscord(perfil.bloques)}>
     <div className="contenedor-app py-8">
       {/* Cabecera: título, estado de guardado y publicación */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -137,6 +144,7 @@ export function EditorPerfilPage() {
         </div>
       </div>
     </div>
+    </ProveedorDiscord>
     </ProveedorSteam>
   );
 }
@@ -612,6 +620,8 @@ function TarjetaBloque({
           {bloque.tipo === 'steam-actividad' && <FormSteamActividad bloque={bloque} />}
           {bloque.tipo === 'estadisticas' && <FormEstadisticas bloque={bloque} />}
           {bloque.tipo === 'favoritos' && <FormFavoritos bloque={bloque} />}
+          {bloque.tipo === 'discord-estado' && <FormDiscordEstado bloque={bloque} />}
+          {bloque.tipo === 'spotify' && <FormSpotify bloque={bloque} />}
         </div>
       )}
     </li>
@@ -842,11 +852,185 @@ function AvisoSinSteam() {
   const { vinculado, cargando } = useSteam();
   if (cargando || vinculado) return null;
 
+  // Desde la Fase 6 se vincula con la sesión abierta, así que ya no hay que
+  // cerrar sesión y volver a entrar por Steam: se manda a /configuracion.
   return (
     <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-      No tienes Steam vinculado, así que este bloque no se mostrará en tu perfil. Entra con Steam
-      desde el inicio de sesión para traer tus datos.
+      No tienes Steam vinculado, así que este bloque no se mostrará en tu perfil.{' '}
+      <Link to="/configuracion" className="font-semibold underline">
+        Vincúlalo en configuración
+      </Link>
+      .
     </p>
+  );
+}
+
+/** Equivalente para los bloques de Discord. Distingue los dos motivos por
+ *  los que un bloque puede quedarse vacío, porque se arreglan de forma
+ *  distinta: vincular la cuenta, o unirse al servidor de Lanyard. */
+function AvisoSinDiscord() {
+  const { vinculado, cargando, datos } = useDiscord();
+  if (cargando) return null;
+
+  if (!vinculado) {
+    return (
+      <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        No tienes Discord vinculado, así que este bloque no se mostrará en tu perfil.{' '}
+        <Link to="/configuracion" className="font-semibold underline">
+          Vincúlalo en configuración
+        </Link>
+        .
+      </p>
+    );
+  }
+
+  // Vinculado pero sin permiso de presencia: el dato ni se pide.
+  if (!datos?.presencia) {
+    return (
+      <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        Tienes Discord vinculado, pero no has activado mostrar tu estado en vivo.{' '}
+        <Link to="/configuracion" className="font-semibold underline">
+          Actívalo en configuración
+        </Link>
+        .
+      </p>
+    );
+  }
+
+  // Vinculado y con permiso, pero Lanyard no lo ve.
+  if (!datos.presencia.monitorizado) {
+    return (
+      <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        Para leer tu estado en vivo hace falta que te unas al servidor de Lanyard:{' '}
+        <a
+          href="https://discord.gg/UrXF2cfJ7F"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="font-semibold underline"
+        >
+          discord.gg/UrXF2cfJ7F
+        </a>
+        . Es gratis y solo hace falta estar dentro; no tienes que participar.
+      </p>
+    );
+  }
+
+  return null;
+}
+
+function FormDiscordEstado({ bloque }: { bloque: Bloque }) {
+  const { actualizarBloque } = useEditor();
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [actividad, setActividad] = useState(bloque.config['mostrarActividad'] !== false);
+  const [avatar, setAvatar] = useState(bloque.config['mostrarAvatar'] !== false);
+  const [error, setError] = useState('');
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, {
+        config: { titulo: titulo.trim(), mostrarActividad: actividad, mostrarAvatar: avatar },
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+      <AvisoSinDiscord />
+
+      <div>
+        <label htmlFor={`dc-tit-${bloque.id}`} className="etiqueta">
+          Título
+        </label>
+        <input
+          id={`dc-tit-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder="Discord"
+        />
+      </div>
+
+      <Casilla
+        id={`dc-avt-${bloque.id}`}
+        etiqueta="Mostrar mi avatar y nombre de Discord"
+        valor={avatar}
+        alCambiar={setAvatar}
+      />
+      <Casilla
+        id={`dc-act-${bloque.id}`}
+        etiqueta="Mostrar a qué estoy jugando"
+        valor={actividad}
+        alCambiar={setActividad}
+      />
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        Guardar bloque
+      </button>
+    </form>
+  );
+}
+
+function FormSpotify({ bloque }: { bloque: Bloque }) {
+  const { actualizarBloque } = useEditor();
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [progreso, setProgreso] = useState(bloque.config['mostrarProgreso'] !== false);
+  const [error, setError] = useState('');
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, {
+        config: { titulo: titulo.trim(), mostrarProgreso: progreso },
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+      <AvisoSinDiscord />
+
+      <p className="rounded-lg bg-zinc-100 p-2.5 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400">
+        Este bloque se oculta solo cuando no estás escuchando nada, así que no deja un hueco vacío
+        en tu perfil.
+      </p>
+
+      <div>
+        <label htmlFor={`sp-tit-${bloque.id}`} className="etiqueta">
+          Título
+        </label>
+        <input
+          id={`sp-tit-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder="Sonando ahora"
+        />
+      </div>
+
+      <Casilla
+        id={`sp-pro-${bloque.id}`}
+        etiqueta="Mostrar la barra de progreso"
+        valor={progreso}
+        alCambiar={setProgreso}
+      />
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        Guardar bloque
+      </button>
+    </form>
   );
 }
 

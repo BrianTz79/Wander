@@ -10,24 +10,23 @@
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4 y 5 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
-central: quien entra con Steam ve sus juegos, sus horas y su actividad en el perfil sin
-escribir nada.** Lo único que le falta a la Fase 2 es la verificación de correo, que
-**se aplazó a propósito** (30/07): sin usuarios reales todavía, no compensa dar de alta
-un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 6 (cuentas
-vinculadas: Discord y Google)**.
+**Fases 1, 3, 4, 5 y 6 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
+central por partida doble: quien entra con Steam ve sus juegos, sus horas y su actividad
+sin escribir nada, y quien vincula Discord tiene además su estado y su música en vivo.**
+Lo único que le falta a la Fase 2 es la verificación de correo, que **se aplazó a
+propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comentarios)**.
 
 ### Resumen por fases
 
 | # | Fase | Estado |
 |---|---|---|
 | 1 | Andamio + deploy | ✅ **Completa** |
-| 2 | Auth | 🟡 Correo+contraseña y Steam OpenID listos; la verificación de correo queda aplazada (decisión del 30/07) |
+| 2 | Auth | 🟡 Correo+contraseña, Steam OpenID y OAuth (Discord/Google) listos; la verificación de correo queda aplazada (decisión del 30/07) |
 | 3 | Perfil mínimo | ✅ **Completa** |
 | 4 | Tema y plantillas | ✅ **Completa** |
 | 5 | Steam | ✅ **Completa** |
-| 6 | Cuentas vinculadas | ⬜ **Siguiente** |
-| 7 | Social | ⬜ |
+| 6 | Cuentas vinculadas | ✅ **Completa** |
+| 7 | Social | ⬜ **Siguiente** |
 | 8 | Mensajería | ⬜ |
 | 9 | CSS propio | ⬜ |
 | 10 | Pulido | ⬜ |
@@ -153,6 +152,85 @@ vinculadas: Discord y Google)**.
   en el servidor. Detectado sondeando la respuesta real, no leyendo el código.
 - Probado E2E por HTTPS: 37 comprobaciones + la prueba de Steam caído (ver §11).
 
+**Cuentas vinculadas (Fase 6)**
+- **OAuth 2.0 con PKCE (S256) para Discord y Google**, escrito a mano en
+  `services/oauth.service.ts` — sin `openid-client`, que habría traído toda una
+  maquinaria de descubrimiento para dos proveedores fijos y conocidos.
+- **El `state` es un token firmado con HMAC, no una fila en una tabla.** Lleva dentro la
+  intención (`login` | `vincular`), el usuario, el verificador PKCE, el proveedor y una
+  caducidad de 10 min. Una tabla exigiría limpieza periódica y un viaje a la DB por
+  callback; la cookie de sesión no vale porque **el flujo de login empieza sin sesión**.
+  La clave se deriva de `JWT_SECRET`, no es `JWT_SECRET`: un fallo aquí no toca la firma
+  de las sesiones.
+- **La intención se decide al SALIR, no al volver.** Si se dedujera al regresar mirando
+  si hay cookie, abrir "vincular" con la sesión caducada te crearía una cuenta nueva en
+  silencio. Verificado: manipular `i: login` → `i: vincular` en el state **invalida la
+  firma**, y un state de Discord **no sirve** en el callback de Google.
+- **PKCE aunque seamos un cliente confidencial.** Ata el callback a quien inició el
+  flujo: sin él, un código robado del historial, de un log de proxy o del `Referer` es
+  canjeable por cualquiera que tenga nuestro secreto.
+- **La decisión de seguridad más importante de la fase: un correo de Google que ya
+  existe NO une cuentas automáticamente.** Es tentador —Google lo da verificado— pero si
+  alguien registró `victima@gmail.com` con contraseña y más tarde ese correo cae en otras
+  manos, el auto-vínculo le regalaría la cuenta entera sin saber la contraseña. Vincular
+  **exige demostrar que controlas la cuenta de Wander**, o sea hacerlo desde
+  `/configuracion` con sesión iniciada.
+- **De Google no se guarda ningún token.** Solo se usa para saber quién eres al entrar,
+  así que guardar un token que no vamos a usar sería superficie de ataque a cambio de
+  nada. El `id_token` se valida comprobando `iss`, `aud` (que sea para *esta* app) y
+  `exp`; no se verifica la firma con las claves de Google **a propósito**: no llegó por
+  el navegador sino en un POST TLS directo al endpoint de tokens, autenticado con nuestro
+  `client_secret` — ese canal ya garantiza origen e integridad.
+- **Scopes mínimos:** Discord solo `identify`. No se pide `email` ni `guilds`.
+- **`/configuracion`** con consentimiento granular: catálogo **cerrado** de permisos en
+  `schemas/cuentas.schema.ts`, así una clave inventada se descarta en vez de acabar en la
+  columna JSON. La pantalla que dice qué se leerá aparece **antes** de salir al proveedor
+  — una que lo explique después no es consentimiento, es un informe. Y se puede leer
+  "qué datos se leerían" **sin** vincular nada.
+- **El filtro de consentimiento se aplica en el SERVIDOR, al construir la respuesta.** Si
+  viviera en React, el dato seguiría viajando en el JSON y cualquiera lo vería con las
+  herramientas de desarrollo: un interruptor de privacidad que no quita el dato de la red
+  no es un interruptor de privacidad.
+- **Desvincular borra de verdad**: la `CuentaVinculada` y su `CacheExterno` en la **misma
+  transacción**. Si se borrara solo la fila, quedarían datos huérfanos de un proveedor ya
+  desvinculado que ningún flujo volvería a limpiar.
+- **No se puede quitar la única forma de entrar.** El backend lo rechaza con un mensaje
+  que explica qué hacer, y la interfaz además desactiva el botón y dice el motivo como
+  texto visible (no solo en un `title`, que ni los lectores de pantalla ni el móvil ven).
+- **Una cuenta remota ya vinculada a otro usuario no se mueve ni se roba** — lo garantiza
+  el `@@unique([proveedor, proveedorId])`. Permitir moverla dejaría que alguien con
+  acceso temporal a un Discord se lo quitara a su dueño.
+- **Bloques de Discord y Spotify en vivo** vía **Lanyard**, con la misma caché y el mismo
+  circuit breaker de la Fase 5. Se eligió Lanyard frente a un bot propio porque leer
+  presencia exige el intent privilegiado `GUILD_PRESENCES` **y** compartir servidor con
+  cada usuario, lo cual no escala en una plataforma. El precio se dice en la interfaz:
+  hace falta unirse a `discord.gg/UrXF2cfJ7F`.
+- Un **404 de Lanyard no dispara el circuit breaker**: significa "no está en el servidor",
+  que es una respuesta estable y no un fallo que se arregle reintentando.
+- El bloque de Spotify **se oculta solo cuando no suena nada**: un bloque permanentemente
+  vacío es peor que no tenerlo. Su barra de progreso avanza en el cliente cada segundo,
+  porque con un TTL de un minuto daría saltos y parecería congelada.
+- **`PRIVACIDAD.md` y `/privacidad`**, y la parte de proveedores **se sirve del mismo
+  endpoint** que la pantalla de consentimiento (`GET /api/cuentas/privacidad`, público):
+  con dos textos separados, tarde o temprano uno diría una cosa y la vinculación haría
+  otra.
+- **Arreglo del pendiente heredado de la Fase 5:** vincular Steam ya no exige cerrar
+  sesión y volver a entrar por Steam; se hace desde `/configuracion` como los demás.
+- **La trampa de nginx, otra vez.** El bloque `^/api/auth/steam` se amplió a
+  `^/api/(auth/steam|oauth/)`: sin eso, `/api/oauth/` caía en `^/api/(auth|oauth)/` con
+  la zona `api_auth` de **5 r/m**, la de contraseñas. Medido en producción: la ruta de
+  OAuth aguanta **12 de 12** peticiones a 4/s, mientras `/api/auth/login` corta en la
+  novena. Es el mismo fallo que ya mordió con Steam en la Fase 2.
+- **CSP ampliada** con `media.discordapp.net` (imágenes de actividad) y
+  `lh3.googleusercontent.com` (avatares de Google). `cdn.discordapp.com` e `i.scdn.co`
+  ya estaban.
+- Probado E2E: **61 comprobaciones, todas en verde** (`docs/pruebas/e2e-fase6.mjs`).
+- **Lanyard verificado con datos reales**, no con un mock: la cuenta de Mizllet
+  (`246498520041783297`) devolvió `online` jugando a *Deadlock*, y el recorte se ejerció de
+  verdad — ni uno de los campos crudos de Discord (`public_flags`, `collectibles`,
+  `sku_id`, `primary_guild`, `avatar_decoration_data`, `content_classification`) aparece en
+  lo que Wander publica.
+
 **SEO de la landing (parte de la Fase 12)**
 - JSON-LD (`WebSite` + `WebApplication`), canónica, Open Graph y Twitter Card.
 - Tarjeta al compartir en PNG 1200×630 (`/og.png`).
@@ -166,17 +244,13 @@ vinculadas: Discord y Google)**.
 
 ### ⬜ Lo siguiente
 
-1. **Fase 6 — Cuentas vinculadas**: Discord y Google por OAuth 2.0 con PKCE,
-   `/configuracion` con consentimiento granular, vincular/desvincular y `/privacidad`.
-   La Fase 5 ya dejó puesta media infraestructura: `cache.service.ts` es agnóstico del
-   proveedor y `borrarCache(userId, proveedor)` existe justo para que desvincular borre
-   de verdad (§14).
-2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
+1. **Fase 7 — Social**: seguir, feed de a quién sigues, comentarios, likes y `/explorar`
+   con búsqueda. El schema ya tiene `Seguimiento`, `Publicacion`, `Comentario`,
+   `Reaccion`, `ActividadFeed`, `Bloqueo` y `Notificacion` desde la migración inicial.
+2. **i18n antes de la Fase 7**, si se va a hacer. Es el último momento barato: la
+   interfaz ya creció con `/configuracion` y `/privacidad`, y la Fase 7 la duplica.
+3. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
-3. Pendiente heredado de la Fase 5: **el vínculo de Steam solo se crea al *entrar* con
-   Steam.** Quien se registró con correo no tiene forma de vincular su cuenta sin cerrar
-   sesión y volver a entrar por Steam. Se arregla en la Fase 6, que es donde vive
-   "vincular con sesión activa" — es el mismo flujo para los tres proveedores.
 4. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
@@ -512,7 +586,10 @@ Dos conceptos separados, una sola tabla.
   de Steam (`services/handle.service.ts`) y el usuario lo cambia después si quiere.
   La respuesta se valida con `check_authentication` contra Steam: los parámetros de la
   URL no se creen nunca por sí solos.
-- **Discord / Google** — OAuth 2.0 con PKCE vía `openid-client` 6.
+- **Discord / Google** ✅ — OAuth 2.0 con PKCE (S256), implementado a mano en
+  `services/oauth.service.ts`. Se descartó `openid-client`: traía descubrimiento
+  dinámico y negociación para dos proveedores fijos y conocidos, y el `state` firmado
+  que necesitábamos (con la intención dentro) había que escribirlo igual.
 
 Todos convergen en `encontrarOCrearUsuario(proveedor, proveedorId, datos)`.
 
@@ -639,8 +716,8 @@ likes, comentarios.
 | Enlaces / redes | Iconos a todos tus perfiles | Manual |
 | Texto libre | Bio extendida, lo que quieras | Manual |
 | Galería | Capturas, fotos del setup | Subidas |
-| Estado de Discord | En línea, qué juega — **en vivo** | Lanyard |
-| Spotify | Canción sonando — **en vivo** | Lanyard |
+| Estado de Discord ✅ | En línea, qué juega — **en vivo** | Lanyard |
+| Spotify ✅ | Canción sonando — **en vivo** | Lanyard |
 | Música de fondo | Pista propia que suena al entrar al perfil | Subida |
 
 ### Música de fondo del perfil
@@ -745,9 +822,10 @@ los eventos no cambia. No se añade Redis en la v1 por no complicar sin necesida
 │       ├── sockets/chat.socket.ts
 │       ├── middlewares/{auth,rateLimit,validar,errores}.middleware.ts
 │       ├── services/
-│       │   ├── steam.service.ts       # XML + Web API + filtro vacBanned
-│       │   ├── discord.service.ts
-│       │   ├── spotify.service.ts
+│       │   ├── steam.service.ts       # Web API + filtro vacBanned
+│       │   ├── steamAuth.service.ts   # OpenID 2.0 + check_authentication
+│       │   ├── oauth.service.ts       # PKCE + state firmado (Discord/Google)
+│       │   ├── lanyard.service.ts     # presencia de Discord y Spotify
 │       │   ├── cache.service.ts       # get-or-fetch con TTL
 │       │   └── sanitizar.service.ts   # CSS + HTML ← el más delicado
 │       ├── schemas/               # zod: bloques por tipo, tema, auth
@@ -859,7 +937,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
 | 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
 | 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
-| 6 | **Cuentas vinculadas** | Discord y Google OAuth, `/configuracion` con consentimiento granular, vincular/desvincular, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
+| 6 | ✅ **Cuentas vinculadas** | Discord y Google por OAuth 2.0 con PKCE, `/configuracion` con consentimiento granular, vincular/desvincular con borrado real, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
 | 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. |
 | 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. |
 | 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
@@ -871,6 +949,44 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**30/07/2026 — Fase 6 desplegada: cuentas vinculadas**
+
+- OAuth 2.0 con PKCE (S256) para Discord y Google, escrito a mano. `state` firmado con
+  HMAC que transporta intención, usuario, verificador y caducidad — sin tabla que limpiar
+  ni viaje a la DB por callback.
+- `/configuracion` con consentimiento granular sobre un catálogo cerrado de permisos, y
+  la pantalla de "qué se lee / qué se guarda / qué NO se pide" **antes** de salir al
+  proveedor. `PRIVACIDAD.md` + `/privacidad`, servida del mismo endpoint para que no
+  puedan contradecirse.
+- Bloques de **Estado de Discord** y **Spotify** en vivo vía Lanyard, reusando la caché y
+  el circuit breaker de la Fase 5.
+- **Decisión de seguridad central:** un correo de Google que ya tiene cuenta **no** une
+  cuentas automáticamente. Vincular exige sesión iniciada, porque si no, quien controle
+  un correo se queda con la cuenta de Wander asociada sin saber la contraseña.
+- **Decisión de privacidad:** el filtro de consentimiento se aplica al construir la
+  respuesta HTTP, no al pintar. Si el dato viaja y solo se oculta en React, el switch no
+  protege nada.
+- De Google **no se guarda ningún token**: solo se usa para saber quién eres. El
+  `id_token` se valida por `iss`/`aud`/`exp`; no se verifica la firma a propósito, y el
+  porqué está razonado en el código.
+- **Fallo de infraestructura encontrado y corregido antes de que mordiera:** `/api/oauth/`
+  caía en la zona `api_auth` de nginx (5 r/m, la de contraseñas). Un login correcto por
+  OAuth responde 302, así que cada inicio de sesión BUENO habría gastado cupo — el mismo
+  fallo que ya apareció con Steam en la Fase 2. Medido tras el arreglo: OAuth aguanta
+  **12 de 12** peticiones a 4/s; `/api/auth/login` corta en la novena.
+- Arreglado el pendiente de la Fase 5: **Steam ya se vincula con la sesión abierta**, sin
+  cerrar sesión y volver a entrar.
+- E2E: 61 comprobaciones, todas en verde, guardadas en `docs/pruebas/e2e-fase6.mjs`. Las
+  que de verdad importan son las de manipulación
+  del `state` (cambiar `login`→`vincular` invalida la firma; un state de Discord no vale
+  en Google), las de secretos (ninguna respuesta contiene token ni `client_secret`) y el
+  404 indistinguible del endpoint de Discord, byte a byte igual al de un handle
+  inexistente.
+- **Hallazgo lateral:** Cloudflare devuelve 403 a toda petición externa que traiga
+  `CF-Connecting-IP` puesta a mano. Salió al intentar simular varias IPs en las pruebas, y
+  confirma la premisa sobre la que descansa el rate limit por visitante corregido el
+  30/07: esa cabecera no es falsificable a través del túnel.
 
 **30/07/2026 — Fase 5 desplegada: los datos de Steam**
 
@@ -1125,6 +1241,31 @@ avatar y arte de juego.
 ### Privacidad
 Desvincular una cuenta y confirmar en la DB que se borraron la `CuentaVinculada` y su
 `CacheExterno`.
+
+### Cuentas vinculadas ✅ (30/07)
+60 comprobaciones E2E por HTTPS. Las que hay que repetir si se toca `oauth.service.ts`:
+
+- **Manipulación del `state`** — cambiar `i: login` por `i: vincular` (o meter otro `u`)
+  debe invalidar la firma; un `state` emitido para Discord no debe valer en el callback
+  de Google; un callback sin `state` no debe crear sesión.
+- **Con `state` válido y código falso**, el canje debe fallar contra el proveedor real y
+  no crear nada.
+- **Secretos:** `grep` sobre toda respuesta buscando `accessToken|refreshToken|TokenCif|
+  client_secret|GOCSPX` → cero resultados, incluida `GET /api/cuentas`.
+- **404 indistinguible** de `GET /api/externo/discord/:handle`: byte a byte igual para un
+  handle inexistente y para un perfil sin publicar.
+- **Rate limit:** `/api/oauth/discord` debe aguantar ~12 peticiones seguidas a 4/s
+  (zona `api_oauth`, 20 r/m), mientras `/api/auth/login` corta en la novena (`api_auth`,
+  5 r/m). Si OAuth empieza a cortar como login, el bloque de nginx se rompió.
+- **Aislamiento:** un anónimo no lista, no desvincula y no toca permisos (401); pasar
+  `?userId=` no cambia de quién son las cuentas devueltas.
+- **Mass assignment:** un campo extra junto a `permisos` se rechaza (400); una clave de
+  permiso inventada se descarta al guardar.
+
+Lo que **no** cubre la suite y hay que probar a mano al menos una vez: el ida y vuelta
+real contra Discord y Google (hace falta un humano autenticándose), y que el avatar
+remoto se pinte de verdad en el navegador — la CSP se comprueba por cabecera, pero un
+host mal escrito solo se ve en la consola del visitante.
 
 ---
 

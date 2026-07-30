@@ -34,4 +34,17 @@ router.get(
   asyncHandler(ctrl.steamDeHandle)
 );
 
+/**
+ * Presencia de Discord (Fase 6). Igual que la de Steam: sirve de la caché
+ * de Postgres, así que le basta el `limiteGeneral`. Su TTL es corto (1 min)
+ * porque el valor del bloque está en que sea "en vivo", pero sigue siendo
+ * la caché quien habla con Lanyard, no el render.
+ */
+router.get(
+  '/discord/:handle',
+  authOpcional,
+  validarParams(handleParamSchema),
+  asyncHandler(ctrl.discordDeHandle)
+);
+
 export default router;

@@ -4,7 +4,7 @@ import { Check, Compass, Eye, EyeOff, Loader2, X } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
 import { api, erroresPorCampo, mensajeError } from '../lib/api';
-import { BotonSteam, SeparadorO } from '../components/BotonSteam';
+import { BotonDiscord, BotonGoogle, BotonSteam, SeparadorO } from '../components/BotonSteam';
 
 /** Estado de la comprobación de handle contra el backend. */
 type EstadoHandle =
@@ -326,9 +326,14 @@ export function RegistroPage() {
           </button>
 
           <SeparadorO />
-          {/* Con Steam no hace falta ni correo ni contraseña: el SteamID
-              basta para crear la cuenta y elegir handle automáticamente. */}
-          <BotonSteam texto="Crear cuenta con Steam" />
+          {/* Con cualquiera de estos no hace falta ni correo ni contraseña:
+              la identidad del proveedor basta para crear la cuenta y el
+              handle se genera automáticamente. */}
+          <div className="space-y-2">
+            <BotonSteam texto="Crear cuenta con Steam" />
+            <BotonDiscord texto="Crear cuenta con Discord" />
+            <BotonGoogle texto="Crear cuenta con Google" />
+          </div>
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">

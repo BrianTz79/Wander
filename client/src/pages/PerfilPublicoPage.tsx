@@ -4,8 +4,9 @@ import { Check, Eye, EyeOff, Pencil, Share2 } from 'lucide-react';
 
 import { api } from '../lib/api';
 import { varsDeTema, type RespuestaPerfilPublico } from '../lib/perfil';
-import { necesitaSteam, RenderBloque } from '../components/bloques/registro';
+import { necesitaDiscord, necesitaSteam, RenderBloque } from '../components/bloques/registro';
 import { ProveedorSteam } from '../lib/steamContexto';
+import { ProveedorDiscord } from '../lib/discordContexto';
 import { NoEncontradaPage } from './NoEncontradaPage';
 
 type Estado =
@@ -89,6 +90,7 @@ export function PerfilPublicoPage() {
 
   return (
     <ProveedorSteam handle={usuario.handle} activo={necesitaSteam(bloques)}>
+    <ProveedorDiscord handle={usuario.handle} activo={necesitaDiscord(bloques)}>
     <div style={varsDeTema(perfil.tema)} className="min-h-[calc(100vh-4rem)]">
       {/* Aviso solo para el dueño de un perfil sin publicar. */}
       {esPropio && !perfil.publicado && (
@@ -167,6 +169,7 @@ export function PerfilPublicoPage() {
         </div>
       </div>
     </div>
+    </ProveedorDiscord>
     </ProveedorSteam>
   );
 }
