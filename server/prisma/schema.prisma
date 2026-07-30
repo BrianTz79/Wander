@@ -1,0 +1,530 @@
+// ─────────────────────────────────────────────────────────────────────
+//  Wander — esquema de datos
+//
+//  Convenciones:
+//   · IDs con cuid() en vez de autoincrement: no se puede enumerar
+//     usuarios ni adivinar cuántos hay (fuga de información de negocio),
+//     y son seguros de exponer en URLs.
+//   · `onDelete: Cascade` en todo lo que pertenece a un usuario, para que
+//     borrar la cuenta borre de verdad (requisito de privacidad).
+//   · Índices en toda columna por la que se filtre u ordene.
+// ─────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// En Prisma 7 la URL de conexión ya no vive en el esquema: se declara en
+// `prisma.config.ts` para las migraciones, y el cliente la lee de
+// DATABASE_URL (validada antes por src/config/env.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  IDENTIDAD
+// ═════════════════════════════════════════════════════════════════════
+
+model User {
+  id           String  @id @default(cuid())
+  // Ambos opcionales: quien entra solo con Steam no tiene correo, y quien
+  // solo usa OAuth no tiene contraseña.
+  email        String? @unique
+  passwordHash String?
+
+  // El slug público del perfil: /u/<handle>. Se guarda en minúsculas y
+  // se valida contra una lista de reservados (admin, api, login…).
+  handle      String  @unique
+  displayName String
+  avatarUrl   String?
+  bannerUrl   String?
+  bio         String? @db.Text
+  ubicacion   String?
+  // Fecha de nacimiento opcional; solo se usa para verificar mayoría de
+  // edad si algún día hay contenido restringido. Nunca se muestra.
+  fechaNacimiento DateTime?
+
+  rol           String  @default("USER") // USER | MOD | ADMIN
+  emailVerified Boolean @default(false)
+  // Suspensión por moderación. `suspendidoHasta` null + true = permanente.
+  suspendido      Boolean   @default(false)
+  suspendidoHasta DateTime?
+  motivoSuspension String?
+
+  // ── Privacidad (todo opt-out explícito, por defecto lo más cerrado
+  //    que siga siendo útil) ──
+  perfilPublico  Boolean @default(true)
+  privacidadDm   String  @default("seguidos") // todos | seguidos | nadie
+  mostrarUbicacion Boolean @default(false)
+  mostrarEnBusqueda Boolean @default(true)
+  // Consentimiento de indexación por buscadores. Si es false, el perfil
+  // sale con noindex y se excluye del sitemap.
+  permitirIndexado Boolean @default(true)
+
+  // Rastro de seguridad. `tokenVersion` invalida todos los refresh tokens
+  // de golpe: se incrementa al cambiar contraseña o al "cerrar sesión en
+  // todos los dispositivos".
+  tokenVersion    Int       @default(0)
+  ultimoAccesoEn  DateTime?
+  ultimaIpHash    String?   // hash, no la IP en claro
+  intentosFallidos Int      @default(0)
+  bloqueadoHasta  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ── Relaciones ──
+  cuentas         CuentaVinculada[]
+  perfil          Perfil?
+  sesiones        Sesion[]
+  siguiendo       Seguimiento[]  @relation("seguidor")
+  seguidores      Seguimiento[]  @relation("seguido")
+  comentarios     Comentario[]
+  reacciones      Reaccion[]
+  publicaciones   Publicacion[]
+  actividades     ActividadFeed[]
+  cachesExternos  CacheExterno[]
+  participaciones Participante[]
+  mensajes        Mensaje[]
+  bloqueosHechos  Bloqueo[]      @relation("bloqueador")
+  bloqueosRecibidos Bloqueo[]    @relation("bloqueado")
+  notificaciones  Notificacion[] @relation("destinatario")
+  notificacionesEmitidas Notificacion[] @relation("emisor")
+  reportesHechos  Reporte[]      @relation("reportador")
+  archivos        Archivo[]
+
+  @@index([handle])
+  @@index([createdAt])
+  @@index([mostrarEnBusqueda, perfilPublico])
+}
+
+// Sesiones de refresh token. Tenerlas en DB permite revocar una sesión
+// concreta ("cerrar sesión en este dispositivo") y ver dónde hay sesiones
+// abiertas, lo cual un JWT puro no permite.
+model Sesion {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Hash del refresh token, nunca el token en claro: si se filtra la DB,
+  // no sirven para entrar.
+  tokenHash    String   @unique
+  userAgent    String?
+  ipHash       String?
+  expiraEn     DateTime
+  revocadaEn   DateTime?
+  createdAt    DateTime @default(now())
+  ultimoUsoEn  DateTime @default(now())
+
+  @@index([userId, revocadaEn])
+  @@index([expiraEn])
+}
+
+// Sirve para AMBAS cosas: iniciar sesión Y vincular para traer datos.
+// `esMetodoLogin` distingue si con esta cuenta se puede entrar.
+model CuentaVinculada {
+  id            String  @id @default(cuid())
+  userId        String
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proveedor     String  // steam | discord | google | spotify | github | twitch
+  proveedorId   String  // SteamID64, snowflake de Discord, etc.
+  usuarioRemoto String? // handle visible en esa plataforma
+  avatarRemoto  String?
+  esMetodoLogin Boolean @default(false)
+
+  // Tokens cifrados con AES-256-GCM en reposo (config/cripto.ts).
+  // NUNCA se serializan al cliente: no hay ruta que los devuelva.
+  accessTokenCif  String? @db.Text
+  refreshTokenCif String? @db.Text
+  expiraEn        DateTime?
+  scopes          String?
+
+  // Consentimiento granular: qué acepta el usuario que mostremos.
+  // Ej: {"mostrarHoras": true, "mostrarJuegosOcultos": false}
+  permisos       Json      @default("{}")
+  sincronizadoEn DateTime?
+  // Si el proveedor revoca el token, se marca aquí y se avisa al usuario
+  // en vez de fallar en silencio.
+  requiereReconexion Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proveedor, proveedorId]) // una cuenta remota = un usuario
+  @@unique([userId, proveedor])      // no dos Steam en la misma cuenta
+  @@index([userId])
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PERFIL PERSONALIZABLE
+// ═════════════════════════════════════════════════════════════════════
+
+model Perfil {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plantilla String @default("base-oscuro")
+  // Tokens de diseño validados por zod (schemas/tema.schema.ts).
+  tema      Json   @default("{}")
+  // CSS del usuario, ya SANITIZADO y con scope prefijado. Nunca se guarda
+  // el original: services/sanitizar.service.ts lo procesa al escribir.
+  cssPropio String? @db.Text
+  // Se conserva el original solo para que el usuario pueda seguir
+  // editando lo que escribió, pero NUNCA se sirve al público.
+  cssOriginal String? @db.Text
+
+  // ── Audio de fondo ──
+  // Autoplay con sonido está bloqueado por todos los navegadores, así que
+  // el reproductor arranca en mute con un botón visible para activarlo.
+  // `audioVolumen` es el volumen inicial (0-100); el visitante lo cambia
+  // y su preferencia se guarda en localStorage, no aquí.
+  audioUrl      String?
+  audioTitulo   String?
+  audioArtista  String?
+  audioVolumen  Int     @default(30)
+  audioAutoplay Boolean @default(true) // intento de autoplay (empieza mudo)
+  audioLoop     Boolean @default(true)
+
+  publicado Boolean  @default(false)
+  vistas    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bloques Bloque[]
+
+  @@index([publicado, vistas])
+}
+
+model Bloque {
+  id       String @id @default(cuid())
+  perfilId String
+  perfil   Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  // hero | estadisticas | steam-actividad | steam-favoritos | setup |
+  // enlaces | texto | galeria | discord-estado | spotify | video |
+  // separador | logros
+  tipo    String
+  orden   Int
+  visible Boolean @default(true)
+  // Props del bloque, validadas con el schema zod de su `tipo` antes de
+  // guardar (schemas/bloques/*.ts). Un tipo desconocido se rechaza.
+  config  Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([perfilId, orden])
+}
+
+// Caché de datos externos. El render de un perfil NUNCA consulta Steam en
+// vivo: si Steam está caído o lento, la página sigue funcionando con el
+// último dato conocido (stale-while-revalidate).
+model CacheExterno {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proveedor String // steam | discord | spotify | github | twitch
+  clave     String // resumen | juegos | logros | badges | nivel
+  datos     Json
+
+  obtenidoEn DateTime @default(now())
+  expiraEn   DateTime
+  // Si el último intento falló, se sigue sirviendo `datos` viejo y se
+  // registra el fallo para no reintentar en bucle.
+  ultimoError   String?
+  intentosFallo Int     @default(0)
+
+  @@unique([userId, proveedor, clave])
+  @@index([expiraEn])
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SOCIAL
+// ═════════════════════════════════════════════════════════════════════
+
+model Seguimiento {
+  seguidorId String
+  seguidoId  String
+  seguidor   User @relation("seguidor", fields: [seguidorId], references: [id], onDelete: Cascade)
+  seguido    User @relation("seguido", fields: [seguidoId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([seguidorId, seguidoId])
+  @@index([seguidoId, createdAt])
+  @@index([seguidorId, createdAt])
+}
+
+// Publicaciones cortas en el feed: "acabé Persona 5", una captura, etc.
+// Es lo que hace que haya algo que ver al entrar, más allá de los perfiles.
+model Publicacion {
+  id       String @id @default(cuid())
+  autorId  String
+  autor    User   @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  texto    String @db.Text // sanitizado
+  // Juego al que se refiere (appid de Steam), opcional. Permite filtrar
+  // el feed por juego y descubrir gente que juega lo mismo.
+  juegoAppid Int?
+  juegoNombre String?
+
+  editadoEn DateTime?
+  borradoEn DateTime? // borrado suave: los hilos no se rompen
+  createdAt DateTime  @default(now())
+
+  adjuntos    Archivo[]
+  comentarios Comentario[]
+  reacciones  Reaccion[]
+
+  @@index([autorId, createdAt])
+  @@index([createdAt])
+  @@index([juegoAppid])
+}
+
+// Un comentario cuelga de un perfil O de una publicación, no de ambos.
+model Comentario {
+  id      String @id @default(cuid())
+  texto   String @db.Text // sanitizado
+  autorId String
+  autor   User   @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  perfilUserId  String?      // comentario en el muro de un perfil
+  publicacionId String?
+  publicacion   Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  // Respuesta a otro comentario (un solo nivel de anidación).
+  respondeAId String?
+
+  editadoEn DateTime?
+  borradoEn DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([perfilUserId, createdAt])
+  @@index([publicacionId, createdAt])
+  @@index([autorId])
+}
+
+model Reaccion {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // like | fuego | gg | corazon
+  tipo   String @default("like")
+
+  perfilUserId  String?
+  publicacionId String?
+  publicacion   Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Un usuario no puede reaccionar dos veces al mismo objeto con el mismo
+  // tipo. Los índices parciales de Postgres se añaden en la migración.
+  @@unique([userId, perfilUserId, tipo])
+  @@unique([userId, publicacionId, tipo])
+  @@index([publicacionId])
+  @@index([perfilUserId])
+}
+
+model ActividadFeed {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // perfil-publicado | bloque-nuevo | juego-nuevo | logro | horas-hito |
+  // publicacion | siguio-a
+  tipo   String
+  datos  Json
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model Bloqueo {
+  bloqueadorId String
+  bloqueadoId  String
+  bloqueador   User @relation("bloqueador", fields: [bloqueadorId], references: [id], onDelete: Cascade)
+  bloqueado    User @relation("bloqueado", fields: [bloqueadoId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@id([bloqueadorId, bloqueadoId])
+  @@index([bloqueadoId])
+}
+
+model Notificacion {
+  id             String  @id @default(cuid())
+  destinatarioId String
+  destinatario   User    @relation("destinatario", fields: [destinatarioId], references: [id], onDelete: Cascade)
+  emisorId       String?
+  emisor         User?   @relation("emisor", fields: [emisorId], references: [id], onDelete: Cascade)
+  // seguimiento | comentario | reaccion | mensaje | mencion | sistema
+  tipo           String
+  datos          Json    @default("{}")
+  leidaEn        DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([destinatarioId, leidaEn, createdAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  MENSAJERÍA
+// ═════════════════════════════════════════════════════════════════════
+//  Un solo modelo cubre DM y grupo: un DM es una conversación de dos con
+//  `esGrupo: false`. Evita duplicar toda la lógica dos veces.
+
+model Conversacion {
+  id        String  @id @default(cuid())
+  esGrupo   Boolean @default(false)
+  nombre    String? // solo grupos
+  iconoUrl  String? // solo grupos
+  creadorId String?
+
+  // Para ordenar la bandeja sin un JOIN + MAX() por conversación.
+  ultimoMsgEn   DateTime @default(now())
+  ultimoMsgTexto String?  // vista previa desnormalizada
+
+  // Una conversación pendiente de aceptar (DM de un desconocido) va a la
+  // bandeja de solicitudes, no a la principal.
+  esSolicitud Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  participantes Participante[]
+  mensajes      Mensaje[]
+
+  @@index([ultimoMsgEn])
+}
+
+model Participante {
+  id             String       @id @default(cuid())
+  conversacionId String
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rol String @default("MIEMBRO") // ADMIN | MIEMBRO
+  // Último mensaje leído → de aquí sale el contador de no leídos.
+  leidoHastaId String?
+  silenciado   Boolean   @default(false)
+  salioEn      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([conversacionId, userId])
+  @@index([userId, salioEn])
+}
+
+model Mensaje {
+  id             String       @id @default(cuid())
+  conversacionId String
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  autorId        String
+  autor          User         @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  texto String? @db.Text // sanitizado
+  // texto | imagen | gif | archivo | audio | sistema
+  tipo  String  @default("texto")
+
+  editadoEn   DateTime?
+  borradoEn   DateTime? // borrado suave
+  respondeAId String?   // hilo simple
+
+  createdAt DateTime @default(now())
+
+  adjuntos Archivo[]
+
+  @@index([conversacionId, createdAt])
+  @@index([autorId])
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  ARCHIVOS
+// ═════════════════════════════════════════════════════════════════════
+//  Un solo modelo para todo lo que se sube (adjuntos de chat, imágenes de
+//  publicaciones, galerías de perfil, audio de fondo). Tenerlo unificado
+//  permite una sola cuota por usuario y un solo barrido de huérfanos.
+
+model Archivo {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  url          String
+  miniaturaUrl String?
+  // MIME real detectado con file-type leyendo los magic bytes, NO el
+  // Content-Type que manda el cliente ni la extensión del nombre.
+  mime  String
+  bytes Int
+  ancho Int?
+  alto  Int?
+  duracion Float? // segundos, para audio y video
+
+  // GIFs de Giphy/Tenor: se guarda solo la URL, no se rehospedan.
+  externo Boolean @default(false)
+  // Hash del contenido: deduplica subidas idénticas y permite detectar
+  // material ya reportado.
+  hashSha256 String?
+
+  // Dueño lógico del archivo. Los tres son opcionales: un archivo recién
+  // subido aún no está atado a nada (se limpia si queda huérfano).
+  mensajeId     String?
+  mensaje       Mensaje?     @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+  publicacionId String?
+  publicacion   Publicacion? @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  // uso: avatar | banner | galeria | audio-perfil | adjunto | icono-grupo
+  uso           String       @default("adjunto")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([mensajeId])
+  @@index([publicacionId])
+  @@index([hashSha256])
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  MODERACIÓN Y AUDITORÍA
+// ═════════════════════════════════════════════════════════════════════
+
+model Reporte {
+  id           String @id @default(cuid())
+  reportadorId String
+  reportador   User   @relation("reportador", fields: [reportadorId], references: [id], onDelete: Cascade)
+
+  // usuario | perfil | publicacion | comentario | mensaje | archivo
+  tipoObjeto String
+  objetoId   String
+  motivo     String // spam | acoso | contenido-ilegal | suplantacion | otro
+  detalle    String? @db.Text
+
+  estado     String    @default("PENDIENTE") // PENDIENTE | REVISADO | DESCARTADO
+  revisadoPor String?
+  revisadoEn DateTime?
+  resolucion String?
+
+  createdAt DateTime @default(now())
+
+  @@index([estado, createdAt])
+  @@index([tipoObjeto, objetoId])
+}
+
+// Registro de eventos sensibles. Sirve para investigar un incidente:
+// quién cambió qué y cuándo. Las IPs van hasheadas.
+model AuditLog {
+  id       String @id @default(cuid())
+  userId   String?
+  // login | login-fallido | logout | cambio-password | vinculacion |
+  // desvinculacion | borrado-cuenta | suspension | cambio-rol | export-datos
+  accion   String
+  detalle  Json    @default("{}")
+  ipHash   String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([accion, createdAt])
+}
+
+// Handles que nadie puede registrar: rutas de la app, marcas, y palabras
+// que se prestan a suplantación ("admin", "soporte", "wander").
+model HandleReservado {
+  handle String @id
+  motivo String?
+}

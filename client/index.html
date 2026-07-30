@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Wander — tu identidad como jugador</title>
+    <meta
+      name="description"
+      content="Conecta tus cuentas, arma tu perfil de jugador y compártelo en un solo enlace."
+    />
+    <meta name="theme-color" content="#09090b" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- La fuente se auto-hospeda (ver global.css). El preload evita el
+         salto de tipografía en la primera pintura. -->
+    <link
+      rel="preload"
+      href="/fonts/inter-variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- Canónica: evita que /?utm_source=… se indexe como página aparte.
+         Las rutas internas la reescriben desde React. -->
+    <link rel="canonical" href="https://wander.ourocore.net/" />
+
+    <!-- Tarjetas al compartir. Es por donde llega la mayoría del tráfico
+         real: un enlace pegado en Discord o X. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wander" />
+    <meta property="og:url" content="https://wander.ourocore.net/" />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:title" content="Wander — tu identidad como jugador" />
+    <meta
+      property="og:description"
+      content="Conecta tus cuentas, arma tu perfil de jugador y compártelo en un solo enlace."
+    />
+    <meta property="og:image" content="https://wander.ourocore.net/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Wander — tu identidad como jugador, en un solo enlace" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wander — tu identidad como jugador" />
+    <meta
+      name="twitter:description"
+      content="Conecta tus cuentas, arma tu perfil de jugador y compártelo en un solo enlace."
+    />
+    <meta name="twitter:image" content="https://wander.ourocore.net/og.png" />
+
+    <!-- Datos estructurados. Sirven para dos cosas a la vez: los rich
+         results de Google y que los motores generativos (GEO) puedan
+         describir y citar el sitio sin ejecutar JavaScript. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://wander.ourocore.net/#website",
+            "url": "https://wander.ourocore.net/",
+            "name": "Wander",
+            "inLanguage": "es",
+            "description": "Plataforma donde cualquier jugador arma su perfil, conecta sus cuentas de Steam y Discord, y lo comparte en un solo enlace.",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://wander.ourocore.net/explorar?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://wander.ourocore.net/#app",
+            "name": "Wander",
+            "url": "https://wander.ourocore.net/",
+            "applicationCategory": "SocialNetworkingApplication",
+            "operatingSystem": "Web",
+            "inLanguage": ["es", "en"],
+            "description": "Perfiles de jugador personalizables: tus juegos, horas y logros se traen solos desde Steam. Bloques reordenables, tema propio y CSS a medida.",
+            "featureList": [
+              "Perfil de jugador con bloques reordenables",
+              "Datos de Steam automáticos: juegos, horas y logros",
+              "Estado de Discord y Spotify en vivo",
+              "Personalización completa del tema y CSS propio",
+              "Seguir jugadores, comentarios y mensajería privada"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
+      }
+    </script>
+
+    <!--
+      Evita el parpadeo de tema (FOUC). Corre síncrono, antes de que React
+      monte, así el <html> ya lleva la clase correcta en el primer frame.
+
+      Es un archivo aparte y no un bloque inline a propósito: la CSP usa
+      `script-src 'self'` sin 'unsafe-inline' (ver nginx.conf), así que un
+      inline quedaría bloqueado en producción.
+    -->
+    <script src="/tema-inicial.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <div style="padding: 2rem; font-family: system-ui, sans-serif">
+        Wander necesita JavaScript para funcionar. Actívalo y recarga la página.
+      </div>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

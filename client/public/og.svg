@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"
+     role="img" aria-label="Wander — tu identidad como jugador, en un solo enlace">
+  <!--
+    Tarjeta para compartir (1200×630, la proporción que esperan Discord,
+    X y Facebook). En SVG y no en PNG porque es texto plano: pesa 2 KB en
+    vez de ~80 KB y se ve nítida en cualquier pantalla.
+
+    Sigue el sistema de diseño: fondo zinc-950, rejilla de 30 px como en
+    el hero, degradado monocromático en el título y un único acento azul.
+  -->
+  <defs>
+    <linearGradient id="titulo" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fafafa"/>
+      <stop offset="100%" stop-color="#a1a1aa"/>
+    </linearGradient>
+    <pattern id="rejilla" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0H0V30" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="desvanecer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="mascara">
+      <rect width="1200" height="630" fill="url(#desvanecer)"/>
+    </mask>
+  </defs>
+
+  <rect width="1200" height="630" fill="#09090b"/>
+  <rect width="1200" height="630" fill="url(#rejilla)" mask="url(#mascara)"/>
+
+  <!-- Marca: brújula (el mismo icono que la Navbar) + nombre -->
+  <g transform="translate(100, 96)">
+    <g fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+       transform="scale(1.55)">
+      <circle cx="12" cy="12" r="10"/>
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+    </g>
+    <text x="52" y="27" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="700"
+          fill="#fafafa">Wander</text>
+  </g>
+
+  <text x="100" y="330" font-family="Inter, system-ui, sans-serif" font-size="86"
+        font-weight="800" letter-spacing="-2.5" fill="url(#titulo)">
+    Todo lo que jugás,
+  </text>
+  <text x="100" y="428" font-family="Inter, system-ui, sans-serif" font-size="86"
+        font-weight="800" letter-spacing="-2.5" fill="url(#titulo)">
+    en un solo lugar
+  </text>
+
+  <text x="100" y="500" font-family="Inter, system-ui, sans-serif" font-size="30"
+        font-weight="500" fill="#a1a1aa">
+    Conectá Steam y Discord. Los datos se traen solos.
+  </text>
+
+  <text x="100" y="566" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="24" fill="#60a5fa">
+    wander.ourocore.net
+  </text>
+</svg>

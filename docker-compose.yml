@@ -1,0 +1,107 @@
+# ─────────────────────────────────────────────────────────────────────
+#  Wander — orquestación de servicios
+#
+#  Cuatro servicios en una red bridge propia:
+#    db        → PostgreSQL 17 (datos en ./pgdata)
+#    backend   → Express + Prisma + socket.io
+#    frontend  → build de Vite servido por nginx (proxy a backend)
+#    tunnel    → cloudflared, expone wander.ourocore.net
+#
+#  El único servicio con puerto publicado al host es `frontend`, y solo
+#  para pruebas locales. En producción todo el tráfico entra por el túnel,
+#  así que la DB y el backend nunca son alcanzables desde fuera.
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: wander_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Fuerza scram-sha-256 en vez de md5 para las conexiones nuevas.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    # Sin `ports:` a propósito — la DB solo se alcanza desde la red interna.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - wander_net
+
+  backend:
+    build:
+      context: ./server
+    container_name: wander_backend
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    volumes:
+      # Los adjuntos y avatares viven en el host, no en la imagen.
+      - ./uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - wander_net
+
+  frontend:
+    build:
+      context: ./client
+      args:
+        # Vite inyecta las VITE_* en el bundle al construir, así que van
+        # como build args. Nunca poner secretos aquí: acaban en el JS.
+        VITE_PUBLIC_URL: ${PUBLIC_URL}
+    container_name: wander_frontend
+    restart: always
+    ports:
+      # Atado a localhost a propósito: el tráfico real entra por el túnel.
+      # Publicarlo en 0.0.0.0 dejaría que cualquiera en la LAN falsee la
+      # cabecera CF-Connecting-IP (nginx y el backend confían en ella para
+      # el rate limit por visitante).
+      - "127.0.0.1:${PORT_FRONTEND:-3045}:80"
+    volumes:
+      # Bind-mount de la config de nginx: ajustar CSP o proxies no
+      # requiere reconstruir el bundle de React.
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Cabeceras de seguridad compartidas. Van aparte porque `add_header`
+      # no se hereda: cada location que declare uno propio tiene que
+      # re-incluir estas o se queda sin CSP ni HSTS.
+      - ./nginx-seguridad.conf:/etc/nginx/nginx-seguridad.conf:ro
+      # nginx sirve los adjuntos directamente, sin pasar por Node.
+      - ./uploads:/var/www/uploads:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - wander_net
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: wander_tunnel
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    networks:
+      - wander_net
+
+networks:
+  wander_net:
+    driver: bridge

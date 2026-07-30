@@ -1,0 +1,48 @@
+# Wander
+
+> Plataforma web donde cualquier jugador crea un perfil público con sus juegos,
+> horas, logros y setup, y lo comparte en un solo enlace. Los datos se traen
+> automáticamente de Steam y Discord, sin que el usuario los escriba a mano.
+
+Wander es, en una frase, "un LinkedIn de los videojuegos": en vez de experiencia
+laboral, tu identidad como jugador. Está en español e inglés, es gratuito y no
+requiere tarjeta.
+
+## Qué lo diferencia de una página de enlaces
+
+- **Los datos se actualizan solos.** Al vincular Steam aparecen los juegos, las
+  horas jugadas y los logros. No hay que mantener nada a mano.
+- **Perfil por bloques.** El usuario añade, quita y reordena bloques: actividad
+  de Steam, juegos favoritos, componentes del PC, galería, enlaces, texto libre.
+- **Personalización real.** Control del tema (colores, tipografías, fondo,
+  bordes) y CSS propio para quien sepa escribirlo. Las plantillas son un punto
+  de partida, no una restricción.
+- **Estado en vivo.** Presencia de Discord y canción de Spotify en tiempo real
+  vía Lanyard.
+- **Funciones sociales.** Seguir a otros jugadores, feed de actividad,
+  comentarios, likes y mensajería privada con grupos y adjuntos.
+- **Transparencia con los datos.** Cada cuenta vinculada indica exactamente qué
+  se lee y qué se guarda, con permisos por separado. Desvincular borra los datos
+  de verdad. El estado de baneo VAC de Steam nunca se publica.
+
+## Páginas
+
+- [Inicio](https://wander.ourocore.net/): qué es Wander, cómo funciona en tres
+  pasos y comparación con una página de enlaces.
+- [Explorar](https://wander.ourocore.net/explorar): perfiles públicos, con
+  búsqueda por juego, plataforma y etiquetas.
+- [Perfiles de usuario](https://wander.ourocore.net/u/): cada perfil vive en
+  `/u/<nombre-de-usuario>`.
+- [Crear perfil](https://wander.ourocore.net/registro)
+- [Iniciar sesión](https://wander.ourocore.net/login)
+
+## Detalles técnicos
+
+- Formas de entrar: correo y contraseña, Steam (OpenID), Discord y Google.
+- Las contraseñas se guardan con argon2id; la sesión vive en cookies httpOnly.
+- Alojado en `wander.ourocore.net`, parte del ecosistema OuroCore.
+
+## Estado
+
+En desarrollo activo. La autenticación funciona; los perfiles públicos, la
+personalización y la mensajería están en construcción.

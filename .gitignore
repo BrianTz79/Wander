@@ -1,0 +1,41 @@
+# Secretos — NUNCA commitear
+.env
+.env.local
+*.pem
+*.key
+
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Datos de contenedores (bind-mounts locales)
+pgdata/
+uploads/
+redisdata/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Prisma
+server/prisma/migrations/dev.db*
+
+# Caché de herramientas
+.eslintcache
+.vite/
+coverage/

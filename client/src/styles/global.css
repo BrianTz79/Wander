@@ -1,0 +1,321 @@
+@import 'tailwindcss';
+
+/* ─────────────────────────────────────────────────────────────────────
+   Wander — estilos globales
+
+   Sigue DESIGN-SYSTEM.md: minimalista, monocromático zinc, color solo
+   como acento puntual, bordes de 1px, sin glows ni neón.
+
+   IMPORTANTE: esto aplica a la INTERFAZ DE WANDER (landing, feed, editor,
+   chat, ajustes). Los perfiles de usuario NO usan estos tokens — emiten
+   sus propias variables `--p-*` con scope, para que cada quien pueda
+   personalizar el suyo sin tocar el resto de la app.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Modo oscuro por clase, con el oscuro como estado por defecto (§7). */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Tipografía: una sola familia, como manda el sistema (§2). Inter va
+     auto-hospedada en /fonts para no depender de Google — así la CSP
+     puede quedarse en `font-src 'self'`. */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  /* Tokens semánticos → se consumen como `bg-background`, `text-foreground`… */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+/* ── Tokens (§3.1) ─────────────────────────────────────────────────
+   Tema acromático puro (saturación 0%). Todo el color entra por las
+   clases de acento, nunca por los tokens. */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 3.9%;
+  --primary: 0 0% 9%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 0 0% 96.1%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 89.8%;
+  --input: 0 0% 89.8%;
+  --ring: 0 0% 3.9%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 0 0% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 0 0% 9%;
+  --secondary: 0 0% 14.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 14.9%;
+  --muted-foreground: 0 0% 63.9%;
+  --accent: 0 0% 14.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 14.9%;
+  --input: 0 0% 14.9%;
+  --ring: 0 0% 83.1%;
+}
+
+/* ── Fuente auto-hospedada ────────────────────────────────────────── */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/inter-variable.woff2') format('woff2');
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Compensa la navbar sticky al saltar a un ancla. */
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Foco visible siempre: quitarlo rompe la navegación por teclado. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar discreta, acorde a la paleta zinc. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Accesibilidad (§6): respeta a quien pide menos movimiento. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* ── Contenedores (§4) ── */
+  .contenedor-app {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .contenedor-seccion {
+    @apply container mx-auto px-4 md:px-6;
+  }
+
+  /* ── Botones (§5.3, §5.4) ── */
+  .btn-primario {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-lg
+           bg-zinc-900 px-8 text-sm font-semibold text-white
+           transition-all hover:scale-105 hover:bg-zinc-800 active:scale-95
+           disabled:pointer-events-none disabled:opacity-50
+           dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200;
+  }
+
+  .btn-secundario {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-lg
+           border border-zinc-300 bg-white/50 px-8 text-sm font-semibold
+           text-zinc-900 transition-all hover:scale-105 hover:bg-zinc-100
+           active:scale-95 disabled:pointer-events-none disabled:opacity-50
+           dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-white
+           dark:hover:bg-zinc-800;
+  }
+
+  .btn-fantasma {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md
+           px-4 text-sm font-medium text-zinc-600 transition-colors
+           hover:bg-zinc-100 hover:text-zinc-900
+           dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white;
+  }
+
+  /* ── Tarjetas (§5.5, §5.6) ── */
+  .tarjeta {
+    @apply rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm
+           dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-md;
+  }
+
+  /* Repite las utilidades de .tarjeta en vez de hacer `@apply tarjeta`:
+     en Tailwind 4, @apply solo acepta utilidades reales, no otras clases
+     de componente definidas aquí. */
+  .tarjeta-interactiva {
+    @apply rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm
+           transition-all hover:scale-[1.02] hover:bg-zinc-50 hover:shadow-md
+           dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-md
+           dark:hover:bg-zinc-900;
+  }
+
+  .tarjeta-anidada {
+    @apply rounded-2xl border border-zinc-200 bg-zinc-50 p-6 shadow-sm
+           dark:border-zinc-800/60 dark:bg-zinc-950;
+  }
+
+  /* ── Badge (§5.7) ── */
+  .badge {
+    @apply inline-flex items-center rounded-full border border-zinc-300
+           bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-800
+           dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300;
+  }
+
+  .badge-sm {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs
+           font-medium;
+  }
+
+  /* ── Campos de formulario ── */
+  .campo {
+    @apply h-12 w-full rounded-lg border border-zinc-300 bg-white px-4
+           text-base text-zinc-900 placeholder:text-zinc-400
+           focus:border-blue-500 focus:outline-none focus:ring-2
+           focus:ring-blue-500/20 disabled:opacity-50
+           dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-white
+           dark:placeholder:text-zinc-500 dark:focus:border-blue-400;
+  }
+
+  .campo-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/20
+           dark:border-red-500;
+  }
+
+  .etiqueta {
+    @apply mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300;
+  }
+
+  .texto-error {
+    @apply mt-1.5 text-sm text-red-600 dark:text-red-400;
+  }
+
+  /* ── Enlace de acento (§5.8) ── */
+  .enlace-acento {
+    @apply inline-flex items-center text-sm font-semibold text-blue-600
+           transition-colors hover:text-blue-700
+           dark:text-blue-400 dark:hover:text-blue-300;
+  }
+
+  /* ── Ritmo de secciones (§5.11) ── */
+  .seccion {
+    @apply py-20;
+  }
+  .seccion-destacada {
+    @apply py-24;
+  }
+  .seccion-alterna {
+    @apply border-y border-zinc-200 bg-white py-20
+           dark:border-zinc-800/50 dark:bg-zinc-900/30;
+  }
+
+  /* ── Título con degradado monocromático (§5.1) ── */
+  .titulo-hero {
+    @apply bg-linear-to-r from-zinc-900 to-zinc-500 bg-clip-text
+           text-5xl font-extrabold tracking-tight text-transparent
+           md:text-7xl dark:from-zinc-100 dark:to-zinc-500;
+  }
+
+  /* ── Rejilla de fondo del hero (§5.2) ──
+     Reemplaza blobs y partículas: rejilla de 30px que se desvanece. */
+  .rejilla-hero {
+    background-image:
+      linear-gradient(to right, #0000000a 1px, transparent 1px),
+      linear-gradient(to bottom, #0000000a 1px, transparent 1px);
+    background-size: 30px 30px;
+    mask-image: linear-gradient(to bottom, white, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, white, transparent);
+  }
+  .dark .rejilla-hero {
+    background-image:
+      linear-gradient(to right, #ffffff0a 1px, transparent 1px),
+      linear-gradient(to bottom, #ffffff0a 1px, transparent 1px);
+  }
+}
+
+@layer utilities {
+  /* Salto al contenido para lectores de pantalla y teclado. */
+  .salto-contenido {
+    @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4
+           focus:z-100 focus:rounded-lg focus:bg-zinc-900 focus:px-4
+           focus:py-2 focus:text-white dark:focus:bg-white
+           dark:focus:text-zinc-950;
+  }
+
+  /* Corta el texto a N líneas. Para bios y vistas previas de mensajes. */
+  .lineas-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .lineas-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

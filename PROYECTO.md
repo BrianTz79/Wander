@@ -1,0 +1,988 @@
+# PROYECTO — Plataforma de perfiles gamer
+
+> Documento maestro. Recoge la idea completa, las decisiones tomadas, el esquema de
+> datos, la arquitectura, las fases y lo que queda pendiente.
+>
+> **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
+> **Última actualización:** 29 de julio de 2026
+
+---
+
+## 0. Estado del proyecto
+
+**Fases 1, 2 y 3 completas. La plataforma ya es usable: cualquiera puede registrarse,
+armar su perfil en el editor y publicarlo en `/u/<su-nombre>`.** Lo siguiente es la
+Fase 4 (tema y plantillas) — el panel de tema básico ya existe; faltan las plantillas
+prediseñadas para partir de algo bonito sin configurar nada.
+
+### Resumen por fases
+
+| # | Fase | Estado |
+|---|---|---|
+| 1 | Andamio + deploy | ✅ **Completa** |
+| 2 | Auth | 🟡 Correo y contraseña listos; falta Steam OpenID |
+| 3 | Perfil mínimo | ✅ **Completa** |
+| 4 | Tema y plantillas | 🟡 **Siguiente** — panel de tema hecho; faltan las 5 plantillas seed y la selección de plantilla |
+| 5 | Steam | ⬜ |
+| 6 | Cuentas vinculadas | ⬜ |
+| 7 | Social | ⬜ |
+| 8 | Mensajería | ⬜ |
+| 9 | CSS propio | ⬜ |
+| 10 | Pulido | ⬜ |
+| 11 | Música de fondo | ⬜ |
+| 12 | SEO + GEO | 🟡 Landing hecha; falta el SSR de los perfiles |
+
+### ✅ Hecho
+
+**Infraestructura (Fase 1)**
+- Los cuatro contenedores corriendo: `wander_db`, `wander_backend`, `wander_frontend`,
+  `wander_tunnel`.
+- PostgreSQL 17 con la migración inicial aplicada — 20 tablas creadas.
+- Túnel de Cloudflare `wander` (`b385cca3-…`) con CNAME proxied y el ingress apuntando
+  a `frontend:80`. El sitio responde por HTTPS.
+- `.env` con secretos reales generados (`openssl rand -hex 32`) y la Steam API key.
+- Las 8 cabeceras de seguridad llegan en todas las rutas, verificado en producción.
+
+**Autenticación (Fase 2)**
+- Backend: registro, login, refresh con rotación de token, logout, `/yo`, cambio de
+  contraseña y comprobación de handle. Contraseñas con argon2id, sesiones en cookies
+  httpOnly + Secure, rate limit en dos capas (nginx y Express).
+- Frontend: landing, login, registro con comprobación de handle en vivo, 404, guarda de
+  rutas y punto de entrada completo.
+- Probado de extremo a extremo por HTTPS: registro, login, rotación del refresh token,
+  revocación al cerrar sesión y borrado en cascada.
+
+**Perfil mínimo (Fase 3)**
+- API completa de perfiles y bloques: `GET/PATCH /api/perfiles/mio`, CRUD de bloques,
+  reorden transaccional y `GET /api/perfiles/:handle` público. Toda escritura parte de
+  la sesión (imposible tocar el perfil de otro); todo `config` pasa por el schema zod
+  de su tipo; enlaces solo http(s) — `javascript:` rechazado y verificado.
+- Tres bloques v1: **Presentación** (hero), **Texto** y **Enlaces**, con un registro
+  compartido entre el editor y la página pública.
+- **Editor** (`/editor`): identidad (nombre + bio), panel de tema (5 colores,
+  tipografía, redondez) con guardado con rebote, lista de bloques con
+  añadir/editar/mover/ocultar/borrar, y vista previa en vivo que usa exactamente los
+  mismos componentes que la página pública.
+- **Perfil público** (`/u/:handle`): tema del usuario vía variables `--p-*` (aisladas
+  de la interfaz de Wander), botón de compartir, contador de vistas (solo visitas
+  ajenas), aviso de "sin publicar" para el dueño y un único 404 indistinguible para
+  no-existe/oculto/sin-publicar.
+- El registro crea el perfil con bloques iniciales; publicar es opt-in explícito.
+- `prisma/seed.ts`: 86 handles reservados sembrados (incluye `mio`, que ahora es ruta).
+- Probado E2E por HTTPS: flujo feliz + 7 casos de seguridad (tipo desconocido, URL
+  `javascript:`, color no-hex, campo extra, bloque ajeno, reorden con ids colados,
+  escritura anónima) + render real del frontend contra el stack vivo.
+
+**SEO de la landing (parte de la Fase 12)**
+- JSON-LD (`WebSite` + `WebApplication`), canónica, Open Graph y Twitter Card.
+- Tarjeta al compartir en PNG 1200×630 (`/og.png`).
+- `robots.txt` con los rastreadores de IA permitidos de forma explícita (GEO).
+- `llms.txt` describiendo qué es Wander para los motores generativos.
+- `sitemap.xml` dinámico, que solo lista perfiles publicados **y** públicos.
+
+**Idioma**
+- Toda la interfaz y los mensajes están en español neutro/mexicano (de «tú»). Se eliminó
+  el voseo que se había colado en la primera versión de los textos.
+
+### ⬜ Lo siguiente
+
+1. **Fase 4 — Tema y plantillas.** El panel de tema ya existe (Fase 3); falta: las
+   **5 plantillas seed** (presets de tema con nombre, p. ej. base-oscuro, base-claro,
+   neón, retro, minimal), el selector de plantilla en el editor, y guardar `plantilla`
+   al elegirla. Decidir si las plantillas viven en código compartido (constante en
+   cliente + validación de nombre en servidor) o en una tabla.
+2. **Terminar la Fase 2:** login con Steam OpenID y verificación de correo (requiere
+   decidir proveedor de email).
+3. Luego **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
+   reales (actividad, estadísticas, favoritos).
+
+### ⚠️ Pendientes que conviene no olvidar
+
+- **Regenerar la Steam API key** en `steamcommunity.com/dev/apikey` antes de abrir el
+  registro: la actual se compartió por chat durante la planeación.
+- **Borrar un registro DNS sobrante.** Al crear el túnel, `cloudflared` generó por error
+  `wander.ourocore.net.idolrevenant.com` (el `cert.pem` local está atado a la zona
+  `idolrevenant.com`). No afecta a nada, pero conviene limpiarlo desde el panel de
+  Cloudflare. El registro correcto, `wander.ourocore.net`, ya existe y funciona.
+- **SSR de perfiles — decidido (30/07):** los perfiles quedan como SPA en la v1. El SEO
+  prioritario es la landing, cuyo contenido ya viaja en el HTML. Si más adelante se
+  quieren perfiles indexables/citables por IA, se añade prerender + tarjetas OG del lado
+  del servidor (encaja con la Fase 10).
+- **Política de derechos de autor** para la música de fondo, antes de abrir el registro.
+- **Crear el repositorio git.** Todo lo construido está sin control de versiones: un
+  `rm` desafortunado o un disco dañado y no hay vuelta atrás. `git init` + primer commit
+  (el `.gitignore` ya está listo y cubre `.env` y `pgdata/`).
+- **Términos y privacidad mínimos antes de abrir el registro.** El formulario obliga a
+  aceptar `/terminos` y `/privacidad`… que hoy son páginas "en construcción". Aceptar
+  documentos que no existen no protege a nadie; con una versión corta y honesta basta
+  para empezar.
+- **Backups de Postgres.** `pgdata/` es un bind-mount sin ninguna estrategia de
+  respaldo: un fallo de disco se lleva todos los usuarios. Un `pg_dump` diario a otro
+  disco (cron del host o contenedor dedicado) es suficiente al principio.
+- **Decidir proveedor de correo** para la verificación de email (Fase 2 pendiente): no
+  hay SMTP ni servicio configurado en `.env`. Opciones típicas: Resend, Brevo, SES.
+- **i18n antes de que la interfaz crezca.** «Español + inglés» está decidido (§2) pero no
+  asignado a ninguna fase, y todo el texto está incrustado en los componentes. Meterlo
+  con la interfaz pequeña (antes de la Fase 7) cuesta poco; hacerlo al final significa
+  tocar cada pantalla dos veces.
+
+---
+
+## 1. La idea
+
+Una plataforma web donde cualquier jugador se registra, arma su **perfil de jugador**
+y lo comparte. Una especie de "LinkedIn de los videojuegos": en vez de experiencia
+laboral, tu identidad como gamer — los juegos que juegas, tus horas, tu setup, tus
+logros, tus perfiles en cada plataforma, y con quién juegas.
+
+### Cómo nació
+
+Empezó como una página personal para **Mizllet**: una infografía-biografía de jugador
+con perfiles de Steam y Discord, actividad, juegos favoritos, componentes del PC y
+horas jugadas, tirando datos de la base de Steam.
+
+A mitad de la planeación el alcance cambió a propósito: en vez de codear una página
+hardcodeada para una persona, **construir el marco para que cualquiera pueda hacer la
+suya**. Las plantillas son un punto de partida, no una jaula — la gente parte de una y
+la personaliza hasta donde quiera.
+
+### Qué la hace distinta
+
+- **Los datos se traen solos.** Vinculas Steam y tus horas, juegos y logros aparecen
+  sin escribir nada. No es un "link en la bio" que hay que actualizar a mano.
+- **Personalización real.** Bloques que añades, quitas y reordenas + control total del
+  tema (colores, fuentes, fondo, bordes, glow) + CSS propio para quien sepa.
+- **Social de verdad.** Seguir gente, feed de actividad, comentarios, y mensajería
+  privada con grupos y adjuntos.
+- **Transparente con los datos.** Cada vinculación dice exactamente qué se lee y qué se
+  guarda, con permisos granulares y desvinculación que borra de verdad.
+
+---
+
+## 2. Decisiones tomadas
+
+| Tema | Decisión |
+|---|---|
+| Personalización | Bloques reordenables + control de tema + **CSS propio** |
+| Autenticación | Steam (OpenID), Discord, Google, correo+contraseña |
+| Cuentas vinculadas | Aparte del login: en configuración se vinculan para traer datos |
+| Alcance v1 | Paquete social completo (seguir, feed, comentarios, likes, búsqueda) |
+| Mensajería | DM + grupos, con imágenes, GIFs y archivos |
+| Estructura del perfil | Scroll único por bloques |
+| Idioma | Español + inglés |
+| Dominio | `wander.ourocore.net`. Dominio propio más adelante, no ahora. |
+| Steam API key | El usuario la consigue (gratis, `steamcommunity.com/dev/apikey`) |
+| Música de fondo | Cada perfil puede tener audio propio, al 30 % y con control del visitante (§7) |
+| SEO y GEO | Requisito explícito, no un extra (§13) |
+| Seguridad y rendimiento | Prioridad alta: es una red social con datos de gente (§14) |
+| Dato `vacBanned` | **No se publica** — se filtra en el ingest |
+| Catálogo de juegos | Destacados curados + total, sin biblioteca navegable completa |
+
+---
+
+## 3. Stack técnico
+
+Elegido para reusar lo que ya está probado en `PaginaClips` (Prisma + Postgres + JWT +
+bcrypt + React), corrigiendo sus puntos débiles.
+
+| Capa | Elección | Por qué |
+|---|---|---|
+| Frontend | React 19 + Vite 8 + TypeScript | Mismo stack que `PaginaClips/client`. Un editor con vista previa en vivo necesita SPA, no Astro estático. |
+| Rutas | `react-router-dom` 7 | Ya usado en Frieren. |
+| Estado | `zustand` 5 | Ya usado en Clips. |
+| Estilos | Tailwind 4 (`@tailwindcss/vite`) | Config en CSS. Los perfiles necesitan variables CSS por usuario en runtime. |
+| Backend | Express 5 + TypeScript | Réplica de la estructura por capas de `PaginaClips/server`. |
+| ORM / DB | Prisma 7 + PostgreSQL 17 | Relacional es lo correcto: usuarios, seguidores, bloques, mensajes. |
+| Auth | JWT propio + OAuth manual | `better-auth` se evaluó y se descartó: no trae proveedor de Steam OpenID 2.0. |
+| Tiempo real | socket.io 4.8 | Mensajería. Ya usado en Frieren. |
+| Uploads | `multer` 2 + `sharp` 0.35 + `file-type` 22 | Validación por contenido real, recompresión, sin EXIF. |
+| Sanitización | `sanitize-html` 2.17 + `postcss` 8.5 | Crítico para el CSS propio. |
+| Validación | `zod` 4 | Toda entrada del cliente. |
+| Rate limit | `express-rate-limit` 8 | Auth y escrituras. |
+| Servidor web | nginx (config por bind-mount) | Patrón Frieren: cambiar nginx sin rebuild. |
+| Túnel | `cloudflare/cloudflared:latest` | Patrón establecido en todos los proyectos. |
+
+Versiones verificadas en npm el 29/07/2026. Node 22-alpine en los contenedores.
+
+---
+
+## 4. Esquema de datos
+
+### Identidad y vinculaciones
+
+```prisma
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique      // opcional: quien entra solo con Steam no tiene
+  passwordHash  String?              // null si solo usa OAuth
+  handle        String   @unique      // el slug del perfil: /u/mizllet
+  displayName   String
+  avatarUrl     String?
+  bannerUrl     String?
+  bio           String?  @db.Text
+  ubicacion     String?
+  rol           String   @default("USER")   // USER | ADMIN
+  emailVerified Boolean  @default(false)
+  perfilPublico Boolean  @default(true)
+  privacidadDm  String   @default("seguidos") // todos | seguidos | nadie
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Sirve para AMBAS cosas: iniciar sesión Y vincular para traer datos.
+// `esMetodoLogin` distingue si con esta cuenta se puede entrar.
+model CuentaVinculada {
+  id             String   @id @default(cuid())
+  userId         String
+  proveedor      String   // steam | discord | google | spotify | github | twitch
+  proveedorId    String   // SteamID64, snowflake de Discord, etc.
+  usuarioRemoto  String?
+  esMetodoLogin  Boolean  @default(false)
+  accessToken    String?  @db.Text  // cifrado AES-256-GCM, nunca sale al cliente
+  refreshToken   String?  @db.Text
+  expiraEn       DateTime?
+  permisos       Json     @default("{}")  // consentimiento granular
+  sincronizadoEn DateTime?
+
+  @@unique([proveedor, proveedorId])  // una cuenta remota = un usuario
+  @@unique([userId, proveedor])       // no dos Steam en la misma cuenta
+}
+```
+
+### Perfil y bloques
+
+```prisma
+model Perfil {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  plantilla  String  @default("base-oscuro")  // preset del que partió
+  tema       Json                             // tokens de diseño
+  cssPropio  String? @db.Text                 // sanitizado al guardar
+  publicado  Boolean @default(false)
+  vistas     Int     @default(0)
+  bloques    Bloque[]
+}
+
+model Bloque {
+  id       String  @id @default(cuid())
+  perfilId String
+  tipo     String  // hero | steam-actividad | setup | favoritos | enlaces |
+                   // texto | galeria | estadisticas | discord-estado | spotify
+  orden    Int
+  visible  Boolean @default(true)
+  config   Json    // props del tipo, validadas con zod por tipo
+  @@index([perfilId, orden])
+}
+
+// Caché de datos externos. El render NUNCA consulta Steam en vivo.
+model CacheExterno {
+  id         String   @id @default(cuid())
+  userId     String
+  proveedor  String
+  clave      String   // resumen | juegos | logros
+  datos      Json
+  obtenidoEn DateTime @default(now())
+  expiraEn   DateTime
+  @@unique([userId, proveedor, clave])
+}
+```
+
+### Social
+
+```prisma
+model Seguimiento {
+  seguidorId String
+  seguidoId  String
+  createdAt  DateTime @default(now())
+  @@id([seguidorId, seguidoId])
+}
+
+model Comentario {
+  id        String   @id @default(cuid())
+  texto     String   @db.Text   // sanitizado
+  autorId   String
+  perfilId  String
+  createdAt DateTime @default(now())
+  @@index([perfilId, createdAt])
+}
+
+model Reaccion {
+  userId   String
+  perfilId String
+  tipo     String @default("like")
+  @@id([userId, perfilId, tipo])
+}
+
+model ActividadFeed {
+  id        String   @id @default(cuid())
+  userId    String
+  tipo      String   // perfil-publicado | bloque-nuevo | juego-nuevo | logro
+  datos     Json
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model Bloqueo {
+  bloqueadorId String
+  bloqueadoId  String
+  createdAt    DateTime @default(now())
+  @@id([bloqueadorId, bloqueadoId])
+}
+```
+
+### Mensajería
+
+Un solo modelo cubre DM y grupo: un DM es una conversación de dos con
+`esGrupo: false`. Evita duplicar toda la lógica dos veces.
+
+```prisma
+model Conversacion {
+  id          String   @id @default(cuid())
+  esGrupo     Boolean  @default(false)
+  nombre      String?              // solo grupos
+  iconoUrl    String?              // solo grupos
+  creadorId   String?
+  ultimoMsgEn DateTime @default(now())  // para ordenar la bandeja
+  createdAt   DateTime @default(now())
+  @@index([ultimoMsgEn])
+}
+
+model Participante {
+  id             String    @id @default(cuid())
+  conversacionId String
+  userId         String
+  rol            String    @default("MIEMBRO")  // ADMIN | MIEMBRO
+  leidoHastaId   String?              // último mensaje leído → no leídos
+  silenciado     Boolean   @default(false)
+  salioEn        DateTime?
+  @@unique([conversacionId, userId])
+  @@index([userId, conversacionId])
+}
+
+model Mensaje {
+  id             String    @id @default(cuid())
+  conversacionId String
+  autorId        String
+  texto          String?   @db.Text   // sanitizado
+  tipo           String    @default("texto") // texto|imagen|gif|archivo|sistema
+  editadoEn      DateTime?
+  borradoEn      DateTime?            // borrado suave
+  respondeAId    String?              // hilo simple
+  createdAt      DateTime  @default(now())
+  adjuntos       Adjunto[]
+  @@index([conversacionId, createdAt])
+}
+
+model Adjunto {
+  id           String  @id @default(cuid())
+  mensajeId    String
+  url          String
+  miniaturaUrl String?
+  mime         String
+  bytes        Int
+  ancho        Int?
+  alto         Int?
+  externo      Boolean @default(false)  // GIFs de Giphy/Tenor: solo la URL
+}
+```
+
+---
+
+## 5. Autenticación y cuentas vinculadas
+
+Dos conceptos separados, una sola tabla.
+
+### Entrar (`esMetodoLogin: true`)
+
+- **Correo + contraseña** — bcrypt + JWT, adaptado de
+  `PaginaClips/server/src/controllers/auth.controller.ts`. Mejoras: validación zod,
+  rate limit, y mensaje de error **idéntico** para "correo no existe" y "contraseña
+  mala" (no filtrar qué correos están registrados).
+- **Steam** — OpenID 2.0. Sigue soportado; no hay fecha de retiro anunciada. Devuelve
+  solo el SteamID64, no da correo, así que el usuario elige su handle al primer ingreso.
+- **Discord / Google** — OAuth 2.0 con PKCE vía `openid-client` 6.
+
+Todos convergen en `encontrarOCrearUsuario(proveedor, proveedorId, datos)`.
+
+### Sesión
+
+JWT en **cookie httpOnly + SameSite=Lax + Secure**, no en localStorage. Es una mejora
+deliberada sobre Clips: con CSS y contenido de usuarios en juego, un XSS que pueda leer
+el token es un riesgo real. Refresh token rotativo, access de 15 minutos.
+
+### Vincular (en `/configuracion`)
+
+El mismo flujo OAuth pero con sesión activa; añade una `CuentaVinculada` con
+`esMetodoLogin: false`. Reglas:
+
+1. Antes de redirigir, una pantalla dice **exactamente** qué se leerá y qué se guardará.
+2. `permisos` se rellena con los switches que marque el usuario
+   (ej. `{"mostrarHoras": true, "mostrarJuegosOcultos": false}`).
+3. Desvincular borra la fila y su `CacheExterno`. No se puede desvincular el único
+   método de login sin poner antes una contraseña.
+4. Tokens cifrados con AES-256-GCM (`config/cripto.ts`, clave en `ENCRYPTION_KEY`).
+   Nunca se serializan al cliente.
+5. `PRIVACIDAD.md` + una página `/privacidad` con lo mismo en lenguaje llano.
+
+### Proveedores de datos
+
+| Proveedor | Qué da | Requiere |
+|---|---|---|
+| Steam | Perfil, nivel, horas, juegos, logros, badges, estado en línea | API key (gratis) — el feed XML público funciona sin ella |
+| Discord | Presencia en vivo, qué juega, Spotify | Lanyard: unirse a `discord.gg/UrXF2cfJ7F`, gratis y sin key |
+| Spotify | Canción sonando | Vía Lanyard, o OAuth propio |
+| GitHub | Contribuciones, repos | API pública |
+| Twitch | Estado de stream | OAuth |
+
+**Dato verificado:** el feed `https://steamcommunity.com/id/Mizllet/?xml=1` responde
+público y trae `steamID64`, `onlineState`, `avatarFull`, `memberSince`, `location`,
+`realname` y `mostPlayedGames` con horas de 2 semanas y totales. **Sin API key.**
+También trae `vacBanned`, que se filtra y no se publica.
+
+---
+
+## 6. Personalización
+
+### Bloques
+
+`@dnd-kit` 6 para reordenar. Cada tipo tiene su schema zod; el backend valida `config`
+contra el schema del `tipo` antes de guardar. Un bloque con config inválida se rechaza.
+
+**`client/src/components/bloques/registro.ts` es la pieza clave de extensibilidad**:
+añadir un tipo de bloque = añadir una entrada ahí (componente de render + editor +
+schema zod + icono). Ni el editor ni el renderizador de perfiles se tocan.
+
+### Tema
+
+`Perfil.tema` es JSON con tokens acotados que se emiten como variables CSS en un
+`<style>` con scope al perfil:
+
+```
+--p-fondo, --p-superficie, --p-texto, --p-texto-suave,
+--p-primario, --p-acento, --p-borde, --p-radio,
+--p-fuente-display, --p-fuente-cuerpo, --p-glow, --p-patron-fondo
+```
+
+Colores validados como hex/hsl. Fuentes desde una **lista blanca** auto-hospedada, no
+URLs arbitrarias (o se rompe la CSP).
+
+### Plantillas
+
+`base-oscuro`, `cyber-violeta`, `retro-crt`, `minimal-claro`, `shooter-angular`.
+
+Son solo presets de ese JSON de tema + un set inicial de bloques. De ahí que no
+encierren a nadie: se editan libremente después de aplicarlas.
+
+### CSS propio — la parte delicada
+
+Viable, pero necesita defensa en serio:
+
+1. Parsear con **PostCSS**; si no parsea, rechazar.
+2. **Prefijar cada selector** con `#perfil-<id>` para que no pueda tocar la navbar ni
+   otros perfiles.
+3. Lista negra: `position: fixed`, `@import`, `url()` a hosts externos, `behavior`,
+   `-moz-binding`, `expression(`.
+4. Prohibir `content` con `attr()`. Selectores que salgan del scope (`:root`, `html`,
+   `body`) se reescriben al contenedor.
+5. Límite de tamaño (~20 KB) y de número de reglas.
+6. Se guarda el **CSS sanitizado**, no el original.
+7. Botón "restaurar" siempre visible: si alguien rompe su perfil, no queda atrapado.
+
+**Nunca** se acepta HTML o JS arbitrario del usuario. Los bloques de texto pasan por
+`sanitize-html` con lista blanca corta (negritas, cursivas, enlaces, listas). Esa línea
+no se cruza: es la diferencia entre "personalizable" y "XSS almacenado contra todos los
+visitantes".
+
+---
+
+## 7. Contenido de la plataforma
+
+### Landing (`/`) — el "por qué"
+
+Hero con propuesta de valor · un perfil de ejemplo animado · "cómo funciona" en 3 pasos
+(regístrate → vincula → comparte) · rejilla de características · perfiles destacados
+reales · comparación con "un link en la bio" · FAQ · CTA.
+
+### Perfil público (`/u/:handle`)
+
+Los bloques del usuario con su tema. Meta OG dinámico + tarjeta OG generada para que se
+vea bien al compartir en Discord y X. Botón de compartir, contador de vistas, seguir,
+likes, comentarios.
+
+### Bloques en la v1
+
+| Bloque | Qué muestra | Origen |
+|---|---|---|
+| Hero | Avatar, banner, tagline, estado | Manual + Steam |
+| Estadísticas | Contadores (juegos, horas, logros) | Steam |
+| Actividad Steam | Jugado recientemente + horas | Steam |
+| Juegos favoritos | Curados, con arte del CDN de Steam | Manual (appid) |
+| Setup PC | Componentes con especificaciones | Manual |
+| Enlaces / redes | Iconos a todos tus perfiles | Manual |
+| Texto libre | Bio extendida, lo que quieras | Manual |
+| Galería | Capturas, fotos del setup | Subidas |
+| Estado de Discord | En línea, qué juega — **en vivo** | Lanyard |
+| Spotify | Canción sonando — **en vivo** | Lanyard |
+| Música de fondo | Pista propia que suena al entrar al perfil | Subida |
+
+### Música de fondo del perfil
+
+Cada usuario puede subir un archivo de audio que se reproduce al abrir su perfil.
+
+- **Volumen inicial al 30 %**, y quien mira el perfil puede subirlo, bajarlo o silenciarlo.
+- El control de volumen y el mute son **del visitante**, no del dueño del perfil, y la
+  preferencia se recuerda entre perfiles (nadie quiere volver a silenciar en cada uno).
+- **Respetar el autoplay del navegador:** Chrome y Safari bloquean el audio hasta que hay
+  interacción. No pelear contra eso — si el navegador lo bloquea, se muestra un botón de
+  reproducir en vez de forzarlo.
+- `prefers-reduced-motion` no cubre audio, pero conviene un ajuste global de cuenta del
+  tipo "no reproducir música en los perfiles" que gane sobre la preferencia del perfil.
+- Validación igual de estricta que las imágenes: `file-type` por contenido real (no por
+  extensión), límite de tamaño y duración, y recodificación para tirar metadatos.
+- Formatos: `mp3`, `ogg`, `m4a`, `wav` — ya contemplados en el `location` de `/uploads`
+  de `nginx.conf`, y `media-src 'self' blob:` ya está en la CSP.
+
+**Ojo con los derechos de autor:** subir música ajena es una vía directa a una queja de
+DMCA. Hace falta al menos un aviso al subir y un botón de reporte; conviene decidir la
+política antes de abrir el registro.
+
+### Social
+
+Seguir · feed de a quién sigues · comentarios en perfiles · likes · `/explorar` con
+búsqueda y filtros (por juego, plataforma, etiqueta).
+
+---
+
+## 8. Mensajería
+
+**Transporte:** socket.io 4.8 en el mismo servidor Express, namespace `/chat`,
+autenticado con el JWT de la cookie en el handshake. Cada usuario entra a una room
+`user:<id>`; cada conversación a `conv:<id>`. Eventos: `mensaje:nuevo`,
+`mensaje:editado`, `mensaje:borrado`, `escribiendo`, `leido`, `conv:actualizada`.
+
+**Persistencia primero, socket después.** El mensaje se guarda en Postgres y luego se
+emite. Si el socket está caído el mensaje no se pierde: al reconectar se piden los
+mensajes desde `leidoHastaId`. El REST
+(`GET /api/conversaciones/:id/mensajes?antes=<cursor>`) es la fuente de verdad y el
+socket solo acelera — así el chat funciona incluso con websockets bloqueados.
+
+**Quién puede escribirte** (configurable en `/configuracion`, campo `privacidadDm`):
+
+- `todos` — cualquiera puede iniciar un DM.
+- `seguidos` (por defecto) — solo gente a la que sigues o que sigues mutuamente.
+- `nadie` — DMs cerrados.
+
+Solicitudes de desconocidos van a una bandeja aparte, no a la principal. `Bloqueo` corta
+todo en ambos sentidos.
+
+**Grupos:** los crea cualquiera, con nombre e icono. Rol `ADMIN` puede renombrar,
+añadir/quitar y borrar mensajes ajenos. Límite de ~50 participantes para no convertirlo
+en Discord. Mensajes de sistema (`tipo: 'sistema'`) para "X se unió".
+
+**Adjuntos — imágenes, GIFs y archivos:**
+
+- Subida con `multer` a disco (bind-mount, patrón Frieren y Clips), **no** a la DB.
+- Validación por **contenido real** con `file-type` 22 — no por extensión ni por el
+  `Content-Type` que manda el cliente.
+- Lista blanca: `image/png|jpeg|webp|gif`, opcionalmente `video/mp4` para clips cortos.
+- `sharp` recomprime y genera miniatura; se **re-encodean** las imágenes para tirar
+  metadatos EXIF (incluida geolocalización) y payloads embebidos. Los GIFs animados
+  pasan por `sharp` con `animated: true` para no perder la animación.
+- Nombres de archivo generados (cuid), nunca el nombre original del usuario.
+- Se sirven con `Content-Disposition: attachment` para los no-imagen y
+  `X-Content-Type-Options: nosniff`, para que un archivo subido no se ejecute como
+  HTML/JS.
+- **GIFs de Giphy/Tenor**: se guarda solo la URL (`Adjunto.externo: true`), no se
+  rehospedan. Requiere añadir su host a `img-src` y una API key del proveedor.
+
+**Escalado:** con un solo contenedor de backend, socket.io en memoria basta. Si algún
+día hay varias réplicas se añade `@socket.io/redis-adapter` 8 + Redis, y el código de
+los eventos no cambia. No se añade Redis en la v1 por no complicar sin necesidad.
+
+**nginx:** `location /socket.io/` con `proxy_http_version 1.1`, cabeceras
+`Upgrade`/`Connection` y timeouts largos — el bloque exacto ya existe en
+`FrierenIdolRevenant/frontend/nginx.conf`.
+
+---
+
+## 9. Estructura de archivos
+
+```
+<nombre-proyecto>/
+├── docker-compose.yml
+├── nginx.conf                    # bind-mount :ro, se cambia sin rebuild
+├── .env.example                  # todas las claves documentadas
+├── README.md                     # setup + túnel
+├── PROYECTO.md                   # este documento
+├── PRIVACIDAD.md                 # qué datos se guardan y por qué
+├── server/
+│   ├── Dockerfile
+│   ├── prisma/schema.prisma
+│   ├── prisma/seed.ts            # plantillas base
+│   └── src/
+│       ├── index.ts
+│       ├── config/{env,prisma,multer,cripto}.ts
+│       ├── routes/{auth,oauth,usuarios,perfiles,bloques,social,mensajes,externo,admin}.routes.ts
+│       ├── controllers/…         # uno por router
+│       ├── sockets/chat.socket.ts
+│       ├── middlewares/{auth,rateLimit,validar,errores}.middleware.ts
+│       ├── services/
+│       │   ├── steam.service.ts       # XML + Web API + filtro vacBanned
+│       │   ├── discord.service.ts
+│       │   ├── spotify.service.ts
+│       │   ├── cache.service.ts       # get-or-fetch con TTL
+│       │   └── sanitizar.service.ts   # CSS + HTML ← el más delicado
+│       ├── schemas/               # zod: bloques por tipo, tema, auth
+│       └── jobs/refrescarCaches.ts
+└── client/
+    ├── Dockerfile
+    └── src/
+        ├── main.tsx, App.tsx, index.css
+        ├── store/{authStore,editorStore,chatStore}.ts
+        ├── hooks/useSocket.ts
+        ├── utils/axiosConfig.ts   # interceptor 401
+        ├── lib/{tema,bloques}.ts
+        ├── components/
+        │   ├── layout/{Navbar,Footer}.tsx
+        │   ├── bloques/           # un componente por tipo + registro.ts
+        │   ├── editor/{ListaBloques,PanelTema,EditorCss,VistaPrevia}.tsx
+        │   ├── social/{TarjetaPerfil,BotonSeguir,Comentarios,Feed}.tsx
+        │   └── chat/{ListaConversaciones,Hilo,Burbuja,Compositor,SelectorGif,VisorImagen}.tsx
+        └── pages/
+            ├── LandingPage.tsx
+            ├── {Login,Registro}Page.tsx
+            ├── EditorPerfilPage.tsx   # el corazón
+            ├── PerfilPublicoPage.tsx  # /u/:handle
+            ├── ExplorarPage.tsx
+            ├── FeedPage.tsx
+            ├── MensajesPage.tsx
+            ├── ConfiguracionPage.tsx
+            └── AdminPage.tsx
+```
+
+---
+
+## 10. Infraestructura
+
+### Docker Compose
+
+Cuatro servicios en `plataforma_net`, patrón `PaginaClips`/Frieren:
+
+| Servicio | Imagen / build | Notas |
+|---|---|---|
+| `db` | `postgres:17-alpine` | Volumen `./pgdata` |
+| `backend` | build `server/` | Healthcheck, `prisma migrate deploy` al arrancar |
+| `frontend` | build `client/` → nginx | `3045:80` (puerto verificado libre) |
+| `tunnel` | `cloudflare/cloudflared:latest` | `TUNNEL_TOKEN` desde `.env` |
+
+`restart: always`, `container_name` con prefijo.
+
+**Corrección importante sobre Clips:** el frontend se **construye para producción** y se
+sirve con nginx. Clips corre Vite en modo dev en producción con bind-mount; no repetir
+eso aquí.
+
+Migraciones con `prisma migrate deploy`, no `db push`.
+
+### Variables de entorno
+
+```
+POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, DATABASE_URL
+JWT_SECRET, REFRESH_SECRET, ENCRYPTION_KEY
+STEAM_API_KEY
+DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
+GIPHY_API_KEY
+TUNNEL_TOKEN
+PUBLIC_URL, PORT_FRONTEND
+```
+
+`config/env.ts` **falla rápido** si falta un secreto (patrón Clips), sin fallbacks
+insecuros.
+
+### nginx + CSP
+
+Base: `PaginaOuroCore_V2/nginx.conf` (hardening) + patrón de proxy de
+`FrierenIdolRevenant/frontend/nginx.conf`.
+
+- `location /api/` → `proxy_pass http://backend:4000/`
+- `location /socket.io/` → proxy con `Upgrade`/`Connection`
+- SPA fallback `try_files $uri $uri/ /index.html`
+- `style-src 'self' 'unsafe-inline'` (necesario para el tema por perfil);
+  `script-src 'self'` **sin** `unsafe-inline`
+- `client_max_body_size` acotado para uploads
+
+**`img-src` — hosts verificados en el feed real de Steam:**
+
+```
+cdn.cloudflare.steamstatic.com
+avatars.akamai.steamstatic.com
+shared.akamai.steamstatic.com
+community.akamai.steamstatic.com
+avatars.fastly.steamstatic.com
+media.steampowered.com
+cdn.discordapp.com
+i.scdn.co                    (Spotify)
+media.giphy.com              (GIFs)
+```
+
+Faltar uno = imágenes roscas en silencio, fallo visible solo en la consola.
+
+---
+
+## 11. Fases de implementación
+
+Ordenadas para que haya algo desplegado y visible pronto.
+
+| # | Fase | Qué entrega |
+|---|---|---|
+| 1 | ✅ **Andamio + deploy** | Compose con 4 servicios, Prisma inicial, "Hola" en el front, `/api/health`, túnel arriba. Valida la cadena completa antes de escribir features. |
+| 2 | 🟡 **Auth** | Correo+contraseña (zod, bcrypt, JWT en cookie httpOnly, rate limit) + Steam OpenID. Registro, login, logout, sesión persistente. |
+| 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
+| 4 | 🟡 **Tema y plantillas** | `PanelTema` ✅ y vista previa en vivo ✅ (salieron con la Fase 3); faltan las 5 plantillas seed y el selector. |
+| 5 | **Steam** | `steam.service.ts` (XML + Web API, filtrando `vacBanned`), `cache.service.ts` con TTL, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
+| 6 | **Cuentas vinculadas** | Discord y Google OAuth, `/configuracion` con consentimiento granular, vincular/desvincular, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
+| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. |
+| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. |
+| 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
+| 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
+| 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
+| 12 | **SEO + GEO** | JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`, `hreflang` (§13). Landing ✅; el SSR de perfiles quedó decidido: SPA en la v1 (ver §0). |
+
+### Registro de cambios
+
+El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
+qué se hizo y cuándo.
+
+**30/07/2026 — Fase 3 desplegada: la plataforma es usable**
+
+- API de perfiles/bloques con validación por tipo y autorización por sesión.
+- Editor con vista previa en vivo, panel de tema y gestión de bloques.
+- Perfil público con tema propio del usuario (variables `--p-*`), compartir y vistas.
+- Seed de 86 handles reservados. E2E completo por HTTPS: flujo feliz, 7 casos de
+  seguridad y render real del frontend contra el stack vivo (jsdom + XHR reales).
+- Nota de despliegue: el seed se corre a mano (`npm run seed` con la DATABASE_URL
+  apuntando a la DB) — la imagen de producción no lleva `tsx`. Es idempotente.
+
+**30/07/2026 — Revisión de seguridad e infraestructura**
+
+Pasada de revisión completa sobre lo desplegado. Tres arreglos:
+
+| Problema | Efecto | Arreglo |
+|---|---|---|
+| Las zonas `limit_req` de nginx usaban `$binary_remote_addr` | Detrás del túnel todas las peticiones comparten la IP de cloudflared: el límite de 5 r/m de auth era **global para todos los visitantes juntos** — con dos usuarios reales, el login se bloqueaba para todos | `map` sobre `CF-Connecting-IP` (que Cloudflare sobreescribe en el borde y no es falsificable a través del túnel) con caída a la IP de conexión; verificado con 12 IPs distintas en paralelo |
+| Puerto 3045 publicado en `0.0.0.0` | Cualquiera en la LAN podía falsear `CF-Connecting-IP` y evadir el rate limit por visitante | Atado a `127.0.0.1` en el compose |
+| Cookie de refresh con `path: '/'` | La credencial de 30 días viajaba en **cada** petición, aunque solo la leen dos endpoints | Acotada a `path: '/api/auth'` |
+
+También: últimos restos de voseo eliminados y decisión tomada sobre el SSR de perfiles
+(quedan como SPA en la v1; ver pendientes de §0).
+
+**29/07/2026 — Fases 1 y 2 desplegadas**
+
+- Andamio completo: los cuatro contenedores en marcha, migración inicial de Prisma
+  (20 tablas) y túnel de Cloudflare publicando `wander.ourocore.net` por HTTPS.
+- Autenticación con correo y contraseña probada de extremo a extremo contra el
+  backend real: registro, login, rotación del refresh token, logout y borrado en
+  cascada.
+- Frontend completado: punto de entrada, router, landing, login, registro, 404 y
+  guarda de rutas.
+- SEO de la landing: JSON-LD, Open Graph, tarjeta PNG, `robots.txt`, `llms.txt` y
+  `sitemap.xml` dinámico.
+- Toda la interfaz pasada a español neutro/mexicano.
+
+Cinco fallos encontrados y corregidos al desplegar por primera vez, todos en código
+escrito antes de que existiera un entorno donde ejecutarlo:
+
+| Problema | Efecto | Arreglo |
+|---|---|---|
+| `prisma.config.ts` no se copiaba a la imagen | El contenedor no arrancaba: bucle de reinicio en `migrate deploy` | Se añadió `prisma.config.prod.js` (JS plano, porque la imagen final no lleva `tsx`) |
+| Prisma 7 exige un *driver adapter* | El backend moría al construir el cliente | `@prisma/adapter-pg` en `config/prisma.ts` |
+| `keyGenerator` sin `ipKeyGenerator` | **Un cliente IPv6 podía saltarse el rate limit** rotando dentro de su /64 | Se normaliza la IP con el ayudante de la librería |
+| `add_header` no se hereda en nginx | La landing se servía **sin CSP, HSTS ni X-Frame-Options** | Cabeceras en `nginx-seguridad.conf`, re-incluidas en los 6 `location` que las pisaban |
+| `@apply` con clases propias en Tailwind 4 | El build del frontend fallaba | Se repiten las utilidades base en `.tarjeta-interactiva` |
+
+---
+
+## 12. El nombre — decidido: **Wander**
+
+Se eligió **Wander** por encima del favorito de la planeación (*Loadout*). Ya está fijado
+en el código y renombrarlo no es trivial: aparece en los `container_name` del compose
+(`wander_db`, `wander_backend`, `wander_frontend`, `wander_tunnel`), en la red
+`wander_net`, en el nombre de los paquetes (`wander-server`, `wander-client`), en el
+campo `servicio` de `/api/health`, en la marca de la Navbar y el Footer, en la clave de
+`localStorage` del tema (`wander-tema`) y en la lista de handles reservados.
+
+Falta solo crear el túnel:
+
+```bash
+cloudflared tunnel create wander
+# Zero Trust → Networks → Tunnels → wander → Configure → copiar token → .env
+# Public Hostname: wander.ourocore.net → HTTP → frontend:80
+```
+
+<details>
+<summary>Alternativas que se barajaron</summary>
+
+
+| Nombre | Subdominio | Idea |
+|---|---|---|
+| **Loadout** ⭐ | `loadout.ourocore.net` | Tu "equipamiento" como jugador. Corto, en jerga gamer, memorable. |
+| Playerbase | `playerbase.ourocore.net` | Suena a plataforma/comunidad. Muy claro. |
+| GG.Card | `gg.ourocore.net` | Tarjeta de jugador; `gg.` es cortísimo. |
+| Respawn | `respawn.ourocore.net` | Reconocible, buen ring. |
+| Nexo | `nexo.ourocore.net` | Hub en español, encaja con "OuroCore". |
+| Perfil.gg | `perfil.ourocore.net` | Literal y auto-explicativo. |
+| Arsenal | `arsenal.ourocore.net` | Tu arsenal de juegos y setup. |
+| Checkpoint | `checkpoint.ourocore.net` | Tu punto de guardado como jugador. |
+
+*Loadout* era el favorito — "esto es lo que traigo puesto como jugador" en una palabra
+que cualquier gamer entiende — pero se acabó prefiriendo *Wander*.
+
+</details>
+
+---
+
+## 13. SEO y GEO
+
+Wander vive de que la gente encuentre los perfiles. Dos frentes distintos:
+
+### SEO clásico (buscadores)
+
+- **SSR o prerender de `/u/:handle`.** Es lo más importante y lo más incómodo: la SPA
+  actual sirve un `index.html` vacío, así que un perfil no tiene contenido indexable.
+  Sin esto, el resto de la lista da igual. Decidir entre prerender de las rutas públicas
+  o meter SSR para el perfil.
+- `<title>`, `<meta description>` y canónica **por perfil**, con los datos reales.
+- **Datos estructurados** JSON-LD: `ProfilePage` + `Person` en `/u/:handle`,
+  `WebSite` con `SearchAction` en la landing.
+- `sitemap.xml` dinámico (ya proxyeado en `nginx.conf` a `/api/seo/sitemap.xml`) y
+  `robots.txt`. Falta implementar el endpoint en el backend.
+- Etiquetas `hreflang` para español e inglés.
+- Perfiles privados o marcados como no indexables → `noindex` y fuera del sitemap.
+- Rendimiento como factor de posicionamiento: Core Web Vitals, imágenes en `webp`/`avif`
+  con `width`/`height` para no provocar saltos de layout.
+
+### GEO (Generative Engine Optimization)
+
+Que ChatGPT, Perplexity, Claude y los resúmenes de IA de Google puedan leer y citar los
+perfiles. Se solapa con el SEO pero no es lo mismo:
+
+- El mismo JSON-LD sirve de base: los modelos se apoyan mucho en datos estructurados.
+- **Contenido en el HTML, no pintado solo por JS** — los rastreadores de IA suelen no
+  ejecutar JavaScript. Otro motivo para el SSR/prerender.
+- Encabezados con jerarquía real y texto en prosa, no solo iconos y contadores: un
+  perfil que dice "3 200 horas en Counter-Strike" se cita mejor que un número suelto.
+- `llms.txt` en la raíz describiendo qué es Wander y qué hay en cada ruta.
+- Decidir explícitamente qué rastreadores de IA se permiten en `robots.txt`
+  (`GPTBot`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`) — y que el usuario pueda
+  excluir su perfil, que conecta con la promesa de transparencia de datos.
+- Tarjetas OG bien hechas: son lo que se ve al pegar el enlace en Discord o X, que es
+  por donde va a llegar la mayoría del tráfico real.
+
+> Va en la Fase 10 (Pulido), salvo el SSR/prerender: esa decisión conviene tomarla
+> **antes** de la Fase 3, porque condiciona cómo se renderiza `/u/:handle`.
+
+---
+
+## 14. Verificación
+
+### Auth
+Registro→login→refresh→logout por cada proveedor. Confirmar cookie `httpOnly`+`Secure`.
+Confirmar que el JWT **no** está en localStorage (DevTools → Application). Confirmar
+mensaje de error idéntico para usuario inexistente vs contraseña mala.
+
+### Aislamiento
+Con el usuario A logueado, intentar `PATCH /api/bloques/:id` de un bloque del usuario B
+→ **403**. Probar cada endpoint de escritura así.
+
+### Sanitización de CSS
+Intentar `body{display:none}`, `@import url(//evil.com/x.css)`, `position:fixed`,
+`.navbar{...}`, un CSS de 1 MB. Verificar en la DB que se guardó la versión sanitizada y
+que otro perfil en otra pestaña no se afecta.
+
+### XSS
+Meter `<script>alert(1)</script>` y `<img src=x onerror=alert(1)>` en bio, nombre,
+comentarios, mensajes y config de bloques. Cargar el perfil público → no debe ejecutar.
+
+### Secretos
+`grep -rE "STEAM_API_KEY|CLIENT_SECRET|ENCRYPTION_KEY" client/dist/` → cero resultados.
+Confirmar en la DB que los tokens OAuth están cifrados, no en claro.
+
+### Steam
+`steam.service.ts` contra el SteamID64 real `76561198079804890`. Verificar que
+`vacBanned` **no** aparece en la respuesta de la API. Simular Steam caído → el perfil
+debe renderizar con caché viejo, no romperse.
+
+### Mensajería
+Dos navegadores con usuarios distintos, mensaje en vivo en ambos lados. Matar el backend
+a mitad → al reconectar no faltan mensajes. Intentar
+`GET /api/conversaciones/:id/mensajes` de una conversación ajena → **403**. Con DMs en
+`seguidos`, un desconocido no debe poder escribir. Bloquear a alguien y confirmar que se
+corta en ambos sentidos.
+
+### Adjuntos
+Subir un `.php`/`.html` renombrado a `.png` → debe rechazarse por `file-type`, no por
+extensión. Subir un JPEG con EXIF de GPS y confirmar que el archivo servido ya no lo
+trae. Pedir un archivo subido por URL directa y confirmar `nosniff` + que no se ejecuta
+como HTML. Verificar que un GIF animado sigue animado.
+
+### CSP
+DevTools → Console en el perfil público, cero violaciones. Revisar visualmente cada
+avatar y arte de juego.
+
+### Contenedores
+`docker compose up -d --build`, `docker compose ps` (healthy),
+`curl -I localhost:3045`, `docker compose logs tunnel | grep -i registered`.
+
+### Privacidad
+Desvincular una cuenta y confirmar en la DB que se borraron la `CuentaVinculada` y su
+`CacheExterno`.
+
+---
+
+## 15. Referencias del propio ecosistema
+
+Archivos de otros proyectos de Mizllet que sirven de plantilla:
+
+| Archivo | Para qué |
+|---|---|
+| `PaginaClips/server/src/config/env.ts` | Fail-fast de secretos |
+| `PaginaClips/server/src/controllers/auth.controller.ts` | bcrypt+JWT (adaptar a cookies) |
+| `PaginaClips/client/src/utils/axiosConfig.ts` | Interceptor 401 |
+| `FrierenIdolRevenant/frontend/nginx.conf` | Proxy `/api/` + `/socket.io/` + bind-mount |
+| `PaginaOuroCore_V2/nginx.conf` | Headers, CSP, cachés |
+| `ProyectoOzel/PaginaKoko/README.md` | Plantilla de documentación del túnel |
+
+### Convenciones del ecosistema
+
+- Comentarios en **español**, explicando el *por qué*.
+- Identificadores en inglés/PascalCase; rutas y slugs en español.
+- Túnel siempre `cloudflare/cloudflared:latest` + token desde `.env`, nunca
+  `config.yml` ni credenciales montadas.
+- Puertos en uso: 3005, 3010, 3030, 3035, 3040, 4000, 4533, 4534, 5173, 8001, 8082,
+  8083, 8085, 25565, 25566. **3045 libre** para este proyecto.
+
+---
+
+## 16. Datos de referencia (perfil de Mizllet)
+
+Sirven para pruebas y como perfil semilla.
+
+- Steam: `https://steamcommunity.com/id/Mizllet/` · SteamID64 `76561198079804890`
+- Nivel 65 · miembro desde 27/dic/2012 · Tijuana, Baja California, México
+- 823 juegos · 617 DLC · 104 insignias · 1374 capturas · 9066 logros · 6 juegos perfectos
+- Más jugados: Deadlock 119 h · 7 Days to Die 371 h · Persona 5 Royal 94 h ·
+  American Truck Simulator 43 h · Norland 39 h · Age of Empires II DE 28 h ·
+  Spider-Man 2 12.8 h
+- Setup: Ryzen 9 7900X · RX 7900 XTX · 64 GB DDR5 · triple monitor
+  (27" LG 144 Hz, 24.5" 144 Hz, 27" 60 Hz) · periféricos Logitech/Corsair
+
+- Discord User ID: `246498520041783297` — ya unido a `discord.gg/UrXF2cfJ7F`, así que
+  Lanyard puede leer su estado.
+
+**Steam API key:** ya conseguida. Va en `STEAM_API_KEY` del `.env` y **no se escribe en
+este documento ni en ningún archivo del repo** — `.env` está en `.gitignore`.
+
+> La clave se compartió por chat durante la planeación. Como cualquier secreto que pasa
+> por un canal no cifrado, conviene **regenerarla** en `steamcommunity.com/dev/apikey`
+> antes de publicar el sitio; es gratis e inmediato.

@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────────
+#  Wander — https://wander.ourocore.net
+# ─────────────────────────────────────────────────────────────────────
+
+User-agent: *
+Allow: /
+
+# Rutas privadas o sin contenido indexable: son pantallas de sesión, no
+# páginas de contenido. Indexarlas solo genera resultados inútiles.
+Disallow: /configuracion
+Disallow: /mensajes
+Disallow: /feed
+Disallow: /editor
+Disallow: /me
+Disallow: /api/
+
+# ── Rastreadores de IA (GEO) ─────────────────────────────────────────
+# Se permiten a propósito: que los motores generativos puedan describir y
+# citar Wander es justo el objetivo. Se listan de forma explícita en vez
+# de dejarlo al comodín para que la decisión quede documentada y sea fácil
+# de revertir por proveedor.
+#
+# Nota: esto cubre el SITIO. Cuando existan los perfiles públicos, cada
+# usuario podrá excluir el suyo, y esos irán con `noindex` por cabecera —
+# robots.txt no sirve para eso porque no distingue por perfil.
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://wander.ourocore.net/sitemap.xml
