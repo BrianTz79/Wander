@@ -1,14 +1,32 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Compass, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
 import { erroresPorCampo, mensajeError } from '../lib/api';
+import { BotonSteam, SeparadorO } from '../components/BotonSteam';
+
+/**
+ * Mensajes con los que puede volver el callback de Steam. Se traducen aquí
+ * y no en el servidor porque el callback es una redirección del navegador:
+ * lo único que puede mandar es un código corto en la query.
+ *
+ * Se leen de una tabla fija a propósito — pintar en pantalla un texto que
+ * venga de la URL sería un XSS reflejado servido en bandeja.
+ */
+const ERRORES_STEAM: Record<string, string> = {
+  steam: 'No se pudo verificar tu cuenta de Steam. Inténtalo de nuevo.',
+  suspendido: 'Esa cuenta está suspendida.',
+};
 
 export function LoginPage() {
   const login = useAuth((e) => e.login);
   const navegar = useNavigate();
   const ubicacion = useLocation();
+  const [parametros] = useSearchParams();
+
+  const errorSteam = ERRORES_STEAM[parametros.get('error') ?? ''] ?? '';
+  const canceloSteam = parametros.get('steam') === 'cancelado';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,6 +76,26 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={alEnviar} className="tarjeta" noValidate>
+          {/* Vuelta desde Steam: error real o cancelación del usuario. */}
+          {errorSteam && (
+            <div
+              role="alert"
+              className="mb-5 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm
+                         text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+            >
+              {errorSteam}
+            </div>
+          )}
+          {canceloSteam && (
+            <div
+              role="status"
+              className="mb-5 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm
+                         text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+            >
+              Cancelaste el inicio de sesión con Steam.
+            </div>
+          )}
+
           {/* El error general se anuncia a lectores de pantalla. */}
           {error && (
             <div
@@ -143,6 +181,9 @@ export function LoginPage() {
               'Entrar'
             )}
           </button>
+
+          <SeparadorO />
+          <BotonSteam />
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">

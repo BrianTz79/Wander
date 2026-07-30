@@ -70,6 +70,27 @@ export const limiteAuth = rateLimit({
   },
 });
 
+/**
+ * Login por OAuth/OpenID (Steam). NO reutiliza `limiteAuth` por dos
+ * motivos concretos:
+ *
+ *  1. Un login correcto por Steam responde con un 302, y
+ *     `skipSuccessfulRequests` solo perdona los 2xx. Con `limiteAuth`, los
+ *     inicios de sesión BUENOS gastarían cupo y 8 de ellos dejarían al
+ *     usuario fuera 15 minutos.
+ *  2. Aquí no hay contraseña que adivinar: el fuerza-bruta no aplica. Lo
+ *     único que se frena es el abuso de la llamada saliente a Steam, que
+ *     tolera un límite más holgado.
+ */
+export const limiteOAuth = rateLimit({
+  ...comun,
+  windowMs: 15 * 60_000,
+  limit: 30,
+  message: {
+    error: 'Demasiados intentos de inicio de sesión con Steam. Espera unos minutos.',
+  },
+});
+
 /** Registro de cuentas: evita creación masiva. */
 export const limiteRegistro = rateLimit({
   ...comun,

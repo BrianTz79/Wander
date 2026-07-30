@@ -10,17 +10,18 @@
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3 y 4 completas. La plataforma ya es usable: cualquiera puede registrarse,
-elegir una plantilla, armar su perfil en el editor y publicarlo en `/u/<su-nombre>`.**
-Lo siguiente es la Fase 5 (Steam), o cerrar lo que falta de la Fase 2 (Steam OpenID y
-verificación de correo).
+**Fases 1, 3 y 4 completas, y la 2 al 90 %. La plataforma ya es usable: cualquiera puede
+entrar con correo o con Steam, elegir una plantilla, armar su perfil y publicarlo en
+`/u/<su-nombre>`.** Lo único que le falta a la Fase 2 es la verificación de correo, que
+**se aplazó a propósito** (30/07): sin usuarios reales todavía, no compensa dar de alta
+un proveedor de correo ni tocar el DNS. Lo siguiente es la **Fase 5 (Steam)**.
 
 ### Resumen por fases
 
 | # | Fase | Estado |
 |---|---|---|
 | 1 | Andamio + deploy | ✅ **Completa** |
-| 2 | Auth | 🟡 Correo y contraseña listos; falta Steam OpenID |
+| 2 | Auth | 🟡 Correo+contraseña y Steam OpenID listos; la verificación de correo queda aplazada (decisión del 30/07) |
 | 3 | Perfil mínimo | ✅ **Completa** |
 | 4 | Tema y plantillas | ✅ **Completa** |
 | 5 | Steam | ⬜ **Siguiente** |
@@ -73,6 +74,29 @@ verificación de correo).
   `javascript:`, color no-hex, campo extra, bloque ajeno, reorden con ids colados,
   escritura anónima) + render real del frontend contra el stack vivo.
 
+**Login con Steam (Fase 2)**
+- OpenID 2.0 completo: `GET /api/auth/steam` redirige a Steam y
+  `GET /api/auth/steam/callback` lo recibe de vuelta. Son GET con redirección porque
+  quien los recorre es el navegador, no `fetch()`.
+- **El paso que sostiene todo:** `check_authentication` contra Steam. Los parámetros que
+  vuelven en la URL no valen nada por sí solos — sin esa llamada, cualquiera podría
+  escribir a mano un `claimed_id` con el SteamID de otro y entrar como esa persona.
+  Verificado: una respuesta falsificada con el SteamID real de Mizllet **no crea sesión**.
+- Un SteamID ya vinculado entra a **esa** cuenta (lo garantiza el
+  `@@unique([proveedor, proveedorId])` del schema). Si el vínculo se creó solo para traer
+  datos, el primer login por Steam lo asciende a método de acceso.
+- Cuenta nueva por Steam: sin correo ni contraseña (el schema ya los tenía opcionales).
+  El handle se genera desde el nombre de Steam en `handle.service.ts`, que aguanta
+  emoji, acentos y nombres en alfabetos no latinos, con sufijo aleatorio — no un contador
+  (`-2`, `-3`), que dejaría adivinar cuántas cuentas parecidas hay.
+- El avatar de Steam solo se acepta si viene de un host `*.steamstatic.com`: acaba en un
+  `<img>` para todos los visitantes del perfil.
+- **Límite de tasa propio** (`limiteOAuth` + zona `api_oauth` en nginx). No reutiliza el
+  de contraseñas: un login correcto por Steam responde 302, y `skipSuccessfulRequests`
+  solo perdona los 2xx — con el límite de auth, los inicios de sesión BUENOS gastaban
+  cupo y 8 de ellos dejaban al usuario fuera 15 minutos.
+- Probado E2E por HTTPS: 16 comprobaciones, todas de seguridad o de forma del flujo.
+
 **Tema y plantillas (Fase 4)**
 - **Cinco plantillas**: `base-oscuro`, `minimal-claro`, `cyber-violeta`, `retro-crt` y
   `shooter-angular`. Viven **en código** (`server/src/schemas/plantillas.ts`, espejadas
@@ -104,10 +128,12 @@ verificación de correo).
 
 ### ⬜ Lo siguiente
 
-1. **Terminar la Fase 2:** login con Steam OpenID y verificación de correo (requiere
-   decidir proveedor de email).
-2. **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
-   reales (actividad, estadísticas, favoritos).
+1. **Fase 5 — Steam**: `steam.service.ts`, caché con TTL y los bloques de datos
+   reales (actividad, estadísticas, favoritos). Ya hay una base:
+   `services/steamAuth.service.ts` tiene `resumenJugador()` contra `GetPlayerSummaries`,
+   y `CuentaVinculada` guarda el SteamID de quien entra con Steam.
+2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
+   30/07 — ver la nota en los pendientes.
 3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
@@ -135,8 +161,26 @@ verificación de correo).
 - **Backups de Postgres.** `pgdata/` es un bind-mount sin ninguna estrategia de
   respaldo: un fallo de disco se lleva todos los usuarios. Un `pg_dump` diario a otro
   disco (cron del host o contenedor dedicado) es suficiente al principio.
-- **Decidir proveedor de correo** para la verificación de email (Fase 2 pendiente): no
-  hay SMTP ni servicio configurado en `.env`. Opciones típicas: Resend, Brevo, SES.
+- **Verificación de correo — aplazada a propósito (30/07).** No hay SMTP ni proveedor en
+  `.env`, y `emailVerified` existe en el schema pero hoy nadie lo pone a `true`. La
+  decisión fue no dar de alta un proveedor mientras no haya usuarios reales. Cuando toque,
+  el trabajo pendiente es: elegir proveedor, añadir un modelo de token (**no existe**
+  ninguno en el schema: hace falta migración), el endpoint de reenvío, y decidir qué se le
+  bloquea a quien no ha verificado — la opción sensata es **impedir publicar el perfil**,
+  no impedir entrar.
+  Comparativa hecha el 30/07, por si sirve al retomarlo:
+  · **Resend** — 3.000/mes gratis permanente pero con tope de **100/día**, sin proceso de
+    aprobación, el mejor SDK de Node. Exige verificar `ourocore.net` por DNS: su dominio
+    de pruebas solo escribe a tu propia dirección. Era la recomendación.
+  · **Brevo** — 300/día gratis, sin aprobación, pero estampa su logo salvo que pagues
+    ~10 USD/mes, y su pool gratuito compartido es el de peor reputación.
+  · **Amazon SES** — el más barato a escala (0,10 USD/1.000), pero el sandbox es un
+    bloqueo real de 1-3 días hábiles y el tramo gratis ya solo dura 12 meses.
+  · **Mailgun y Postmark quedan descartados**: el sandbox de Mailgun solo escribe a 5
+    destinatarios autorizados (imposible para un registro público) y el tramo gratis de
+    Postmark son 100 correos **al mes**.
+  Nota para cuando se haga: usar un subdominio (`mail.ourocore.net`) y no la raíz, para
+  aislar la reputación de envío del dominio principal.
 - **i18n antes de que la interfaz crezca.** «Español + inglés» está decidido (§2) pero no
   asignado a ninguna fase, y todo el texto está incrustado en los componentes. Meterlo
   con la interfaz pequeña (antes de la Fase 7) cuesta poco; hacerlo al final significa
@@ -414,8 +458,11 @@ Dos conceptos separados, una sola tabla.
   `PaginaClips/server/src/controllers/auth.controller.ts`. Mejoras: validación zod,
   rate limit, y mensaje de error **idéntico** para "correo no existe" y "contraseña
   mala" (no filtrar qué correos están registrados).
-- **Steam** — OpenID 2.0. Sigue soportado; no hay fecha de retiro anunciada. Devuelve
-  solo el SteamID64, no da correo, así que el usuario elige su handle al primer ingreso.
+- **Steam** ✅ — OpenID 2.0. Sigue soportado; no hay fecha de retiro anunciada. Devuelve
+  solo el SteamID64 y no da correo, así que el handle se **genera** a partir del nombre
+  de Steam (`services/handle.service.ts`) y el usuario lo cambia después si quiere.
+  La respuesta se valida con `check_authentication` contra Steam: los parámetros de la
+  URL no se creen nunca por sí solos.
 - **Discord / Google** — OAuth 2.0 con PKCE vía `openid-client` 6.
 
 Todos convergen en `encontrarOCrearUsuario(proveedor, proveedorId, datos)`.
@@ -759,7 +806,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | # | Fase | Qué entrega |
 |---|---|---|
 | 1 | ✅ **Andamio + deploy** | Compose con 4 servicios, Prisma inicial, "Hola" en el front, `/api/health`, túnel arriba. Valida la cadena completa antes de escribir features. |
-| 2 | 🟡 **Auth** | Correo+contraseña (zod, bcrypt, JWT en cookie httpOnly, rate limit) + Steam OpenID. Registro, login, logout, sesión persistente. |
+| 2 | 🟡 **Auth** | Correo+contraseña (zod, argon2id, JWT en cookie httpOnly, rate limit) ✅ + Steam OpenID ✅. Registro, login, logout y sesión persistente ✅. Falta solo la verificación de correo, aplazada (ver §0). |
 | 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
 | 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
 | 5 | **Steam** | `steam.service.ts` (XML + Web API, filtrando `vacBanned`), `cache.service.ts` con TTL, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
@@ -775,6 +822,32 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**30/07/2026 — Login con Steam (cierre práctico de la Fase 2)**
+
+- OpenID 2.0 con verificación `check_authentication` contra Steam. Sin ese paso, el
+  login sería "escribe el SteamID que quieras ser": los parámetros que vuelven en la URL
+  no están firmados de forma que podamos comprobar por nuestra cuenta.
+- `services/steamAuth.service.ts` (protocolo + `resumenJugador`),
+  `services/handle.service.ts` (generación de handle desde nombres arbitrarios) y
+  `controllers/steamAuth.controller.ts`.
+- Un SteamID ya vinculado entra a esa cuenta; uno nuevo crea cuenta sin correo ni
+  contraseña. Las cuentas suspendidas no entran por esta vía.
+- Botón de Steam en login y registro, con el logo como SVG inline para no depender de un
+  host externo ni abrir la CSP.
+- **Arreglo de un problema que habría salido en producción:** reutilizar `limiteAuth`
+  para Steam rompía los logins buenos. Un callback correcto responde 302 y
+  `skipSuccessfulRequests` solo perdona los 2xx, así que cada login exitoso gastaba cupo
+  y al octavo el usuario quedaba fuera 15 min. Ahora hay `limiteOAuth` (30/15 min) y una
+  zona `api_oauth` en nginx (20 r/m) que **va antes** del bloque `^/api/(auth|oauth)/`,
+  porque nginx elige la primera expresión regular que casa.
+- E2E por HTTPS: 16 comprobaciones. La central — un callback falsificado con el SteamID
+  real de Mizllet — no crea sesión. En los logs se ve la diferencia: 139 ms cuando la
+  petición llega a preguntarle a Steam, 1 ms cuando el `claimed_id` malformado se
+  rechaza antes de salir a la red.
+- **Verificación de correo aplazada** por decisión explícita: sin usuarios reales no
+  compensa dar de alta un proveedor ni tocar DNS. La comparativa de proveedores queda
+  anotada en los pendientes de §0.
 
 **30/07/2026 — Fase 4 desplegada: plantillas**
 

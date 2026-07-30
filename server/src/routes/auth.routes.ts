@@ -1,9 +1,15 @@
 import { Router } from 'express';
 import * as ctrl from '../controllers/auth.controller';
+import * as steam from '../controllers/steamAuth.controller';
 import { asyncHandler } from '../middlewares/errores.middleware';
 import { authOpcional, requiereAuth } from '../middlewares/auth.middleware';
 import { validarBody } from '../middlewares/validar.middleware';
-import { limiteAuth, limiteBusqueda, limiteRegistro } from '../middlewares/rateLimit.middleware';
+import {
+  limiteAuth,
+  limiteBusqueda,
+  limiteOAuth,
+  limiteRegistro,
+} from '../middlewares/rateLimit.middleware';
 import {
   cambiarPasswordSchema,
   loginSchema,
@@ -39,5 +45,17 @@ router.post(
 );
 
 router.get('/handle-disponible', limiteBusqueda, asyncHandler(ctrl.handleDisponible));
+
+/**
+ * Steam OpenID 2.0. Son GET y con redirección porque quien los recorre es
+ * el navegador volviendo de Steam, no fetch() — de ahí que no lleven
+ * validación de body ni devuelvan JSON.
+ *
+ * El callback lleva `limiteAuth` igual que el login: es una ruta anónima
+ * que dispara una petición saliente a Steam por cada visita, así que sin
+ * límite es un amplificador gratuito para quien quiera abusar de ella.
+ */
+router.get('/steam', limiteOAuth, steam.iniciarSteam);
+router.get('/steam/callback', limiteOAuth, asyncHandler(steam.callbackSteam));
 
 export default router;
