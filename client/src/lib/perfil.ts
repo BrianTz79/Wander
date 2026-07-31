@@ -57,14 +57,37 @@ export interface PerfilPropio {
   tema: TemaPerfil;
   publicado: boolean;
   vistas: number;
+  /** CSS ya sanitizado por el servidor: es lo que se aplica de verdad. */
+  cssPropio: string | null;
+  /** Lo que el usuario escribió, para volver a llenar el editor. */
+  cssOriginal: string | null;
   bloques: Bloque[];
 }
 
 export interface RespuestaPerfilPublico {
   usuario: UsuarioPerfil;
-  perfil: { plantilla: string; tema: TemaPerfil; publicado: boolean; vistas: number };
+  perfil: {
+    id: string;
+    plantilla: string;
+    tema: TemaPerfil;
+    publicado: boolean;
+    vistas: number;
+    cssPropio: string | null;
+  };
   bloques: Bloque[];
   esPropio: boolean;
+}
+
+/**
+ * Id del contenedor que le da scope al CSS del usuario.
+ *
+ * Tiene que coincidir EXACTAMENTE con el prefijo que pone
+ * `server/src/services/sanitizar.service.ts` al guardar. Si los dos lados
+ * dejaran de estar de acuerdo, el CSS no fallaría con un error: dejaría de
+ * aplicarse sin más, que es mucho peor de encontrar.
+ */
+export function idDeScope(perfilId: string): string {
+  return `perfil-${perfilId}`;
 }
 
 // ── Tema por defecto (plantilla "base-oscuro") ───────────────────────
@@ -103,6 +126,14 @@ export function temaCompleto(tema: TemaPerfil | undefined | null): Required<Tema
  * Convierte el tema en variables CSS para el contenedor del perfil.
  * Los valores ya vienen validados por el backend (hex estricto, enum de
  * fuentes, radio numérico), así que inyectarlos como style es seguro.
+ *
+ * Solo se emiten VARIABLES, nunca `backgroundColor`/`color`/`fontFamily`
+ * directamente. La diferencia importa desde la Fase 9: un estilo en línea
+ * gana a cualquier regla de una hoja de estilos, así que si el fondo se
+ * pusiera aquí, el `body { background: … }` de quien escribe su CSS propio
+ * no haría nada — y esa es de las primeras cosas que alguien intenta.
+ * Poniéndolo en `.perfil-raiz` (una clase, en `index.css`), el CSS del
+ * usuario tiene la misma especificidad y puede ganarle.
  */
 export function varsDeTema(tema: TemaPerfil | undefined | null): CSSProperties {
   const t = temaCompleto(tema);
@@ -113,9 +144,7 @@ export function varsDeTema(tema: TemaPerfil | undefined | null): CSSProperties {
     '--p-tarjeta': t.colorTarjeta,
     '--p-borde': t.colorBorde,
     '--p-radio': `${t.radio}px`,
-    backgroundColor: t.colorFondo,
-    color: t.colorTexto,
-    fontFamily: FUENTES[t.fuente],
+    '--p-fuente': FUENTES[t.fuente],
   } as CSSProperties;
 }
 

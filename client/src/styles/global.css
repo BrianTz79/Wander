@@ -168,6 +168,24 @@
   .contenedor-app {
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
+
+  /*
+   * Raíz de un perfil de usuario: aplica su tema a partir de las variables
+   * que emite `varsDeTema()`.
+   *
+   * Existe por la Fase 9. Antes el fondo, el color y la tipografía iban en
+   * el `style` en línea del contenedor, y un estilo en línea gana SIEMPRE a
+   * una hoja de estilos: el `body { background: … }` de quien escribe su
+   * CSS propio (que el sanitizador reescribe a este mismo contenedor) no
+   * podía verse nunca. Desde aquí, con una sola clase, el CSS del usuario
+   * tiene la misma especificidad y gana por orden de aparición —que es lo
+   * que la persona espera— sin que haga falta ningún `!important`.
+   */
+  .perfil-raiz {
+    background-color: var(--p-fondo);
+    color: var(--p-texto);
+    font-family: var(--p-fuente);
+  }
   .contenedor-seccion {
     @apply container mx-auto px-4 md:px-6;
   }

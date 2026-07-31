@@ -18,6 +18,8 @@ type EstadoGuardado = 'inactivo' | 'guardando' | 'guardado' | 'error';
 interface RespuestaMia {
   perfil: PerfilPropio;
   usuario: UsuarioPerfil;
+  /** Qué le quitó el sanitizador al CSS (Fase 9). */
+  avisosCss?: string[];
 }
 
 interface EstadoEditor {
@@ -35,6 +37,12 @@ interface EstadoEditor {
     displayName?: string;
     bio?: string;
   }) => Promise<void>;
+  /**
+   * Guarda el CSS propio. Devuelve los avisos del sanitizador para que el
+   * panel pueda enseñarlos, y lanza con el mensaje del servidor si el CSS
+   * se rechazó entero (error de sintaxis o pasado de tamaño).
+   */
+  guardarCss: (css: string) => Promise<string[]>;
   crearBloque: (tipo: TipoBloque, configInicial: Record<string, unknown>) => Promise<void>;
   actualizarBloque: (
     id: string,
@@ -144,6 +152,26 @@ export const useEditor = create<EstadoEditor>((set, get) => ({
     } catch {
       set({ guardado: 'error' });
       throw new Error('No se pudo guardar.');
+    }
+  },
+
+  async guardarCss(css) {
+    set({ guardado: 'guardando' });
+    try {
+      // Cadena vacía → `null`: es "bórralo", no "guarda un CSS vacío".
+      const { data } = await api.patch<RespuestaMia>('/perfiles/mio', {
+        cssPropio: css.trim() ? css : null,
+      });
+      // Se sincroniza el perfil entero: el servidor devuelve el CSS ya
+      // sanitizado, que es lo que tiene que ver la vista previa.
+      set({ perfil: data.perfil, usuario: data.usuario });
+      marcarGuardado(set);
+      return data.avisosCss ?? [];
+    } catch (error) {
+      set({ guardado: 'error' });
+      // Se propaga el mensaje real del servidor ("error de sintaxis en la
+      // línea 4"), que es justo lo que la persona necesita leer.
+      throw error;
     }
   },
 

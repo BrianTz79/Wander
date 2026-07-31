@@ -10,15 +10,16 @@
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4, 5, 6, 6.5, 7 y 8 completas, y la 2 al 90 %. La plataforma cumple ya su
+**Fases 1, 3, 4, 5, 6, 6.5, 7, 8 y 9 completas, y la 2 al 90 %. La plataforma cumple ya su
 promesa central por partida doble: quien entra con Steam ve sus juegos, sus horas y su
 actividad sin escribir nada, y quien vincula Discord tiene además su estado y su música
 en vivo. Desde la 6.5 hace las dos cosas en español o en inglés, desde la 7 dejó de ser
 una colección de perfiles sueltos —se sigue gente, hay un feed, se comenta y se
-descubre— y desde la 8 la gente además se habla: mensajes directos, grupos, imágenes,
-GIFs y emojis, con una campana que avisa de todo lo que pasa.** Lo único que le falta a
+descubre—, desde la 8 la gente además se habla: mensajes directos, grupos, imágenes,
+GIFs y emojis, con una campana que avisa de todo lo que pasa, y desde la 9 quien sepa CSS
+puede escribir el suyo y que solo afecte a su perfil.** Lo único que le falta a
 la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). Lo
-siguiente es la **Fase 9 (CSS propio)**. La traducción de contenido sigue **aplazada
+siguiente es la **Fase 10 (pulido)**. La traducción de contenido sigue **aplazada
 hasta nuevo aviso** (ver §8).
 
 **Ya no queda ninguna pantalla "en construcción":** `/mensajes` era la última, y con ella
@@ -37,8 +38,8 @@ todos los enlaces de la navbar y del pie llevan a algo real.
 | 6.5 | i18n (español + inglés) | ✅ **Completa** |
 | 7 | Social | ✅ **Completa** |
 | 8 | Mensajería + adjuntos + notificaciones | ✅ **Completa** (sin traducción: aplazada) |
-| 9 | CSS propio | ⬜ **Siguiente** |
-| 10 | Pulido | ⬜ |
+| 9 | CSS propio | ✅ **Completa** |
+| 10 | Pulido | ⬜ **Siguiente** |
 | 11 | Música de fondo | ⬜ |
 | 12 | SEO + GEO | 🟡 Landing hecha; falta el SSR de los perfiles |
 
@@ -467,12 +468,37 @@ todos los enlaces de la navbar y del pie llevan a algo real.
   el picker de emojis monta bajo React 19 sin duplicarse, Giphy devuelve resultados, el chat
   se pinta, el socket conecta y la interfaz sale en inglés con `locale: en-US`.
 
+**CSS propio (Fase 9)**
+- `services/sanitizar.service.ts`: PostCSS con el parser **estricto** (si no parsea, se
+  rechaza con el error de sintaxis y la línea), prefijado de **cada** selector con
+  `#perfil-<id>`, lista negra de propiedades y valores, tope de 20 KB y de 400 reglas.
+- El editor tiene su panel de CSS con textarea, botón de guardar, botón de **restaurar** y
+  una lista de **avisos de lo que se quitó** — un sanitizador mudo deja a la persona
+  mirando un CSS que no hace nada sin saber por qué.
+- Se guardan **dos** versiones: `cssPropio` (sanitizado, lo único que se sirve al público)
+  y `cssOriginal` (lo que escribió, solo para su dueño, para poder seguir editándolo).
+- **No hizo falta migración:** las dos columnas ya venían de la migración inicial.
+- **Bug encontrado con el navegador, no leyendo código:** `varsDeTema()` ponía el fondo, el
+  color y la tipografía como estilo **en línea**, y un estilo en línea gana a cualquier
+  hoja de estilos — así que el `body { background: … }` de quien escribiera su CSS (que el
+  sanitizador reescribe al contenedor) no hacía nada. Se movieron a la clase
+  `.perfil-raiz` de `global.css`, que sí se puede sobreescribir. La suite HTTP daba las 58
+  comprobaciones en verde con el bug presente.
+- Probado E2E contra el stack vivo: **58 comprobaciones, todas en verde**
+  (`docs/pruebas/e2e-fase9.mjs`), escritas como una lista de ataques — `body{display:none}`,
+  `.navbar{display:none}`, `position: fixed`/`sticky`, `@import`, `@font-face`, `url()` a
+  host externo y por protocolo relativo, `data:text/html`, `expression()`, `-moz-binding`,
+  `behavior`, `content: attr()`, una `url()` externa escondida en una variable CSS, un CSS
+  de 30 KB, uno de 500 reglas, uno con la llave sin cerrar, y un perfil intentando escribir
+  CSS bajo el scope de otro. **Más 9 comprobaciones en un navegador real** (Playwright):
+  la navbar de Wander sigue visible, el `<body>` del documento no cambia de color, el
+  contenedor del perfil sí lo hace, y el `<style>` inyectado no tiene ni un selector sin
+  prefijar.
+
 ### ⬜ Lo siguiente
 
-1. **Fase 9 — CSS propio.** El diseño ya está escrito en §6: PostCSS para parsear, prefijo
-   `#perfil-<id>` en cada selector, lista negra (`position: fixed`, `@import`, `url()`
-   externo, `expression(`), tope de ~20 KB y botón de restaurar siempre visible. Se guarda
-   el CSS **sanitizado**, no el original.
+1. **Fase 10 — Pulido.** Landing completa, tarjetas OG, moderación en `/admin`, el resto de
+   los bloques (Setup PC, Galería), accesibilidad y responsive.
 2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
 3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
@@ -939,7 +965,7 @@ Viven en `server/src/schemas/plantillas.ts`, con un espejo en
 autoritativa: al aplicar una, el tema que se guarda es el suyo, nunca el que mande el
 cliente. Un perfil cuyo tema se ha editado a mano queda marcado como `personalizada`.
 
-### CSS propio — la parte delicada
+### CSS propio — la parte delicada ✅ (Fase 9)
 
 Viable, pero necesita defensa en serio:
 
@@ -958,6 +984,26 @@ Viable, pero necesita defensa en serio:
 `sanitize-html` con lista blanca corta (negritas, cursivas, enlaces, listas). Esa línea
 no se cruza: es la diferencia entre "personalizable" y "XSS almacenado contra todos los
 visitantes".
+
+Lo que se añadió al implementarlo y no estaba en este diseño:
+
+8. **Los `@keyframes` se renombran** a `p-<perfilId>-<nombre>`, y sus referencias en
+   `animation`/`animation-name` con ellos. El nombre de una animación es **global al
+   documento**: prefijar selectores no lo aísla, así que un `@keyframes spin` de un
+   usuario le pisaba el `spin` de la interfaz de Wander mientras su perfil estuviera
+   abierto. Los fotogramas (`from`, `to`, `50%`) **no** se prefijan: no son selectores.
+9. **Parser estricto, nunca `postcss-safe-parser`.** El parser tolerante arregla CSS roto
+   adivinando la intención, y adivinar en una frontera de seguridad es justo lo que crea
+   los bypass: un CSS que el sanitizador y el navegador leen distinto. Si no parsea, se
+   rechaza con la línea del error.
+10. **Reglas anidadas no se vuelven a prefijar.** Su padre ya está prefijado, y volver a
+    hacerlo cambiaría a qué casan (en `.a { &:hover {} }` el `&` es `.a`, no el
+    contenedor).
+11. **Avisos de lo que se quitó**, devueltos en la respuesta del PATCH. Sanitizar en
+    silencio deja a la persona mirando un CSS que no hace nada sin saber por qué.
+12. El fondo del perfil vive en la clase `.perfil-raiz`, **no** en un estilo en línea: un
+    estilo en línea gana a cualquier hoja de estilos y dejaría el `body { background: … }`
+    del usuario sin efecto para siempre.
 
 ---
 
@@ -1303,7 +1349,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 6.5 | ✅ **i18n** | `react-i18next`, catálogos `es`/`en`, selector en navbar y `/configuracion`, detección por navegador con respaldo a español, `User.idioma` para que la preferencia siga al usuario entre dispositivos. Se hizo **antes** de la 7 porque la Fase 7 duplica el número de pantallas: cada una escrita sin i18n habría que reabrirla. Los errores de zod del backend quedan pendientes (ver §0). |
 | 7 | ✅ **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` — **no** para traducir (eso está aplazado), sino porque esa columna solo se puede rellenar bien mientras no haya filas viejas. |
 | 8 | ✅ **Mensajería + adjuntos + notificaciones** | socket.io en `/chat` autenticado con la cookie de sesión, DMs y grupos, `privacidadDm` y bandeja de solicitudes. Subidas validadas por magic bytes y reescritas con sharp, emojis, GIFs de Giphy por proxy. Campana de notificaciones que enlaza a la interacción exacta. **Sin traducción**: aplazada hasta nuevo aviso (§8). |
-| 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
+| 9 | ✅ **CSS propio** | `sanitizar.service.ts` con PostCSS (parser estricto), prefijado de scope, lista negra, renombrado de `@keyframes`, avisos de lo que se quitó y botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
 | 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
 | 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
 | 12 | **SEO + GEO** | JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`, `hreflang` (§13). Landing ✅; el SSR de perfiles quedó decidido: SPA en la v1 (ver §0). |
@@ -1312,6 +1358,25 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fase 9 desplegada: CSS propio con red debajo**
+
+- **`sanitizar.service.ts`**: PostCSS con el parser estricto, prefijado de cada selector
+  con `#perfil-<id>`, `:root`/`html`/`body` reescritos al contenedor, lista negra de
+  propiedades (`behavior`, `-moz-binding`, `content`) y de valores (`expression()`,
+  `javascript:`, `image-set()`), `position: fixed|sticky` fuera, `url()` solo a `/uploads/`
+  o `data:` de imagen, at-rules por lista blanca y topes de 20 KB y 400 reglas.
+- **Los `@keyframes` se renombran** a `p-<perfilId>-<nombre>`: el nombre de una animación
+  vive en un espacio global, así que un `@keyframes spin` de un usuario le pisaba el `spin`
+  de la interfaz de Wander a todo el que abriera su perfil. Prefijar selectores no cubre
+  esto porque el problema no está en el selector.
+- **Panel de CSS en el editor** con avisos de lo que se quitó y botón de restaurar. No hay
+  guardado automático a propósito: el CSS a medio escribir es CSS inválido.
+- **El fondo del perfil pasó de estilo en línea a la clase `.perfil-raiz`.** Lo encontró el
+  navegador: un estilo en línea gana a cualquier hoja de estilos, así que el
+  `body { background: … }` del usuario no podía verse nunca. Las 58 comprobaciones HTTP
+  estaban en verde con el bug puesto.
+- **Sin migración**: `cssPropio` y `cssOriginal` ya estaban en el schema desde la inicial.
 
 **31/07/2026 — Fase 8 desplegada: la gente ya se habla**
 
@@ -1618,10 +1683,23 @@ mensaje de error idéntico para usuario inexistente vs contraseña mala.
 Con el usuario A logueado, intentar `PATCH /api/bloques/:id` de un bloque del usuario B
 → **403**. Probar cada endpoint de escritura así.
 
-### Sanitización de CSS
+### Sanitización de CSS ✅ (31/07)
 Intentar `body{display:none}`, `@import url(//evil.com/x.css)`, `position:fixed`,
 `.navbar{...}`, un CSS de 1 MB. Verificar en la DB que se guardó la versión sanitizada y
 que otro perfil en otra pestaña no se afecta.
+
+Hecho en la Fase 9: **58 comprobaciones** en `docs/pruebas/e2e-fase9.mjs` (todas en verde)
+y **9 más en un navegador real**. Verificado en la DB que `cssPropio` guarda la versión
+prefijada y que `cssOriginal` nunca sale en la respuesta pública. Dos cosas que hay que
+saber al volver aquí:
+
+- **La suite HTTP no ve si el CSS APLICA.** Puede estar todo bien guardado y no pintarse:
+  el bug del fondo (estilo en línea ganándole a la hoja de estilos) pasó las 58
+  comprobaciones. Lo que lo delata es leer `getComputedStyle` del contenedor en un
+  navegador y compararlo con el del `<body>`.
+- El **nombre de un `@keyframes` es global**: es la única parte del CSS que el prefijado de
+  selectores no aísla. Al añadir cualquier otra cosa con espacio de nombres propio
+  (`@counter-style`, `@property`), hay que renombrarla igual.
 
 ### XSS
 Meter `<script>alert(1)</script>` y `<img src=x onerror=alert(1)>` en bio, nombre,

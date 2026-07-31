@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Code,
   Eye,
   EyeOff,
   ExternalLink,
@@ -22,12 +23,14 @@ import { api, mensajeError } from '../lib/api';
 import { horasDe } from '../lib/steam';
 import {
   FUENTES_ETIQUETAS,
+  idDeScope,
   temaCompleto,
   varsDeTema,
   type Bloque,
   type TemaPerfil,
   type TipoBloque,
 } from '../lib/perfil';
+import { CssDePerfil } from '../components/CssDePerfil';
 import {
   PLANTILLAS,
   PLANTILLA_PERSONALIZADA,
@@ -119,6 +122,7 @@ export function EditorPerfilPage() {
           <PanelPlantillas />
           <PanelTema />
           <PanelBloques />
+          <PanelCssPropio />
         </div>
 
         {/* ── Vista previa ── */}
@@ -127,13 +131,19 @@ export function EditorPerfilPage() {
             {t('editor.vistaPrevia')}
           </p>
           <div
-            className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+            /* El mismo id que el perfil público: es lo que hace que el CSS
+               propio (prefijado con `#perfil-<id>`) también aplique aquí.
+               Sin esto la vista previa mentiría justo en la fase en la que
+               más falta hace que no mienta. */
+            id={idDeScope(perfil.id)}
+            className="perfil-raiz overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
             style={varsDeTema(perfil.tema)}
           >
-            <div
-              className="mx-auto max-w-2xl px-4 pb-12"
-              style={{ backgroundColor: 'var(--p-fondo)', color: 'var(--p-texto)' }}
-            >
+            <CssDePerfil css={perfil.cssPropio} />
+            {/* Sin fondo propio: lo hereda de `.perfil-raiz`, para que el
+                CSS del usuario pueda cambiarlo también en la vista previa
+                (un `background` en línea aquí le ganaría siempre). */}
+            <div className="mx-auto max-w-2xl px-4 pb-12">
               {perfil.bloques.filter((b) => b.visible).length === 0 && (
                 <p className="py-24 text-center text-sm" style={{ opacity: 0.6 }}>
                   {t('editor.sinBloques')}
@@ -471,6 +481,160 @@ function PanelTema() {
         onChange={(e) => poner('radio', Number(e.target.value))}
         className="w-full accent-zinc-900 dark:accent-white"
       />
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Panel: CSS propio (Fase 9)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Editor de CSS propio.
+ *
+ * A diferencia del resto del editor, esto NO se guarda con rebote al
+ * teclear: el CSS a medio escribir casi siempre es CSS inválido, así que
+ * un guardado automático dispararía errores de sintaxis constantes
+ * mientras la persona escribe. Se guarda cuando lo pide.
+ *
+ * El textarea muestra `cssOriginal` (lo que escribió), no `cssPropio` (lo
+ * sanitizado): ver su propio CSS reescrito y reordenado a cada guardado
+ * sería desconcertante y le borraría los comentarios.
+ */
+function PanelCssPropio() {
+  const { t } = useTranslation();
+  const { perfil, guardarCss } = useEditor();
+  const [abierto, setAbierto] = useState(false);
+  const [borrador, setBorrador] = useState(perfil?.cssOriginal ?? '');
+  const [avisos, setAvisos] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  // Si el perfil se recarga (o se restaura), el borrador sigue al dato.
+  const cssGuardado = perfil?.cssOriginal ?? '';
+  useEffect(() => {
+    setBorrador(cssGuardado);
+  }, [cssGuardado]);
+
+  if (!perfil) return null;
+
+  const sucio = borrador !== cssGuardado;
+
+  async function guardar() {
+    setGuardando(true);
+    setError(null);
+    try {
+      setAvisos(await guardarCss(borrador));
+    } catch (e) {
+      setError(mensajeError(e));
+      setAvisos([]);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function restaurar() {
+    setGuardando(true);
+    setError(null);
+    try {
+      await guardarCss('');
+      setBorrador('');
+      setAvisos([]);
+    } catch (e) {
+      setError(mensajeError(e));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="tarjeta">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+          <Code className="h-4 w-4" aria-hidden="true" />
+          {t('editor.cssPropio')}
+        </h2>
+        <button
+          type="button"
+          onClick={() => setAbierto((v) => !v)}
+          className="btn-fantasma h-8 px-3 text-xs"
+          aria-expanded={abierto}
+        >
+          {abierto ? t('comun.cerrar') : t('editor.cssAbrir')}
+        </button>
+      </div>
+
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">{t('editor.cssAyuda')}</p>
+
+      {abierto && (
+        <div className="mt-4">
+          <label htmlFor="ed-css" className="etiqueta">
+            {t('editor.cssEtiqueta')}
+          </label>
+          <textarea
+            id="ed-css"
+            value={borrador}
+            onChange={(e) => setBorrador(e.target.value)}
+            rows={12}
+            spellCheck={false}
+            className="campo font-mono text-xs"
+            placeholder={'.bloque-hero {\n  border: 2px solid #f0f;\n}'}
+            aria-describedby="ed-css-ayuda"
+          />
+
+          <p id="ed-css-ayuda" className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            {/* El scope no es un detalle interno: es la respuesta a "¿por
+                qué mi selector no hace nada?", así que se dice. */}
+            <Trans
+              i18nKey="editor.cssScope"
+              values={{ scope: `#${idDeScope(perfil.id)}` }}
+              components={{ codigo: <code className="font-mono" /> }}
+            />
+          </p>
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            >
+              {error}
+            </p>
+          )}
+
+          {avisos.length > 0 && (
+            <div
+              role="status"
+              className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <p className="font-medium">{t('editor.cssAvisosTitulo')}</p>
+              <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs">
+                {avisos.map((aviso) => (
+                  <li key={aviso}>{aviso}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void guardar()}
+              disabled={guardando || !sucio}
+              className="btn-primario h-9 px-4 text-sm"
+            >
+              {guardando ? t('editor.cssGuardando') : t('editor.cssGuardar')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void restaurar()}
+              disabled={guardando || (!cssGuardado && !borrador)}
+              className="btn-secundario h-9 px-4 text-sm"
+            >
+              {t('editor.cssRestaurar')}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

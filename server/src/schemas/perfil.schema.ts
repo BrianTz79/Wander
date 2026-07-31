@@ -198,9 +198,34 @@ export const reordenarBloquesSchema = z
 
 // ── Perfil ───────────────────────────────────────────────────────────
 
+/**
+ * Tope de caracteres del CSS. El límite real es de BYTES (20 KB) y lo
+ * aplica el sanitizador; este es un filtro barato que corta lo absurdo
+ * antes de gastar un parseo. Es deliberadamente más alto que 20 480 para
+ * no rechazar por caracteres algo que en bytes sí cabría — quien manda el
+ * mensaje de error correcto es el sanitizador.
+ */
+export const MAX_CSS_CARACTERES = 25_000;
+
+/**
+ * CSS propio (Fase 9). Aquí solo se comprueba el TAMAÑO: la validación de
+ * verdad —parseo, scope y lista negra— la hace
+ * `services/sanitizar.service.ts`, porque necesita el id del perfil para
+ * prefijar y porque sus errores son de contenido, no de forma.
+ *
+ * `null` es "bórralo" y es distinto de `''`: la cadena vacía también
+ * limpia, pero `null` es lo que manda el botón de restaurar y deja el
+ * campo NULL en la base en vez de una cadena vacía.
+ */
+const cssPropioSchema = z
+  .string()
+  .max(MAX_CSS_CARACTERES, `El CSS es demasiado largo (máximo ${MAX_CSS_CARACTERES} caracteres).`)
+  .nullable();
+
 export const actualizarPerfilSchema = z
   .object({
     tema: temaSchema.optional(),
+    cssPropio: cssPropioSchema.optional(),
     // Aplicar una plantilla: el servidor resuelve el id contra el catálogo
     // y escribe SU tema. Nunca se guarda un id que no exista.
     plantilla: z.enum(IDS_PLANTILLA, { error: 'Esa plantilla no existe.' }).optional(),

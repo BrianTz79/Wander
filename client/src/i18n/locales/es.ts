@@ -275,6 +275,19 @@ export const es = {
     tipografia: 'Tipografía',
     redondez: 'Redondez de esquinas: {{radio}}px',
 
+    cssPropio: 'CSS propio',
+    cssAbrir: 'Abrir',
+    cssAyuda:
+      'Para cuando el tema se te queda corto. Tu CSS solo afecta a tu perfil: no puede tocar el resto de Wander ni el perfil de nadie más.',
+    cssEtiqueta: 'Tu CSS',
+    // El <codigo> es un <code> con el selector del contenedor.
+    cssScope:
+      'Todos tus selectores se limitan a <codigo>{{scope}}</codigo> automáticamente, así que escríbelos como si tu perfil fuera la página entera. Se quitan las reglas que se saldrían de él (como <codigo>position: fixed</codigo>) y las que cargarían archivos de otros sitios.',
+    cssGuardar: 'Guardar CSS',
+    cssGuardando: 'Guardando…',
+    cssRestaurar: 'Restaurar',
+    cssAvisosTitulo: 'Se guardó, pero hubo cosas que no se pudieron aceptar:',
+
     bloques: 'Bloques',
     anadirBloque: 'Añadir bloque',
     guardarBloque: 'Guardar bloque',

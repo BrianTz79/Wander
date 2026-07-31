@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Check, Eye, EyeOff, Pencil, Share2 } from 'lucide-react';
 
 import { api } from '../lib/api';
-import { varsDeTema, type RespuestaPerfilPublico } from '../lib/perfil';
+import { idDeScope, varsDeTema, type RespuestaPerfilPublico } from '../lib/perfil';
+import { CssDePerfil } from '../components/CssDePerfil';
 import { necesitaDiscord, necesitaSteam, RenderBloque } from '../components/bloques/registro';
 import { SocialDePerfil } from '../components/social/SocialDePerfil';
 import { ProveedorSteam } from '../lib/steamContexto';
@@ -95,7 +96,17 @@ export function PerfilPublicoPage() {
   return (
     <ProveedorSteam handle={usuario.handle} activo={necesitaSteam(bloques)}>
     <ProveedorDiscord handle={usuario.handle} activo={necesitaDiscord(bloques)}>
-    <div style={varsDeTema(perfil.tema)} className="min-h-[calc(100vh-4rem)]">
+    <div
+      id={idDeScope(perfil.id)}
+      style={varsDeTema(perfil.tema)}
+      className="perfil-raiz min-h-[calc(100vh-4rem)]"
+    >
+      {/* El CSS del usuario, ya sanitizado y prefijado con el id de este
+          mismo contenedor. Va DENTRO de él para que se vaya del documento
+          al salir del perfil, sin dejar reglas sueltas afectando al resto
+          de la app. */}
+      <CssDePerfil css={perfil.cssPropio} />
+
       {/* Aviso solo para el dueño de un perfil sin publicar. */}
       {esPropio && !perfil.publicado && (
         <div

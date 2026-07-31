@@ -270,6 +270,19 @@ export const en: Catalogo = {
     tipografia: 'Font',
     redondez: 'Corner roundness: {{radio}}px',
 
+    cssPropio: 'Custom CSS',
+    cssAbrir: 'Open',
+    cssAyuda:
+      'For when the theme is not enough. Your CSS only affects your profile: it cannot touch the rest of Wander or anyone else’s profile.',
+    cssEtiqueta: 'Your CSS',
+    // The <codigo> is a <code> holding the container selector.
+    cssScope:
+      'All your selectors are scoped to <codigo>{{scope}}</codigo> automatically, so write them as if your profile were the whole page. Rules that would escape it (like <codigo>position: fixed</codigo>) and rules that would load files from other sites are stripped.',
+    cssGuardar: 'Save CSS',
+    cssGuardando: 'Saving…',
+    cssRestaurar: 'Reset',
+    cssAvisosTitulo: 'Saved, but some things could not be accepted:',
+
     bloques: 'Blocks',
     anadirBloque: 'Add block',
     guardarBloque: 'Save block',
