@@ -707,6 +707,22 @@ export const es = {
       'Esta persona te escribió por primera vez. Si aceptas, la conversación pasa a tu bandeja.',
     aceptar: 'Aceptar',
     enviarMensaje: 'Enviar mensaje',
+    mensaje: 'Mensaje',
+    noSePudoAbrir: 'No se pudo abrir la conversación.',
+
+    // ── Empezar una conversación (Fase 10) ──
+    nuevaConversacion: 'Nueva conversación',
+    nuevoGrupo: 'Nuevo grupo',
+    buscarPersonas: 'Busca por nombre o @handle…',
+    sinResultados: 'Nadie coincide con esa búsqueda.',
+    nombreDelGrupo: 'Nombre del grupo',
+    crearGrupo: 'Crear grupo',
+    elegidas_one: '{{count}} persona elegida',
+    elegidas_other: '{{count}} personas elegidas',
+    quitar: 'Quitar',
+    faltaNombre: 'Ponle un nombre al grupo.',
+    faltaGente: 'Elige al menos a una persona.',
+    cancelar: 'Cancelar',
     // Los mensajes de sistema se guardan como una clave y se traducen aquí:
     // el mismo evento lo leen personas con la interfaz en distintos idiomas.
     'evento.participante-anadido': '{{quien}} añadió a {{objetivo}}',

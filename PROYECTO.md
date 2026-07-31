@@ -4,7 +4,8 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 31 de julio de 2026 (Fase 8 completa)
+> **Última actualización:** 31 de julio de 2026 (Fase 10 en curso: emojis, GIFs y el
+> arranque de conversaciones)
 
 ---
 
@@ -18,9 +19,11 @@ una colección de perfiles sueltos —se sigue gente, hay un feed, se comenta y 
 descubre—, desde la 8 la gente además se habla: mensajes directos, grupos, imágenes,
 GIFs y emojis, con una campana que avisa de todo lo que pasa, y desde la 9 quien sepa CSS
 puede escribir el suyo y que solo afecte a su perfil.** Lo único que le falta a
-la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). Lo
-siguiente es la **Fase 10 (pulido)**. La traducción de contenido sigue **aplazada
-hasta nuevo aviso** (ver §8).
+la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). La
+**Fase 10 (pulido) está en curso**: ya se arreglaron los tres fallos que dejó la 8 —el
+selector de emojis, que no pintaba nada; el de GIFs, que se salía de la pantalla; y la
+mensajería, que no tenía ninguna forma de *empezar* una conversación—. La traducción de
+contenido sigue **aplazada hasta nuevo aviso** (ver §8).
 
 **Ya no queda ninguna pantalla "en construcción":** `/mensajes` era la última, y con ella
 todos los enlaces de la navbar y del pie llevan a algo real.
@@ -39,7 +42,7 @@ todos los enlaces de la navbar y del pie llevan a algo real.
 | 7 | Social | ✅ **Completa** |
 | 8 | Mensajería + adjuntos + notificaciones | ✅ **Completa** (sin traducción: aplazada) |
 | 9 | CSS propio | ✅ **Completa** |
-| 10 | Pulido | ⬜ **Siguiente** |
+| 10 | Pulido | 🟡 **En curso** — arreglados los tres fallos de la 8 (emojis, GIFs y el chat sin puerta de entrada) |
 | 11 | Música de fondo | ⬜ |
 | 12 | SEO + GEO | 🟡 Landing hecha; falta el SSR de los perfiles |
 
@@ -495,10 +498,65 @@ todos los enlaces de la navbar y del pie llevan a algo real.
   contenedor del perfil sí lo hace, y el `<style>` inyectado no tiene ni un selector sin
   prefijar.
 
+**Pulido: los tres fallos que dejó la Fase 8 (Fase 10, en curso)**
+
+Los tres los reportó el usuario usando la aplicación, y los tres habían pasado por el E2E
+de la Fase 8 sin que saltara nada. Es el patrón que ya se repitió en las fases 5 y 9: las
+pruebas comprobaban que la pieza *existía*, no que *sirviera*.
+
+- **El selector de emojis no hacía nada al pulsarlo.** La causa no era el montaje —eso ya
+  se arregló en la 8— sino una **segunda descarga que nadie había visto**: emoji-mart trae
+  los datos de emojis por un lado y su catálogo de textos por otro, y con `locale: 'es'`
+  sale a buscar el segundo a `cdn.jsdelivr.net/npm/@emoji-mart/data@latest/i18n/es.json`.
+  La CSP (`connect-src 'self'`) corta esa petición, el `fetch` rechaza dentro de su
+  `connectedCallback`, y como emoji-mart no lo captura, el picker se queda con su `<style>`
+  y **cero emojis**: un panel gris que no responde. La prueba de la 8 comprobaba que el
+  elemento montaba y que montaba una sola vez —las dos cosas eran ciertas— pero nunca miró
+  si dentro había emojis. Arreglado pasando el catálogo ya importado en `i18n` en vez de
+  `locale`; `@emoji-mart/data` lo trae en el paquete, así que no hay ninguna petición.
+  Verificado en el navegador: **190 botones, buscador en español y cero peticiones
+  fallidas**.
+- **El panel de GIFs se salía por arriba de la ventana.** Los dos selectores tenían
+  `bottom-full` fijo, que es lo correcto en el chat (el compositor vive al pie) pero no en
+  el feed, donde el redactor está arriba del todo: el panel se abría hacia arriba, se
+  recortaba contra el borde de la pantalla y **la barra de búsqueda quedaba fuera**, así
+  que era imposible buscar un GIF concreto. Ahora la dirección se **mide** en
+  `lib/desplegable.ts` (`useColocacion`) y el alto se limita al hueco real.
+  · Dos detalles que costaron una vuelta cada uno: se mide el **`offsetParent`** y no el
+  panel —el panel ya está desplazado por la colocación que se decidió antes, así que
+  medirlo a él es preguntarle al resultado por la respuesta— y el alto del picker se impone
+  **sobre el elemento**, porque emoji-mart lo fija a `435px` en su `:host` y un estilo en el
+  elemento gana a `:host` (la misma regla de especificidad de la Fase 9, al revés).
+- **La mensajería no tenía puerta de entrada.** `abrirDm` y `crearGrupo` existían desde la
+  Fase 8, en el backend y en `lib/mensajes.ts`, y **ningún componente los llamaba**: se
+  podía leer y contestar una conversación, pero no empezarla, así que la bandeja solo se
+  llenaba si alguien te escribía primero. Se añaden las dos vías que faltaban: un botón
+  **«Mensaje»** en el perfil público (junto a Seguir y Bloquear) y un diálogo **«Nueva
+  conversación»** en `/mensajes`, con buscador de personas y un interruptor DM/grupo — la
+  diferencia real entre ambos es «una persona o varias», y separarlos en dos pantallas
+  obligaría a decidir antes de empezar a buscar.
+- **El botón respeta `privacidadDm` y lo explica.** Con el valor por defecto (`seguidos`),
+  escribirle a quien no te sigue devuelve 403 y la interfaz **pinta el motivo** en vez de
+  fallar en silencio o navegar a un hilo que no existe. Comprobado como caso propio.
+- Probado en un navegador real contra el stack vivo: **16 comprobaciones de los selectores**
+  (`docs/pruebas/e2e-fase10-pickers.mjs`) —incluida una ventana de 600×500 donde el panel
+  se recorta y sigue cabiendo— y **17 de la mensajería**
+  (`docs/pruebas/e2e-fase10-mensajes.mjs`): DM desde el perfil con envío real, grupo creado
+  desde el diálogo, la conversación llegando a la otra cuenta, el perfil propio sin botón,
+  y el diálogo cabiendo en móvil (390×844).
+- **Aviso para quien corra estas suites:** los fallos que aparecieron mientras se escribían
+  fueron **todos del arnés, ninguno del producto** — selectores equivocados
+  (`aria-label="Buscar GIFs"`, no `"GIFs"`; los botones de emoji no tienen clase `.emoji`) y
+  sobre todo los **límites de tasa**: abrir un contexto de navegador por sección agota los 5
+  inicios de sesión por 15 min y la guarda de rutas manda a `/login`, con lo que la prueba
+  «falla» por algo que no está midiendo. Las suites ya inician sesión una sola vez por
+  cuenta.
+
 ### ⬜ Lo siguiente
 
-1. **Fase 10 — Pulido.** Landing completa, tarjetas OG, moderación en `/admin`, el resto de
-   los bloques (Setup PC, Galería), accesibilidad y responsive.
+1. **Fase 10 — Pulido (en curso).** Hecho: los tres fallos de arriba. Falta: landing
+   completa, tarjetas OG, moderación en `/admin`, el resto de los bloques (Setup PC,
+   Galería), accesibilidad y responsive.
 2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
 3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer

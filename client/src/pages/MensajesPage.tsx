@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bell, BellOff, Loader2, LogOut, Send, Users } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Loader2, LogOut, Send, SquarePen, Users } from 'lucide-react';
 
 import {
   leerEventoSistema,
@@ -26,6 +26,7 @@ import { useAuth } from '../store/authStore';
 import { Avatar } from '../components/social/Avatar';
 import { Adjuntos } from '../components/social/Adjuntos';
 import { BarraCompositor } from '../components/social/Compositor';
+import { NuevaConversacion } from '../components/social/NuevaConversacion';
 
 /**
  * Mensajería (Fase 8).
@@ -50,6 +51,7 @@ export function MensajesPage() {
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
   const [verSolicitudes, setVerSolicitudes] = useState(false);
   const [cargandoBandeja, setCargandoBandeja] = useState(true);
+  const [nueva, setNueva] = useState(false);
 
   // ── Bandeja ────────────────────────────────────────────────────────
 
@@ -87,6 +89,19 @@ export function MensajesPage() {
                       dark:border-zinc-800 ${conversacionId ? 'hidden' : 'block'}`}
         >
           <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-2 flex justify-end">
+              {/* La puerta de entrada que faltaba: sin esto la bandeja solo
+                  se llenaba si alguien te escribía primero. */}
+              <button
+                type="button"
+                onClick={() => setNueva(true)}
+                className="btn-primario inline-flex h-9 items-center gap-2 px-3 text-sm"
+              >
+                <SquarePen className="h-4 w-4" aria-hidden="true" />
+                {t('mensajes.nuevaConversacion')}
+              </button>
+            </div>
+
             <div className="flex gap-1" role="tablist">
               <button
                 type="button"
@@ -200,6 +215,19 @@ export function MensajesPage() {
           )}
         </main>
       </div>
+
+      {nueva && (
+        <NuevaConversacion
+          alAbrir={(id) => {
+            setNueva(false);
+            // Se recarga la bandeja: el hilo recién creado tiene que
+            // aparecer en la lista, no solo abrirse a la derecha.
+            cargarBandeja();
+            navegar(`/mensajes/${id}`);
+          }}
+          alCerrar={() => setNueva(false)}
+        />
+      )}
     </div>
   );
 }

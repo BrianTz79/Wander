@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Ban, MessageSquare, Users } from 'lucide-react';
 
@@ -12,6 +12,7 @@ import {
   type Relacion,
 } from '../../lib/social';
 import { mensajeError } from '../../lib/api';
+import { mensajes } from '../../lib/mensajes';
 import { useAuth } from '../../store/authStore';
 import { TEXTO_SUAVE } from '../../lib/perfil';
 import { Avatar } from './Avatar';
@@ -129,6 +130,14 @@ function CabeceraSocial({
           <BotonSeguir relacion={relacion} alCambiar={alCambiar} temaDePerfil />
         )}
 
+        {/* Empezar un DM desde el perfil (Fase 10).
+            La API existía desde la Fase 8, pero no había ningún botón en
+            toda la interfaz que la llamara: se podía leer una conversación
+            y contestarla, pero no iniciarla. */}
+        {usuario && !relacion.esPropio && !relacion.bloqueado && (
+          <BotonMensaje handle={relacion.handle} />
+        )}
+
         {usuario && !relacion.esPropio && (
           <button
             type="button"
@@ -152,6 +161,61 @@ function CabeceraSocial({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Botón de «Mensaje» del perfil: abre el DM y lleva a él.
+ *
+ * `abrirDm` es idempotente en el servidor, así que pulsarlo dos veces
+ * lleva al MISMO hilo en vez de partir la conversación en dos.
+ *
+ * Va con el tema del perfil (`--p-*`) como el resto de la cabecera: dentro
+ * de `/u/:handle` manda la personalización de quien lo tiene.
+ */
+function BotonMensaje({ handle }: { handle: string }) {
+  const { t } = useTranslation();
+  const navegar = useNavigate();
+  const [abriendo, setAbriendo] = useState(false);
+  const [error, setError] = useState('');
+
+  async function abrir() {
+    if (abriendo) return;
+    setAbriendo(true);
+    setError('');
+    try {
+      const { conversacionId } = await mensajes.abrirDm(handle);
+      navegar(`/mensajes/${conversacionId}`);
+    } catch (e) {
+      // Puede fallar legítimamente: quien tenga los DMs cerrados no acepta
+      // que se le escriba, y el servidor lo dice con su propio mensaje.
+      setError(mensajeError(e));
+      setAbriendo(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={abrir}
+        disabled={abriendo}
+        className="inline-flex h-10 items-center gap-2 px-3 text-sm font-medium transition-transform hover:scale-105 disabled:opacity-60"
+        style={{
+          border: '1px solid var(--p-borde)',
+          borderRadius: 'var(--p-radio)',
+        }}
+      >
+        <MessageSquare className="h-4 w-4" aria-hidden="true" />
+        {t('mensajes.mensaje')}
+      </button>
+
+      {error && (
+        <p className="w-full text-sm" style={{ color: 'var(--p-acento)' }}>
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 

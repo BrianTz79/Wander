@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { archivos, type Gif } from '../../lib/archivos';
+import { useColocacion } from '../../lib/desplegable';
 
 /**
  * Buscador de GIFs (Fase 8).
@@ -22,8 +23,10 @@ export function SelectorGif({ alElegir, alCerrar }: Props) {
   const [termino, setTermino] = useState('');
   const [gifs, setGifs] = useState<Gif[]>([]);
   const [cargando, setCargando] = useState(true);
-  const panel = useRef<HTMLDivElement>(null);
   const peticion = useRef(0);
+  // El propio panel es el ancla: se mide dónde está para decidir hacia qué
+  // lado abrirse y cuánto puede medir.
+  const { ancla: panel, colocacion } = useColocacion<HTMLDivElement>();
 
   /*
    * Búsqueda con rebote de 350 ms. Sin él, escribir "gato" son cuatro
@@ -76,8 +79,15 @@ export function SelectorGif({ alElegir, alCerrar }: Props) {
   return (
     <div
       ref={panel}
-      className="absolute bottom-full left-0 z-50 mb-2 w-80 rounded-xl border border-zinc-200
-                 bg-white p-3 shadow-lg sm:w-96 dark:border-zinc-800 dark:bg-zinc-900"
+      /* La dirección la decide el hueco que haya (ver `useColocacion`): en
+         el chat el compositor está abajo y el panel sube; en el feed está
+         arriba y baja. Fijarlo a `bottom-full` dejaba el buscador fuera de
+         la pantalla en el feed. */
+      className={`absolute left-0 z-50 flex w-80 flex-col rounded-xl border border-zinc-200
+                  bg-white p-3 shadow-lg sm:w-96 dark:border-zinc-800 dark:bg-zinc-900 ${
+                    colocacion.haciaArriba ? 'bottom-full mb-2' : 'top-full mt-2'
+                  }`}
+      style={{ maxHeight: colocacion.altoMaximo }}
     >
       <input
         type="search"
@@ -87,12 +97,15 @@ export function SelectorGif({ alElegir, alCerrar }: Props) {
         aria-label={t('compositor.buscarGifs')}
         autoFocus
         maxLength={60}
-        className="mb-3 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm
+        className="mb-3 w-full shrink-0 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm
                    text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none
                    dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
       />
 
-      <div className="max-h-72 overflow-y-auto overscroll-contain">
+      {/* `min-h-0` es lo que permite que este hijo encoja dentro del flex y
+          que el scroll salga AQUÍ y no en el panel entero: sin él, el
+          buscador y la atribución se irían fuera con la lista. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {cargando && (
           <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             {t('comun.cargando')}
@@ -129,7 +142,7 @@ export function SelectorGif({ alElegir, alCerrar }: Props) {
       </div>
 
       {/* Giphy exige atribución visible al usar su API. */}
-      <p className="mt-2 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
+      <p className="mt-2 shrink-0 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
         {t('compositor.viaGiphy')}
       </p>
     </div>
