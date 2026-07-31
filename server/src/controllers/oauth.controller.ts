@@ -127,6 +127,19 @@ export async function callback(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  /*
+   * `v` es opcional en el tipo porque el state también lo usa Steam, que no
+   * hace PKCE. Aquí, en un callback de OAuth, su ausencia es imposible
+   * —`leerState` la rechaza para estos proveedores— pero se comprueba en
+   * vez de forzar el tipo: un canje sin verificador es justo lo que PKCE
+   * existe para impedir.
+   */
+  if (typeof contenido.v !== 'string') {
+    logger.warn({ proveedor }, 'State de OAuth sin verificador PKCE');
+    volver(res, destinoFallo, 'error', 'state');
+    return;
+  }
+
   // ── Canje del código e identidad ──
   let identidad: IdentidadRemota;
   let tokens;
@@ -311,7 +324,10 @@ async function vincular(
    * Discord. Vincular a quien inició el flujo es lo correcto, pero hay que
    * confirmar que esa cuenta sigue existiendo.
    */
-  const usuario = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  const usuario = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true },
+  });
   if (!usuario) {
     volver(res, '/login', 'error', 'sesion');
     return;
@@ -363,6 +379,39 @@ async function vincular(
       ...guardables,
     },
   });
+
+  /*
+   * ── Adoptar el correo, si la cuenta no tenía ninguno ──
+   *
+   * Quien se registró con Steam no tiene correo ni contraseña: Steam no da
+   * el primero y no hace falta el segundo. Si esa persona vincula Google,
+   * darle el correo verificado le devuelve una vía de recuperación, y sin
+   * él quedaría con Steam como único acceso para siempre.
+   *
+   * Solo se hace cuando el usuario NO tenía correo: sobrescribir uno ya
+   * existente cambiaría en silencio la dirección de recuperación de la
+   * cuenta, que es justo la clase de movimiento que un secuestro
+   * necesita. Y solo si el proveedor lo da por verificado — un correo sin
+   * verificar es una afirmación, no un hecho (§ `entrar`).
+   */
+  if (!usuario.email && identidad.email && identidad.emailVerificado) {
+    const correo = identidad.email.toLowerCase();
+    // El `email` es @unique: si ya es de otra cuenta, no se toca nada. El
+    // vínculo en sí ya quedó hecho arriba, que es lo que se pidió; el
+    // correo es un extra que no debe hacer fracasar la vinculación.
+    const ocupado = await prisma.user.findUnique({ where: { email: correo }, select: { id: true } });
+    if (!ocupado) {
+      await prisma.user
+        .update({ where: { id: userId }, data: { email: correo, emailVerified: true } })
+        .catch((error) => {
+          // Carrera: alguien registró ese correo entre la consulta y el
+          // update. El vínculo es válido igualmente, así que no se rompe.
+          logger.warn({ error, userId, proveedor }, 'No se pudo adoptar el correo al vincular');
+        });
+    } else if (ocupado.id !== userId) {
+      logger.info({ userId, proveedor }, 'El correo del proveedor ya es de otra cuenta: no se adopta');
+    }
+  }
 
   await auditar(userId, 'vinculacion', { proveedor }, req);
   logger.info({ userId, proveedor }, 'Cuenta vinculada');

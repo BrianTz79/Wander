@@ -67,8 +67,14 @@ router.get('/handle-disponible', limiteBusqueda, asyncHandler(ctrl.handleDisponi
  * El callback lleva `limiteAuth` igual que el login: es una ruta anónima
  * que dispara una petición saliente a Steam por cada visita, así que sin
  * límite es un amplificador gratuito para quien quiera abusar de ella.
+ *
+ * `authOpcional` y no `requiereAuth`, igual que en las rutas de OAuth: la
+ * MISMA ruta sirve para entrar (sin sesión) y para vincular (con sesión).
+ * El controlador decide la intención al salir y la firma dentro del
+ * `state`. Sin este middleware, `iniciarSteam` no vería nunca la sesión y
+ * todo flujo sería un "entrar" — que es el bug de las cuentas duplicadas.
  */
-router.get('/steam', limiteOAuth, steam.iniciarSteam);
+router.get('/steam', limiteOAuth, authOpcional, steam.iniciarSteam);
 router.get('/steam/callback', limiteOAuth, asyncHandler(steam.callbackSteam));
 
 export default router;

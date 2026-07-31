@@ -1341,7 +1341,7 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | # | Fase | Qué entrega |
 |---|---|---|
 | 1 | ✅ **Andamio + deploy** | Compose con 4 servicios, Prisma inicial, "Hola" en el front, `/api/health`, túnel arriba. Valida la cadena completa antes de escribir features. |
-| 2 | 🟡 **Auth** | Correo+contraseña (zod, argon2id, JWT en cookie httpOnly, rate limit) ✅ + Steam OpenID ✅. Registro, login, logout y sesión persistente ✅. Falta solo la verificación de correo, aplazada (ver §0). |
+| 2 | 🟡 **Auth** | Correo+contraseña (zod, argon2id, JWT en cookie httpOnly, rate limit) ✅ + Steam OpenID ✅. Registro, login, logout y sesión persistente ✅. Steam distingue entrar de vincular con el mismo `state` firmado que OAuth (corregido el 31/07; ver el histórico al final de §11). Falta solo la verificación de correo, aplazada (ver §0). |
 | 3 | ✅ **Perfil mínimo** | `Perfil`+`Bloque`, editor con 3 bloques (Hero, Texto, Enlaces), reordenar, `/u/:handle` público. **Aquí ya es usable.** |
 | 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
 | 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
@@ -1358,6 +1358,32 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Vincular Steam creaba una segunda cuenta (corregido)**
+
+Lo encontró un usuario de prueba: entró con Google, pulsó «conectar Steam» en
+`/configuracion` y acabó con **dos cuentas separadas** en vez de una vinculada.
+
+- **La causa.** El flujo de Steam no distinguía «entrar» de «vincular». `iniciarSteam` era
+  un `res.redirect()` que no miraba la sesión, y el callback, al no encontrar el SteamID,
+  caía siempre en la rama de cuenta nueva. OAuth (Discord/Google) sí hacía esa distinción
+  desde la Fase 6; Steam se quedó atrás porque llegó antes, en la Fase 2.
+- **El arreglo.** Steam usa ahora el **mismo `state` firmado** que OAuth: la intención se
+  decide al salir (según haya sesión o no) y viaja dentro. Se reutilizó `crearState`/
+  `leerState` en vez de escribir una pieza paralela, para que ambos flujos caduquen, se
+  firmen y se validen igual. `authOpcional` en la ruta `/api/auth/steam` es lo que permite
+  ver la sesión al salir.
+- **El `state` va dentro de `openid.return_to`**, porque OpenID 2.0 no tiene campo propio
+  para él. Y `verificarRespuestaSteam` comprueba que el `state` de la query **coincida con
+  el del `return_to` firmado**: sin eso el state sería decorativo —va fuera de los campos
+  `openid.*`, así que cambiarlo no rompe la firma de Steam— y se podría pegar una respuesta
+  legítima al flujo de otra persona.
+- **De regalo, la protección CSRF** que este callback no tenía, y que OAuth sí.
+- **Vincular Google/Discord adopta el correo verificado** si la cuenta no tenía ninguno.
+  Quien se registra con Steam no tiene correo ni contraseña: sin esto quedaba con Steam
+  como único acceso para siempre. Solo se adopta si el campo estaba vacío — sobrescribir un
+  correo existente cambiaría en silencio la vía de recuperación de la cuenta.
+- Las dos cuentas del incidente se borraron para que la persona pudiera repetirlo limpio.
 
 **31/07/2026 — Fase 9 desplegada: CSS propio con red debajo**
 

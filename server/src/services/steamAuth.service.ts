@@ -21,22 +21,36 @@ import { env } from '../config/env';
 const STEAM_OPENID = 'https://steamcommunity.com/openid/login';
 const IDENTIFICADOR_OPENID = 'http://specs.openid.net/auth/2.0/identifier_select';
 
-/** De dónde cuelga el callback. Se deriva de PUBLIC_URL para que en
- *  producción apunte al dominio real y no a localhost. */
-function urlCallback(): string {
-  return new URL('/api/auth/steam/callback', env.PUBLIC_URL).toString();
+/**
+ * De dónde cuelga el callback. Se deriva de PUBLIC_URL para que en
+ * producción apunte al dominio real y no a localhost.
+ *
+ * El `state` se cuelga aquí, del `return_to`, porque OpenID 2.0 no tiene
+ * un parámetro propio para él como sí tiene OAuth: Steam devuelve al
+ * usuario a esta URL tal cual, con la query que lleve incluida.
+ */
+function urlCallback(state?: string): string {
+  const url = new URL('/api/auth/steam/callback', env.PUBLIC_URL);
+  if (state) url.searchParams.set('state', state);
+  return url.toString();
 }
 
 /**
  * URL a la que se manda al usuario para que se autentique en Steam.
  * `return_to` tiene que caer dentro de `realm` o Steam rechaza la
  * petición.
+ *
+ * El `state` va dentro del `return_to`, y eso importa más de lo que
+ * parece: `openid.return_to` es uno de los campos que cubre la firma de
+ * Steam, y `verificarRespuestaSteam` comprueba además que el `return_to`
+ * firmado coincida con la URL por la que llegó la petición. Así el state
+ * queda atado a la firma sin necesidad de un campo propio.
  */
-export function urlAutenticacionSteam(): string {
+export function urlAutenticacionSteam(state: string): string {
   const parametros = new URLSearchParams({
     'openid.ns': 'http://specs.openid.net/auth/2.0',
     'openid.mode': 'checkid_setup',
-    'openid.return_to': urlCallback(),
+    'openid.return_to': urlCallback(state),
     'openid.realm': new URL(env.PUBLIC_URL).origin,
     'openid.identity': IDENTIFICADOR_OPENID,
     'openid.claimed_id': IDENTIFICADOR_OPENID,
@@ -72,6 +86,30 @@ export async function verificarRespuestaSteam(
   const coincidencia = RE_CLAIMED_ID.exec(claimedId);
   if (!coincidencia) return null;
   const steamId = coincidencia[1]!;
+
+  /*
+   * El `state` de la query tiene que ser el MISMO que viaja dentro del
+   * `openid.return_to` firmado.
+   *
+   * Sin esta comprobación el state sería decorativo: va fuera de los
+   * campos `openid.*`, así que cambiarlo en la URL no rompe la firma de
+   * Steam. Alguien podría tomar una respuesta legítima de Steam y
+   * pegarle el state de otro flujo —por ejemplo, el "vincular" de la
+   * víctima— y colar su propio SteamID en la cuenta ajena. Comparar
+   * ambos valores es lo que ata la intención a la respuesta firmada.
+   */
+  const returnTo = query['openid.return_to'];
+  if (typeof returnTo !== 'string') return null;
+
+  let stateFirmado: string | null;
+  try {
+    stateFirmado = new URL(returnTo).searchParams.get('state');
+  } catch {
+    return null;
+  }
+
+  const stateRecibido = typeof query['state'] === 'string' ? query['state'] : null;
+  if (stateFirmado !== stateRecibido) return null;
 
   // Se reenvía TODO lo que empieza por `openid.` sin reinterpretarlo: la
   // firma cubre esos campos y cualquier "limpieza" por nuestra parte la

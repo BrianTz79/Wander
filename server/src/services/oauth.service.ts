@@ -39,6 +39,22 @@ export function esProveedor(valor: string): valor is Proveedor {
   return (PROVEEDORES as readonly string[]).includes(valor);
 }
 
+/**
+ * Proveedores que pueden aparecer dentro de un `state` firmado.
+ *
+ * Steam no es un `Proveedor` de OAuth —habla OpenID 2.0 y no pasa por
+ * `canjearCodigo` ni por `urlAutorizacion`— pero sí necesita el mismo
+ * `state` para llevar la intención (entrar o vincular) desde la salida
+ * hasta el callback. Reutilizar esta pieza en vez de escribir una
+ * paralela es lo que garantiza que ambos flujos caduquen igual, se
+ * firmen igual y se validen igual.
+ */
+export type ProveedorConState = Proveedor | 'steam';
+
+function esProveedorConState(valor: string): valor is ProveedorConState {
+  return valor === 'steam' || esProveedor(valor);
+}
+
 interface DefinicionProveedor {
   nombre: string;
   autorizacion: string;
@@ -128,10 +144,12 @@ interface ContenidoState {
   /** userId, solo en `vincular`. Fija a QUIÉN se vincula la cuenta desde
    *  antes de salir a Discord: al volver no se depende de la sesión. */
   u?: string;
-  /** Verificador PKCE. */
-  v: string;
+  /** Verificador PKCE. Ausente en Steam, que no usa PKCE: OpenID 2.0 no
+   *  canjea ningún código, la respuesta la valida `check_authentication`
+   *  contra el propio Steam. */
+  v?: string;
   /** Proveedor: impide reusar un state de Discord en el callback de Google. */
-  p: Proveedor;
+  p: ProveedorConState;
   /** Caducidad (epoch ms). Un state eterno es un flujo replayable. */
   e: number;
   /** Aleatorio, para que dos flujos idénticos no produzcan el mismo state. */
@@ -167,7 +185,10 @@ export function crearState(datos: Omit<ContenidoState, 'e' | 'n'>): string {
  * problema — firma mala, caducado, o del proveedor equivocado — sin
  * distinguir cuál, porque quien manda un state inválido no merece pistas.
  */
-export function leerState(state: unknown, proveedorEsperado: Proveedor): ContenidoState | null {
+export function leerState(
+  state: unknown,
+  proveedorEsperado: ProveedorConState
+): ContenidoState | null {
   if (typeof state !== 'string' || state.length > 2048) return null;
 
   const separador = state.lastIndexOf('.');
@@ -188,9 +209,17 @@ export function leerState(state: unknown, proveedorEsperado: Proveedor): Conteni
   }
 
   if (typeof contenido.e !== 'number' || contenido.e < Date.now()) return null;
+  if (typeof contenido.p !== 'string' || !esProveedorConState(contenido.p)) return null;
   if (contenido.p !== proveedorEsperado) return null;
   if (contenido.i !== 'login' && contenido.i !== 'vincular') return null;
-  if (typeof contenido.v !== 'string' || contenido.v.length < 16) return null;
+  // PKCE solo lo usan los proveedores OAuth. En Steam, un `v` presente
+  // sería un campo que nadie va a comprobar, así que se exige ausente en
+  // vez de ignorarlo.
+  if (contenido.p === 'steam') {
+    if (contenido.v !== undefined) return null;
+  } else if (typeof contenido.v !== 'string' || contenido.v.length < 16) {
+    return null;
+  }
   if (contenido.i === 'vincular' && typeof contenido.u !== 'string') return null;
 
   return contenido;
