@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 /**
  * Botón de "entrar con Steam".
  *
@@ -8,8 +10,13 @@
  *
  * Por eso tampoco lleva `target="_blank"`: la vuelta tiene que ocurrir en
  * la misma pestaña para que el usuario acabe dentro de la app.
+ *
+ * `registro` cambia el texto a "crear cuenta" en vez de "continuar". Antes
+ * era una prop de texto libre; ahora es un booleano porque el texto sale
+ * del catálogo y quien lo usa no tiene por qué traducirlo.
  */
-export function BotonSteam({ texto = 'Continuar con Steam' }: { texto?: string }) {
+export function BotonSteam({ registro = false }: { registro?: boolean }) {
+  const { t } = useTranslation();
   return (
     <a
       href="/api/auth/steam"
@@ -18,7 +25,7 @@ export function BotonSteam({ texto = 'Continuar con Steam' }: { texto?: string }
       rel="noopener"
     >
       <IconoSteam className="h-5 w-5" />
-      {texto}
+      {t(registro ? 'proveedores.crearSteam' : 'proveedores.continuarSteam')}
     </a>
   );
 }
@@ -44,20 +51,22 @@ function IconoSteam({ className }: { className?: string }) {
  * navegación real del navegador, misma pestaña, logotipo como SVG inline
  * para no depender de un CDN externo ni tener que abrirlo en la CSP.
  */
-export function BotonDiscord({ texto = 'Continuar con Discord' }: { texto?: string }) {
+export function BotonDiscord({ registro = false }: { registro?: boolean }) {
+  const { t } = useTranslation();
   return (
     <a href="/api/oauth/discord" className="btn-secundario h-11 w-full" rel="noopener">
       <IconoDiscord className="h-5 w-5" />
-      {texto}
+      {t(registro ? 'proveedores.crearDiscord' : 'proveedores.continuarDiscord')}
     </a>
   );
 }
 
-export function BotonGoogle({ texto = 'Continuar con Google' }: { texto?: string }) {
+export function BotonGoogle({ registro = false }: { registro?: boolean }) {
+  const { t } = useTranslation();
   return (
     <a href="/api/oauth/google" className="btn-secundario h-11 w-full" rel="noopener">
       <IconoGoogle className="h-5 w-5" />
-      {texto}
+      {t(registro ? 'proveedores.crearGoogle' : 'proveedores.continuarGoogle')}
     </a>
   );
 }
@@ -103,10 +112,11 @@ function IconoGoogle({ className }: { className?: string }) {
 
 /** Separador "o" entre el formulario y el acceso con Steam. */
 export function SeparadorO() {
+  const { t } = useTranslation();
   return (
     <div className="my-5 flex items-center gap-3" aria-hidden="true">
       <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-      <span className="text-xs uppercase tracking-wide text-zinc-400">o</span>
+      <span className="text-xs uppercase tracking-wide text-zinc-400">{t('proveedores.o')}</span>
       <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
     </div>
   );

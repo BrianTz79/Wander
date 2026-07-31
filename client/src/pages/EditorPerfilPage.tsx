@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   AlertCircle,
   Check,
@@ -50,6 +51,7 @@ import { ProveedorDiscord, useDiscord } from '../lib/discordContexto';
  * página pública, así que lo que se ve aquí es lo que verá cualquiera.
  */
 export function EditorPerfilPage() {
+  const { t } = useTranslation();
   const usuarioAuth = useAuth((e) => e.usuario);
   const { perfil, usuario, cargando, errorCarga, guardado, cargar } = useEditor();
 
@@ -60,7 +62,7 @@ export function EditorPerfilPage() {
   if (cargando) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center" role="status">
-        <span className="sr-only">Cargando editor…</span>
+        <span className="sr-only">{t('editor.cargando')}</span>
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900
                      dark:border-zinc-700 dark:border-t-white"
@@ -73,7 +75,7 @@ export function EditorPerfilPage() {
   if (errorCarga || !perfil || !usuario) {
     return (
       <div className="contenedor-app py-24 text-center">
-        <p className="text-zinc-600 dark:text-zinc-400">{errorCarga ?? 'Algo salió mal.'}</p>
+        <p className="text-zinc-600 dark:text-zinc-400">{errorCarga ?? t('comun.algoSalioMal')}</p>
       </div>
     );
   }
@@ -89,13 +91,18 @@ export function EditorPerfilPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Editor de perfil
+            {t('editor.titulo')}
           </h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Tu perfil vive en{' '}
-            <Link to={`/u/${usuarioAuth?.handle}`} className="enlace-acento font-mono">
-              /u/{usuarioAuth?.handle}
-            </Link>
+            <Trans
+              i18nKey="editor.tuPerfilVive"
+              values={{ handle: usuarioAuth?.handle }}
+              components={{
+                perfil: (
+                  <Link to={`/u/${usuarioAuth?.handle}`} className="enlace-acento font-mono" />
+                ),
+              }}
+            />
           </p>
         </div>
 
@@ -117,7 +124,7 @@ export function EditorPerfilPage() {
         {/* ── Vista previa ── */}
         <div className="min-w-0">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Vista previa
+            {t('editor.vistaPrevia')}
           </p>
           <div
             className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
@@ -129,7 +136,7 @@ export function EditorPerfilPage() {
             >
               {perfil.bloques.filter((b) => b.visible).length === 0 && (
                 <p className="py-24 text-center text-sm" style={{ opacity: 0.6 }}>
-                  Añade bloques para dar vida a tu perfil.
+                  {t('editor.sinBloques')}
                 </p>
               )}
               {perfil.bloques
@@ -154,6 +161,7 @@ export function EditorPerfilPage() {
 // ─────────────────────────────────────────────────────────────────────
 
 function IndicadorGuardado({ estado }: { estado: 'inactivo' | 'guardando' | 'guardado' | 'error' }) {
+  const { t } = useTranslation();
   if (estado === 'inactivo') return null;
   return (
     <span
@@ -162,19 +170,19 @@ function IndicadorGuardado({ estado }: { estado: 'inactivo' | 'guardando' | 'gua
     >
       {estado === 'guardando' && (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Guardando…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {t('editor.guardando')}
         </>
       )}
       {estado === 'guardado' && (
         <>
           <Check className="h-4 w-4 text-green-600 dark:text-green-400" aria-hidden="true" />{' '}
-          Guardado
+          {t('editor.guardado')}
         </>
       )}
       {estado === 'error' && (
         <>
-          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" /> No
-          se pudo guardar
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />{' '}
+          {t('editor.errorGuardar')}
         </>
       )}
     </span>
@@ -182,6 +190,7 @@ function IndicadorGuardado({ estado }: { estado: 'inactivo' | 'guardando' | 'gua
 }
 
 function BotonPublicar() {
+  const { t } = useTranslation();
   const { perfil, guardarPerfil } = useEditor();
   if (!perfil) return null;
 
@@ -193,11 +202,11 @@ function BotonPublicar() {
     >
       {perfil.publicado ? (
         <>
-          <EyeOff className="h-4 w-4" aria-hidden="true" /> Ocultar perfil
+          <EyeOff className="h-4 w-4" aria-hidden="true" /> {t('editor.ocultarPerfil')}
         </>
       ) : (
         <>
-          <Eye className="h-4 w-4" aria-hidden="true" /> Publicar
+          <Eye className="h-4 w-4" aria-hidden="true" /> {t('editor.publicar')}
         </>
       )}
     </button>
@@ -209,6 +218,7 @@ function BotonPublicar() {
 // ─────────────────────────────────────────────────────────────────────
 
 function PanelIdentidad() {
+  const { t } = useTranslation();
   const { usuario, guardarPerfil } = useEditor();
   const setUsuarioAuth = useAuth((e) => e.setUsuario);
   const usuarioAuth = useAuth((e) => e.usuario);
@@ -234,12 +244,14 @@ function PanelIdentidad() {
 
   return (
     <form onSubmit={alGuardar} className="tarjeta">
-      <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Identidad</h2>
+      <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+        {t('editor.identidad')}
+      </h2>
 
       {error && <p className="texto-error mb-3">{error}</p>}
 
       <label htmlFor="ed-nombre" className="etiqueta">
-        Nombre para mostrar
+        {t('editor.nombreMostrar')}
       </label>
       <input
         id="ed-nombre"
@@ -251,7 +263,7 @@ function PanelIdentidad() {
       />
 
       <label htmlFor="ed-bio" className="etiqueta">
-        Bio
+        {t('editor.bio')}
       </label>
       <textarea
         id="ed-bio"
@@ -260,12 +272,12 @@ function PanelIdentidad() {
         maxLength={500}
         rows={4}
         className="campo mb-1 h-auto resize-y py-3"
-        placeholder="Cuenta quién eres como jugador."
+        placeholder={t('editor.bioPlaceholder')}
       />
       <p className="mb-4 text-right text-xs text-zinc-400">{bio.length}/500</p>
 
       <button type="submit" disabled={sinCambios || !nombre.trim()} className="btn-primario h-10 w-full">
-        Guardar identidad
+        {t('editor.guardarIdentidad')}
       </button>
     </form>
   );
@@ -283,16 +295,16 @@ function PanelIdentidad() {
  * ir y volver sin perder nada de lo escrito.
  */
 function PanelPlantillas() {
+  const { t } = useTranslation();
   const { perfil, aplicarPlantilla } = useEditor();
   if (!perfil) return null;
 
   return (
     <section className="tarjeta">
-      <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-white">Plantillas</h2>
-      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-        Un punto de partida. Cambia solo los colores y la tipografía: tus bloques se quedan como
-        están.
-      </p>
+      <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-white">
+        {t('editor.plantillas')}
+      </h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{t('editor.plantillasAyuda')}</p>
 
       <ul className="grid grid-cols-2 gap-2">
         {PLANTILLAS.map((plantilla) => {
@@ -303,7 +315,7 @@ function PanelPlantillas() {
                 type="button"
                 onClick={() => void aplicarPlantilla(plantilla.id)}
                 aria-pressed={activa}
-                title={plantilla.descripcion}
+                title={t(`plantillas.${plantilla.id}Descripcion`)}
                 className={`w-full overflow-hidden rounded-xl border text-left transition-colors ${
                   activa
                     ? 'border-zinc-900 dark:border-white'
@@ -313,7 +325,7 @@ function PanelPlantillas() {
                 <MiniaturaPlantilla plantilla={plantilla} />
                 <span className="flex items-center justify-between gap-1 px-2 py-1.5">
                   <span className="truncate text-xs font-medium text-zinc-900 dark:text-white">
-                    {plantilla.nombre}
+                    {t(`plantillas.${plantilla.id}Nombre`)}
                   </span>
                   {activa && (
                     <Check
@@ -330,7 +342,7 @@ function PanelPlantillas() {
 
       {perfil.plantilla === PLANTILLA_PERSONALIZADA && (
         <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-          Tu tema está personalizado. Elegir una plantilla reemplazará los colores.
+          {t('editor.plantillaPersonalizada')}
         </p>
       )}
     </section>
@@ -373,15 +385,18 @@ function MiniaturaPlantilla({ plantilla }: { plantilla: Plantilla }) {
 //  Panel: tema
 // ─────────────────────────────────────────────────────────────────────
 
-const CAMPOS_COLOR: Array<{ clave: keyof TemaPerfil; etiqueta: string }> = [
-  { clave: 'colorFondo', etiqueta: 'Fondo' },
-  { clave: 'colorTexto', etiqueta: 'Texto' },
-  { clave: 'colorAcento', etiqueta: 'Acento' },
-  { clave: 'colorTarjeta', etiqueta: 'Tarjetas' },
-  { clave: 'colorBorde', etiqueta: 'Bordes' },
+/* Las etiquetas salen del catálogo por la misma clave: `editor.colorFondo`,
+   `editor.colorTexto`… */
+const CAMPOS_COLOR: Array<keyof TemaPerfil> = [
+  'colorFondo',
+  'colorTexto',
+  'colorAcento',
+  'colorTarjeta',
+  'colorBorde',
 ];
 
 function PanelTema() {
+  const { t } = useTranslation();
   const { perfil, cambiarTema, aplicarPlantilla } = useEditor();
   if (!perfil) return null;
 
@@ -394,7 +409,7 @@ function PanelTema() {
   return (
     <section className="tarjeta">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Tema</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{t('editor.tema')}</h2>
         {/* Restaurar = volver a la plantilla base, no solo a sus colores:
             así el perfil deja de estar marcado como "personalizada". */}
         <button
@@ -402,27 +417,33 @@ function PanelTema() {
           onClick={() => void aplicarPlantilla(PLANTILLA_POR_DEFECTO)}
           className="btn-fantasma h-8 px-3 text-xs"
         >
-          Restaurar
+          {t('editor.restaurar')}
         </button>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
-        {CAMPOS_COLOR.map(({ clave, etiqueta }) => (
-          <label key={clave} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <input
-              type="color"
-              value={String(tema[clave])}
-              onChange={(e) => poner(clave, e.target.value)}
-              className="h-8 w-10 shrink-0 cursor-pointer rounded border border-zinc-300 bg-transparent p-0.5 dark:border-zinc-700"
-              aria-label={`Color de ${etiqueta.toLowerCase()}`}
-            />
-            {etiqueta}
-          </label>
-        ))}
+        {CAMPOS_COLOR.map((clave) => {
+          const etiqueta = t(`editor.${clave}`);
+          return (
+            <label
+              key={clave}
+              className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300"
+            >
+              <input
+                type="color"
+                value={String(tema[clave])}
+                onChange={(e) => poner(clave, e.target.value)}
+                className="h-8 w-10 shrink-0 cursor-pointer rounded border border-zinc-300 bg-transparent p-0.5 dark:border-zinc-700"
+                aria-label={t('editor.colorDe', { campo: etiqueta.toLowerCase() })}
+              />
+              {etiqueta}
+            </label>
+          );
+        })}
       </div>
 
       <label htmlFor="ed-fuente" className="etiqueta">
-        Tipografía
+        {t('editor.tipografia')}
       </label>
       <select
         id="ed-fuente"
@@ -438,7 +459,7 @@ function PanelTema() {
       </select>
 
       <label htmlFor="ed-radio" className="etiqueta">
-        Redondez de esquinas: {tema.radio}px
+        {t('editor.redondez', { radio: tema.radio })}
       </label>
       <input
         id="ed-radio"
@@ -459,13 +480,16 @@ function PanelTema() {
 // ─────────────────────────────────────────────────────────────────────
 
 function PanelBloques() {
+  const { t } = useTranslation();
   const { perfil } = useEditor();
   const [abierto, setAbierto] = useState<string | null>(null);
   if (!perfil) return null;
 
   return (
     <section className="tarjeta">
-      <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Bloques</h2>
+      <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+        {t('editor.bloques')}
+      </h2>
 
       <ul className="space-y-2">
         {perfil.bloques.map((bloque, indice) => (
@@ -486,6 +510,7 @@ function PanelBloques() {
 }
 
 function MenuAnadirBloque() {
+  const { t } = useTranslation();
   const { perfil, crearBloque } = useEditor();
   const [abierto, setAbierto] = useState(false);
   if (!perfil) return null;
@@ -503,7 +528,7 @@ function MenuAnadirBloque() {
         className="btn-secundario h-10 w-full"
         aria-expanded={abierto}
       >
-        <Plus className="h-4 w-4" aria-hidden="true" /> Añadir bloque
+        <Plus className="h-4 w-4" aria-hidden="true" /> {t('editor.anadirBloque')}
       </button>
 
       {abierto && (
@@ -521,10 +546,10 @@ function MenuAnadirBloque() {
                 <def.Icono className="mt-0.5 h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true" />
                 <span>
                   <span className="block text-sm font-semibold text-zinc-900 dark:text-white">
-                    {def.nombre}
+                    {t(`bloques.${def.clave}Nombre`)}
                   </span>
                   <span className="block text-xs text-zinc-500 dark:text-zinc-400">
-                    {def.descripcion}
+                    {t(`bloques.${def.clave}Descripcion`)}
                   </span>
                 </span>
               </button>
@@ -553,6 +578,7 @@ function TarjetaBloque({
   abierto: boolean;
   alternar: () => void;
 }) {
+  const { t } = useTranslation();
   const { moverBloque, actualizarBloque, borrarBloque } = useEditor();
   const def = REGISTRO_BLOQUES[bloque.tipo];
   if (!def) return null;
@@ -567,7 +593,7 @@ function TarjetaBloque({
           className="min-w-0 flex-1 truncate text-left text-sm font-medium text-zinc-900 dark:text-white"
           aria-expanded={abierto}
         >
-          {def.nombre}
+          {t(`bloques.${def.clave}Nombre`)}
         </button>
 
         <div className="flex shrink-0 items-center">
@@ -576,7 +602,7 @@ function TarjetaBloque({
             onClick={() => void moverBloque(bloque.id, -1)}
             disabled={esPrimero}
             className="btn-fantasma h-8 w-8 px-0 disabled:opacity-30"
-            aria-label="Subir bloque"
+            aria-label={t('editor.subirBloque')}
           >
             <ChevronUp className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -585,7 +611,7 @@ function TarjetaBloque({
             onClick={() => void moverBloque(bloque.id, 1)}
             disabled={esUltimo}
             className="btn-fantasma h-8 w-8 px-0 disabled:opacity-30"
-            aria-label="Bajar bloque"
+            aria-label={t('editor.bajarBloque')}
           >
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -593,7 +619,7 @@ function TarjetaBloque({
             type="button"
             onClick={() => void actualizarBloque(bloque.id, { visible: !bloque.visible }).catch(() => undefined)}
             className="btn-fantasma h-8 w-8 px-0"
-            aria-label={bloque.visible ? 'Ocultar bloque' : 'Mostrar bloque'}
+            aria-label={bloque.visible ? t('editor.ocultarBloque') : t('editor.mostrarBloque')}
           >
             {bloque.visible ? (
               <Eye className="h-4 w-4" aria-hidden="true" />
@@ -605,7 +631,7 @@ function TarjetaBloque({
             type="button"
             onClick={() => void borrarBloque(bloque.id)}
             className="btn-fantasma h-8 w-8 px-0 text-red-500 hover:text-red-600"
-            aria-label="Eliminar bloque"
+            aria-label={t('editor.eliminarBloque')}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -633,6 +659,7 @@ function TarjetaBloque({
 // ─────────────────────────────────────────────────────────────────────
 
 function FormHero({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [tagline, setTagline] = useState(String(bloque.config['tagline'] ?? ''));
   const [mostrarBio, setMostrarBio] = useState(bloque.config['mostrarBio'] !== false);
@@ -653,7 +680,7 @@ function FormHero({ bloque }: { bloque: Bloque }) {
       {error && <p className="texto-error">{error}</p>}
       <div>
         <label htmlFor={`tag-${bloque.id}`} className="etiqueta">
-          Frase corta
+          {t('editor.frase')}
         </label>
         <input
           id={`tag-${bloque.id}`}
@@ -662,7 +689,7 @@ function FormHero({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTagline(e.target.value)}
           maxLength={120}
           className="campo h-10"
-          placeholder="Cazador de logros · main support"
+          placeholder={t('editor.frasePlaceholder')}
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
@@ -672,16 +699,17 @@ function FormHero({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setMostrarBio(e.target.checked)}
           className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
         />
-        Mostrar la bio en este bloque
+        {t('editor.mostrarBio')}
       </label>
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
     </form>
   );
 }
 
 function FormTexto({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
   const [contenido, setContenido] = useState(String(bloque.config['contenido'] ?? ''));
@@ -702,7 +730,7 @@ function FormTexto({ bloque }: { bloque: Bloque }) {
       {error && <p className="texto-error">{error}</p>}
       <div>
         <label htmlFor={`tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`tit-${bloque.id}`}
@@ -715,7 +743,7 @@ function FormTexto({ bloque }: { bloque: Bloque }) {
       </div>
       <div>
         <label htmlFor={`con-${bloque.id}`} className="etiqueta">
-          Contenido
+          {t('editor.contenido')}
         </label>
         <textarea
           id={`con-${bloque.id}`}
@@ -727,13 +755,14 @@ function FormTexto({ bloque }: { bloque: Bloque }) {
         />
       </div>
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
     </form>
   );
 }
 
 function FormEnlaces({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
 
   const iniciales = Array.isArray(bloque.config['enlaces'])
@@ -771,7 +800,7 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
 
       <div>
         <label htmlFor={`et-${bloque.id}`} className="etiqueta">
-          Título de la sección
+          {t('editor.tituloSeccion')}
         </label>
         <input
           id={`et-${bloque.id}`}
@@ -780,7 +809,7 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="Encuéntrame en"
+          placeholder={t('editor.tituloSeccionPlaceholder')}
         />
       </div>
 
@@ -794,7 +823,7 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
               maxLength={40}
               className="campo h-9 text-sm"
               placeholder="Steam"
-              aria-label={`Etiqueta del enlace ${i + 1}`}
+              aria-label={t('editor.etiquetaEnlace', { numero: i + 1 })}
             />
             <input
               type="url"
@@ -803,14 +832,14 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
               maxLength={500}
               className="campo h-9 font-mono text-xs"
               placeholder="https://steamcommunity.com/id/…"
-              aria-label={`URL del enlace ${i + 1}`}
+              aria-label={t('editor.urlEnlace', { numero: i + 1 })}
             />
           </div>
           <button
             type="button"
             onClick={() => setEnlaces((lista) => lista.filter((_, j) => j !== i))}
             className="btn-fantasma mt-1 h-8 w-8 shrink-0 px-0 text-red-500"
-            aria-label={`Quitar enlace ${i + 1}`}
+            aria-label={t('editor.quitarEnlace', { numero: i + 1 })}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -823,17 +852,17 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
           onClick={() => setEnlaces((lista) => [...lista, { etiqueta: '', url: '' }])}
           className="btn-fantasma h-9 w-full border border-dashed border-zinc-300 text-xs dark:border-zinc-700"
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Añadir enlace
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> {t('editor.anadirEnlace')}
         </button>
       )}
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
 
       <p className="flex items-center gap-1 text-xs text-zinc-400">
         <ExternalLink className="h-3 w-3" aria-hidden="true" />
-        Solo se aceptan enlaces http(s).
+        {t('editor.soloHttp')}
       </p>
     </form>
   );
@@ -856,11 +885,10 @@ function AvisoSinSteam() {
   // cerrar sesión y volver a entrar por Steam: se manda a /configuracion.
   return (
     <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-      No tienes Steam vinculado, así que este bloque no se mostrará en tu perfil.{' '}
-      <Link to="/configuracion" className="font-semibold underline">
-        Vincúlalo en configuración
-      </Link>
-      .
+      <Trans
+        i18nKey="editor.sinSteam"
+        components={{ config: <Link to="/configuracion" className="font-semibold underline" /> }}
+      />
     </p>
   );
 }
@@ -875,11 +903,10 @@ function AvisoSinDiscord() {
   if (!vinculado) {
     return (
       <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-        No tienes Discord vinculado, así que este bloque no se mostrará en tu perfil.{' '}
-        <Link to="/configuracion" className="font-semibold underline">
-          Vincúlalo en configuración
-        </Link>
-        .
+        <Trans
+          i18nKey="editor.sinDiscord"
+          components={{ config: <Link to="/configuracion" className="font-semibold underline" /> }}
+        />
       </p>
     );
   }
@@ -888,11 +915,10 @@ function AvisoSinDiscord() {
   if (!datos?.presencia) {
     return (
       <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-        Tienes Discord vinculado, pero no has activado mostrar tu estado en vivo.{' '}
-        <Link to="/configuracion" className="font-semibold underline">
-          Actívalo en configuración
-        </Link>
-        .
+        <Trans
+          i18nKey="editor.sinPresencia"
+          components={{ config: <Link to="/configuracion" className="font-semibold underline" /> }}
+        />
       </p>
     );
   }
@@ -901,16 +927,19 @@ function AvisoSinDiscord() {
   if (!datos.presencia.monitorizado) {
     return (
       <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-        Para leer tu estado en vivo hace falta que te unas al servidor de Lanyard:{' '}
-        <a
-          href="https://discord.gg/UrXF2cfJ7F"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="font-semibold underline"
-        >
-          discord.gg/UrXF2cfJ7F
-        </a>
-        . Es gratis y solo hace falta estar dentro; no tienes que participar.
+        <Trans
+          i18nKey="editor.sinLanyard"
+          components={{
+            lanyard: (
+              <a
+                href="https://discord.gg/UrXF2cfJ7F"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-semibold underline"
+              />
+            ),
+          }}
+        />
       </p>
     );
   }
@@ -919,6 +948,7 @@ function AvisoSinDiscord() {
 }
 
 function FormDiscordEstado({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
   const [actividad, setActividad] = useState(bloque.config['mostrarActividad'] !== false);
@@ -944,7 +974,7 @@ function FormDiscordEstado({ bloque }: { bloque: Bloque }) {
 
       <div>
         <label htmlFor={`dc-tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`dc-tit-${bloque.id}`}
@@ -953,31 +983,32 @@ function FormDiscordEstado({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="Discord"
+          placeholder={t('bloques.tituloDiscord')}
         />
       </div>
 
       <Casilla
         id={`dc-avt-${bloque.id}`}
-        etiqueta="Mostrar mi avatar y nombre de Discord"
+        etiqueta={t('editor.mostrarAvatarDiscord')}
         valor={avatar}
         alCambiar={setAvatar}
       />
       <Casilla
         id={`dc-act-${bloque.id}`}
-        etiqueta="Mostrar a qué estoy jugando"
+        etiqueta={t('editor.mostrarActividadDiscord')}
         valor={actividad}
         alCambiar={setActividad}
       />
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
     </form>
   );
 }
 
 function FormSpotify({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
   const [progreso, setProgreso] = useState(bloque.config['mostrarProgreso'] !== false);
@@ -1001,13 +1032,12 @@ function FormSpotify({ bloque }: { bloque: Bloque }) {
       <AvisoSinDiscord />
 
       <p className="rounded-lg bg-zinc-100 p-2.5 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400">
-        Este bloque se oculta solo cuando no estás escuchando nada, así que no deja un hueco vacío
-        en tu perfil.
+        {t('editor.spotifySeOculta')}
       </p>
 
       <div>
         <label htmlFor={`sp-tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`sp-tit-${bloque.id}`}
@@ -1016,19 +1046,19 @@ function FormSpotify({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="Sonando ahora"
+          placeholder={t('bloques.tituloSonandoAhora')}
         />
       </div>
 
       <Casilla
         id={`sp-pro-${bloque.id}`}
-        etiqueta="Mostrar la barra de progreso"
+        etiqueta={t('editor.mostrarProgreso')}
         valor={progreso}
         alCambiar={setProgreso}
       />
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
     </form>
   );
@@ -1061,6 +1091,7 @@ function Casilla({
 }
 
 function FormSteamActividad({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
   const [limite, setLimite] = useState(
@@ -1090,7 +1121,7 @@ function FormSteamActividad({ bloque }: { bloque: Bloque }) {
 
       <div>
         <label htmlFor={`sa-tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`sa-tit-${bloque.id}`}
@@ -1099,13 +1130,13 @@ function FormSteamActividad({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="Jugando últimamente"
+          placeholder={t('bloques.tituloJugandoUltimamente')}
         />
       </div>
 
       <div>
         <label htmlFor={`sa-lim-${bloque.id}`} className="etiqueta">
-          Cuántos juegos mostrar: {limite}
+          {t('editor.cuantosJuegos', { limite })}
         </label>
         <input
           id={`sa-lim-${bloque.id}`}
@@ -1120,13 +1151,13 @@ function FormSteamActividad({ bloque }: { bloque: Bloque }) {
 
       <Casilla
         id={`sa-tot-${bloque.id}`}
-        etiqueta="Mostrar también las horas totales"
+        etiqueta={t('editor.horasTotales')}
         valor={mostrarTotales}
         alCambiar={setMostrarTotales}
       />
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
       <BotonSincronizar />
     </form>
@@ -1134,6 +1165,7 @@ function FormSteamActividad({ bloque }: { bloque: Bloque }) {
 }
 
 function FormEstadisticas({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
   const [nivel, setNivel] = useState(bloque.config['mostrarNivel'] !== false);
@@ -1165,7 +1197,7 @@ function FormEstadisticas({ bloque }: { bloque: Bloque }) {
 
       <div>
         <label htmlFor={`es-tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`es-tit-${bloque.id}`}
@@ -1174,21 +1206,21 @@ function FormEstadisticas({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="En números"
+          placeholder={t('bloques.tituloEnNumeros')}
         />
       </div>
 
       <Casilla
         id={`es-jue-${bloque.id}`}
-        etiqueta="Total de juegos"
+        etiqueta={t('editor.totalJuegos')}
         valor={juegos}
         alCambiar={setJuegos}
       />
-      <Casilla id={`es-hor-${bloque.id}`} etiqueta="Horas jugadas" valor={horas} alCambiar={setHoras} />
-      <Casilla id={`es-niv-${bloque.id}`} etiqueta="Nivel de Steam" valor={nivel} alCambiar={setNivel} />
+      <Casilla id={`es-hor-${bloque.id}`} etiqueta={t('editor.horasJugadas')} valor={horas} alCambiar={setHoras} />
+      <Casilla id={`es-niv-${bloque.id}`} etiqueta={t('editor.nivelSteam')} valor={nivel} alCambiar={setNivel} />
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
       <BotonSincronizar />
     </form>
@@ -1204,6 +1236,7 @@ function FormEstadisticas({ bloque }: { bloque: Bloque }) {
  * para el usuario.
  */
 function FormFavoritos({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { actualizarBloque } = useEditor();
   const { datos, vinculado } = useSteam();
 
@@ -1245,7 +1278,7 @@ function FormFavoritos({ bloque }: { bloque: Bloque }) {
 
       <div>
         <label htmlFor={`fa-tit-${bloque.id}`} className="etiqueta">
-          Título
+          {t('editor.tituloCampo')}
         </label>
         <input
           id={`fa-tit-${bloque.id}`}
@@ -1254,14 +1287,14 @@ function FormFavoritos({ bloque }: { bloque: Bloque }) {
           onChange={(e) => setTitulo(e.target.value)}
           maxLength={80}
           className="campo h-10"
-          placeholder="Juegos favoritos"
+          placeholder={t('bloques.tituloFavoritos')}
         />
       </div>
 
       {vinculado && biblioteca.length > 0 && (
         <fieldset>
           <legend className="etiqueta">
-            Elige tus destacados ({appids.length}/{MAXIMO})
+            {t('editor.elegirDestacados', { elegidos: appids.length, maximo: MAXIMO })}
           </legend>
           <ul className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-zinc-200 p-1.5 dark:border-zinc-800">
             {biblioteca.map((juego) => {
@@ -1291,21 +1324,19 @@ function FormFavoritos({ bloque }: { bloque: Bloque }) {
             })}
           </ul>
           <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-            Ordenados por horas jugadas. Las horas se actualizan solas: aquí solo eliges cuáles
-            destacar.
+            {t('editor.ordenadosPorHoras')}
           </p>
         </fieldset>
       )}
 
       {vinculado && biblioteca.length === 0 && (
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Todavía no hemos podido leer tu biblioteca. Si tu perfil de Steam es privado, sus juegos
-          no son visibles ni siquiera para nosotros.
+          {t('editor.sinBiblioteca')}
         </p>
       )}
 
       <button type="submit" className="btn-primario h-9 w-full text-xs">
-        Guardar bloque
+        {t('editor.guardarBloque')}
       </button>
       <BotonSincronizar />
     </form>
@@ -1321,6 +1352,7 @@ function FormFavoritos({ bloque }: { bloque: Bloque }) {
  * cuota de la API.
  */
 function BotonSincronizar() {
+  const { t } = useTranslation();
   const { vinculado } = useSteam();
   const [estado, setEstado] = useState<'listo' | 'sincronizando' | 'hecho' | 'error'>('listo');
 
@@ -1351,11 +1383,11 @@ function BotonSincronizar() {
           className={`h-3.5 w-3.5 ${estado === 'sincronizando' ? 'animate-spin' : ''}`}
           aria-hidden="true"
         />
-        {estado === 'sincronizando' ? 'Sincronizando…' : 'Sincronizar con Steam ahora'}
+        {estado === 'sincronizando' ? t('editor.sincronizando') : t('editor.sincronizar')}
       </button>
       {estado === 'error' && (
         <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-          No se pudo sincronizar. Espera un momento y vuelve a intentar.
+          {t('editor.errorSincronizar')}
         </p>
       )}
     </div>

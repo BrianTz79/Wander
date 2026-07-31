@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { AvisoIdiomaLegal } from '../components/AvisoIdiomaLegal';
 import type { DescripcionVinculacion, DefinicionPermiso } from '../lib/cuentas';
 
 /**
@@ -39,6 +40,9 @@ export function PrivacidadPage() {
 
   return (
     <div className="contenedor-app max-w-3xl py-12">
+      {/* Igual que los términos: solo en español (Fase 6.5). */}
+      <AvisoIdiomaLegal />
+
       <header className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
           Privacidad

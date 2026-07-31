@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { RutaProtegida } from './components/RutaProtegida';
 import { useAuth } from './store/authStore';
+import { useSincronizarIdiomaDeCuenta } from './lib/idioma';
 
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
@@ -26,9 +28,14 @@ import { TerminosPage } from './pages/TerminosPage';
  * enlace a una ruta inexistente caería en el 404 y parecería un bug.
  */
 export function App() {
+  const { t } = useTranslation();
   const comprobarSesion = useAuth((e) => e.comprobarSesion);
   const cargando = useAuth((e) => e.cargando);
   const { pathname } = useLocation();
+
+  // Aplica el idioma guardado en la cuenta cuando llega la sesión, salvo
+  // que ya haya una elección hecha en este navegador (§ lib/idioma.ts).
+  useSincronizarIdiomaDeCuenta();
 
   // Una sola vez al montar: pregunta al backend si la cookie de sesión
   // sigue siendo válida y rellena el store.
@@ -42,13 +49,22 @@ export function App() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  /*
+   * Título de la pestaña. El perfil público pone el suyo (con el nombre de
+   * quien lo tiene) y al desmontarse restaura este, así que se vuelve a
+   * aplicar aquí en cada cambio de ruta y de idioma.
+   */
+  useEffect(() => {
+    document.title = t('landing.tituloPestana');
+  }, [t, pathname]);
+
   // Hasta que se resuelve la primera comprobación no se pinta nada de la
   // app: si no, se vería la navbar de invitado un instante antes de
   // cambiar a la de sesión iniciada.
   if (cargando) {
     return (
       <div className="flex min-h-screen items-center justify-center" role="status">
-        <span className="sr-only">Cargando…</span>
+        <span className="sr-only">{t('comun.cargando')}</span>
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900
                      dark:border-zinc-700 dark:border-t-white"
@@ -61,7 +77,7 @@ export function App() {
   return (
     <>
       <a href="#contenido" className="salto-contenido">
-        Saltar al contenido
+        {t('comun.saltarContenido')}
       </a>
 
       <Navbar />
@@ -89,7 +105,10 @@ export function App() {
             }
           />
 
-          <Route path="/explorar" element={<EnConstruccionPage titulo="Explorar" fase="Fase 7" />} />
+          <Route
+            path="/explorar"
+            element={<EnConstruccionPage claveTitulo="explorar" claveFase="fase7" />}
+          />
           <Route path="/u/:handle" element={<PerfilPublicoPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />
           <Route path="/terminos" element={<TerminosPage />} />
@@ -98,7 +117,7 @@ export function App() {
             path="/feed"
             element={
               <RutaProtegida>
-                <EnConstruccionPage titulo="Actividad" fase="Fase 7" />
+                <EnConstruccionPage claveTitulo="actividad" claveFase="fase7" />
               </RutaProtegida>
             }
           />
@@ -106,7 +125,7 @@ export function App() {
             path="/mensajes"
             element={
               <RutaProtegida>
-                <EnConstruccionPage titulo="Mensajes" fase="Fase 8" />
+                <EnConstruccionPage claveTitulo="mensajes" claveFase="fase8" />
               </RutaProtegida>
             }
           />

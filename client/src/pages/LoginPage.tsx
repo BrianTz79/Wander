@@ -1,46 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Compass, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
 import { erroresPorCampo, mensajeError } from '../lib/api';
 import { BotonDiscord, BotonGoogle, BotonSteam, SeparadorO } from '../components/BotonSteam';
-
-/**
- * Mensajes con los que puede volver el callback de Steam. Se traducen aquí
- * y no en el servidor porque el callback es una redirección del navegador:
- * lo único que puede mandar es un código corto en la query.
- *
- * Se leen de una tabla fija a propósito — pintar en pantalla un texto que
- * venga de la URL sería un XSS reflejado servido en bandeja.
- */
-/** Códigos que puede devolver cualquiera de los flujos externos (Steam por
- *  OpenID, Discord y Google por OAuth). Se traducen aquí para que la URL
- *  nunca enseñe jerga técnica al usuario. */
-const ERRORES_EXTERNOS: Record<string, string> = {
-  steam: 'No se pudo verificar tu cuenta de Steam. Inténtalo de nuevo.',
-  suspendido: 'Esa cuenta está suspendida.',
-  proveedor: 'No se pudo hablar con el proveedor. Inténtalo en un momento.',
-  state: 'La conexión caducó o no se pudo verificar. Inténtalo otra vez.',
-  'sin-codigo': 'El proveedor no devolvió lo necesario para continuar.',
-  creacion: 'No se pudo crear la cuenta. Inténtalo de nuevo.',
-  sesion: 'Tu sesión cambió durante el proceso. Vuelve a intentarlo.',
-  /*
-   * El caso importante: ya existe una cuenta con ese correo. NO se unen
-   * automáticamente (eso permitiría apropiarse de una cuenta ajena con solo
-   * controlar el correo), así que se explica exactamente qué hacer.
-   */
-  'correo-en-uso':
-    'Ya hay una cuenta de Wander con ese correo. Entra con tu contraseña y vincula el proveedor desde configuración.',
-};
+import { textoErrorExterno } from '../lib/erroresExternos';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const login = useAuth((e) => e.login);
   const navegar = useNavigate();
   const ubicacion = useLocation();
   const [parametros] = useSearchParams();
 
-  const errorSteam = ERRORES_EXTERNOS[parametros.get('error') ?? ''] ?? '';
+  const errorSteam = textoErrorExterno(parametros.get('error'), t);
   const canceloSteam =
     parametros.get('steam') === 'cancelado' ||
     parametros.get('discord') === 'cancelado' ||
@@ -86,11 +61,9 @@ export function LoginPage() {
             <span className="text-xl text-zinc-900 dark:text-white">Wander</span>
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Inicia sesión
+            {t('login.titulo')}
           </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Entra para seguir armando tu perfil.
-          </p>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t('login.subtitulo')}</p>
         </div>
 
         <form onSubmit={alEnviar} className="tarjeta" noValidate>
@@ -110,7 +83,7 @@ export function LoginPage() {
               className="mb-5 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm
                          text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
             >
-              Cancelaste el inicio de sesión con Steam.
+              {t('login.canceloSteam')}
             </div>
           )}
 
@@ -127,7 +100,7 @@ export function LoginPage() {
 
           <div className="mb-5">
             <label htmlFor="email" className="etiqueta">
-              Correo
+              {t('login.correo')}
             </label>
             <input
               id="email"
@@ -138,7 +111,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`campo ${errores['email'] ? 'campo-error' : ''}`}
-              placeholder="tu@ejemplo.com"
+              placeholder={t('login.correoPlaceholder')}
               aria-invalid={Boolean(errores['email'])}
               aria-describedby={errores['email'] ? 'error-email' : undefined}
             />
@@ -151,7 +124,7 @@ export function LoginPage() {
 
           <div className="mb-6">
             <label htmlFor="password" className="etiqueta">
-              Contraseña
+              {t('login.password')}
             </label>
             <div className="relative">
               <input
@@ -173,7 +146,7 @@ export function LoginPage() {
                 className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center
                            justify-center rounded-md text-zinc-500 transition-colors
                            hover:text-zinc-900 dark:hover:text-white"
-                aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-label={verPassword ? t('login.ocultarPassword') : t('login.mostrarPassword')}
               >
                 {verPassword ? (
                   <EyeOff className="h-5 w-5" aria-hidden="true" />
@@ -193,10 +166,10 @@ export function LoginPage() {
             {enviando ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Entrando…
+                {t('login.entrando')}
               </>
             ) : (
-              'Entrar'
+              t('login.entrar')
             )}
           </button>
 
@@ -209,9 +182,9 @@ export function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          ¿Todavía no tienes cuenta?{' '}
+          {t('login.sinCuenta')}{' '}
           <Link to="/registro" className="enlace-acento">
-            Crea tu perfil
+            {t('login.crearPerfil')}
           </Link>
         </p>
       </div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ArrowRight,
   Gamepad2,
@@ -39,6 +40,7 @@ export function LandingPage() {
 // ─────────────────────────────────────────────────────────────────────
 
 function Hero({ autenticado, handle }: { autenticado: boolean; handle?: string }) {
+  const { t } = useTranslation();
   return (
     <section className="relative overflow-hidden">
       {/* Rejilla de fondo (§5.2): reemplaza blobs y partículas. */}
@@ -48,42 +50,44 @@ function Hero({ autenticado, handle }: { autenticado: boolean; handle?: string }
         <div className="mx-auto max-w-3xl py-24 text-center md:py-32">
           <span className="badge mb-8">
             <Gamepad2 className="mr-2 h-4 w-4" aria-hidden="true" />
-            Tu identidad como jugador, en un solo enlace
+            {t('landing.insignia')}
           </span>
 
-          <h1 className="titulo-hero mb-6">Todo lo que juegas, en un solo lugar</h1>
+          <h1 className="titulo-hero mb-6">{t('landing.titulo')}</h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-xl font-medium text-zinc-600 md:text-3xl dark:text-zinc-400">
-            Conecta Steam y Discord, arma tu perfil con bloques y compártelo. Los datos se traen
-            solos.
+            {t('landing.subtitulo')}
           </p>
 
           <div className="flex flex-wrap justify-center gap-4">
             {autenticado ? (
               <>
                 <Link to="/editor" className="btn-primario">
-                  Editar mi perfil
+                  {t('landing.editarMiPerfil')}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <Link to={`/u/${handle}`} className="btn-secundario">
-                  Ver mi perfil
+                  {t('landing.verMiPerfil')}
                 </Link>
               </>
             ) : (
               <>
                 <Link to="/registro" className="btn-primario">
-                  Crear mi perfil
+                  {t('landing.crearMiPerfil')}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <Link to="/explorar" className="btn-secundario">
-                  Ver ejemplos
+                  {t('landing.verEjemplos')}
                 </Link>
               </>
             )}
           </div>
 
           <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-            Gratis. Sin tarjeta. Tu perfil vive en <span className="font-mono">wander/u/tu-nombre</span>.
+            <Trans
+              i18nKey="landing.gratis"
+              components={{ mono: <span className="font-mono" /> }}
+            />
           </p>
         </div>
       </div>
@@ -93,41 +97,31 @@ function Hero({ autenticado, handle }: { autenticado: boolean; handle?: string }
 
 // ─────────────────────────────────────────────────────────────────────
 
+/* Solo el icono y la clave: el texto se resuelve en el render, para que
+   cambiar de idioma no exija recargar. */
 const PASOS = [
-  {
-    icono: UserPlus,
-    titulo: 'Regístrate',
-    texto: 'Elige tu nombre de usuario. Ese es el enlace de tu perfil, y es tuyo.',
-  },
-  {
-    icono: Link2,
-    titulo: 'Conecta tus cuentas',
-    texto:
-      'Vincula Steam y Discord. Tus juegos, horas y logros aparecen sin que escribas nada a mano.',
-  },
-  {
-    icono: Share2,
-    titulo: 'Compártelo',
-    texto: 'Un enlace para tu bio, tu firma o tu servidor. Se ve bien donde lo pongas.',
-  },
+  { icono: UserPlus, clave: 'paso1' },
+  { icono: Link2, clave: 'paso2' },
+  { icono: Share2, clave: 'paso3' },
 ] as const;
 
 function ComoFunciona() {
+  const { t } = useTranslation();
   return (
     <section className="seccion-alterna">
       <div className="contenedor-seccion">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-zinc-900 md:text-5xl dark:text-white">
-            Tres pasos y está listo
+            {t('landing.pasosTitulo')}
           </h2>
           <p className="text-base leading-relaxed text-zinc-600 md:text-lg dark:text-zinc-400">
-            No hay que mantener nada actualizado a mano.
+            {t('landing.pasosSubtitulo')}
           </p>
         </div>
 
         <ol className="grid gap-6 md:grid-cols-3">
           {PASOS.map((paso, indice) => (
-            <li key={paso.titulo} className="tarjeta">
+            <li key={paso.clave} className="tarjeta">
               <div className="mb-5 flex items-center justify-between">
                 <div
                   className="flex h-11 w-11 items-center justify-center rounded-xl border
@@ -143,9 +137,11 @@ function ComoFunciona() {
                 </span>
               </div>
               <h3 className="mb-2 text-2xl font-bold text-zinc-900 dark:text-white">
-                {paso.titulo}
+                {t(`landing.${paso.clave}Titulo`)}
               </h3>
-              <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">{paso.texto}</p>
+              <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {t(`landing.${paso.clave}Texto`)}
+              </p>
             </li>
           ))}
         </ol>
@@ -157,58 +153,31 @@ function ComoFunciona() {
 // ─────────────────────────────────────────────────────────────────────
 
 const CARACTERISTICAS = [
-  {
-    icono: Gamepad2,
-    titulo: 'Los datos se traen solos',
-    texto:
-      'Vinculas Steam y tus horas, juegos y logros aparecen al momento. No es un enlace en la bio que hay que ir actualizando.',
-  },
-  {
-    icono: LayoutGrid,
-    titulo: 'Bloques que acomodas',
-    texto:
-      'Añades, quitas y reordenas: actividad, favoritos, setup del PC, galería, enlaces. Tu perfil, tu orden.',
-  },
-  {
-    icono: Palette,
-    titulo: 'Personalización de verdad',
-    texto:
-      'Colores, tipografías, fondo y bordes. Y si sabes CSS, escribes el tuyo — las plantillas son un punto de partida, no una jaula.',
-  },
-  {
-    icono: MessageSquare,
-    titulo: 'Social, no un muro muerto',
-    texto: 'Sigue gente, comenta perfiles y habla por privado, con grupos y adjuntos.',
-  },
-  {
-    icono: Lock,
-    titulo: 'Claro con tus datos',
-    texto:
-      'Cada vinculación dice qué se lee y qué se guarda. Permisos por separado y desvincular borra de verdad.',
-  },
-  {
-    icono: Share2,
-    titulo: 'Se ve bien al compartir',
-    texto: 'Tarjetas para Discord y X generadas desde tu perfil, con tu tema y tus datos.',
-  },
+  { icono: Gamepad2, clave: 'car1' },
+  { icono: LayoutGrid, clave: 'car2' },
+  { icono: Palette, clave: 'car3' },
+  { icono: MessageSquare, clave: 'car4' },
+  { icono: Lock, clave: 'car5' },
+  { icono: Share2, clave: 'car6' },
 ] as const;
 
 function Caracteristicas() {
+  const { t } = useTranslation();
   return (
     <section className="seccion">
       <div className="contenedor-seccion">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-zinc-900 md:text-5xl dark:text-white">
-            Un perfil que se mantiene solo
+            {t('landing.caracteristicasTitulo')}
           </h2>
           <p className="text-base leading-relaxed text-zinc-600 md:text-lg dark:text-zinc-400">
-            Lo que hace distinta a Wander de pegar cuatro enlaces en una bio.
+            {t('landing.caracteristicasSubtitulo')}
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {CARACTERISTICAS.map((c) => (
-            <article key={c.titulo} className="tarjeta-interactiva">
+            <article key={c.clave} className="tarjeta-interactiva">
               <div
                 className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border
                            border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"
@@ -216,9 +185,11 @@ function Caracteristicas() {
                 <c.icono className="h-5 w-5 text-zinc-700 dark:text-zinc-300" aria-hidden="true" />
               </div>
               <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">
-                {c.titulo}
+                {t(`landing.${c.clave}Titulo`)}
               </h3>
-              <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{c.texto}</p>
+              <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {t(`landing.${c.clave}Texto`)}
+              </p>
             </article>
           ))}
         </div>
@@ -229,36 +200,29 @@ function Caracteristicas() {
 
 // ─────────────────────────────────────────────────────────────────────
 
-const COMPARACION = [
-  { punto: 'Tus horas y juegos', link: 'Los escribes a mano', wander: 'Se traen de Steam solos' },
-  { punto: 'Mantenerlo al día', link: 'Te acuerdas… o no', wander: 'Se actualiza sin tocarlo' },
-  { punto: 'Aspecto', link: 'La plantilla que hay', wander: 'Tema propio y CSS si quieres' },
-  { punto: 'Estado en vivo', link: 'No existe', wander: 'Discord y Spotify en tiempo real' },
-  { punto: 'Gente', link: 'Una lista de enlaces', wander: 'Seguir, comentar y mensajes' },
-] as const;
+const COMPARACION = ['comp1', 'comp2', 'comp3', 'comp4', 'comp5'] as const;
 
 function Comparacion() {
+  const { t } = useTranslation();
   return (
     <section className="seccion-alterna">
       <div className="contenedor-seccion">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-zinc-900 md:text-5xl dark:text-white">
-            Contra un «link en la bio»
+            {t('landing.comparacionTitulo')}
           </h2>
         </div>
 
         <div className="mx-auto max-w-3xl overflow-x-auto">
           <table className="w-full border-collapse text-left">
-            <caption className="sr-only">
-              Comparación entre una página de enlaces y Wander
-            </caption>
+            <caption className="sr-only">{t('landing.comparacionLeyenda')}</caption>
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
                 <th scope="col" className="py-4 pr-4 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                  <span className="sr-only">Aspecto</span>
+                  <span className="sr-only">{t('landing.comparacionAspecto')}</span>
                 </th>
                 <th scope="col" className="px-4 py-4 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-                  Link en la bio
+                  {t('landing.comparacionLink')}
                 </th>
                 <th scope="col" className="py-4 pl-4 text-sm font-semibold text-zinc-900 dark:text-white">
                   Wander
@@ -266,19 +230,19 @@ function Comparacion() {
               </tr>
             </thead>
             <tbody>
-              {COMPARACION.map((fila) => (
-                <tr key={fila.punto} className="border-b border-zinc-200 dark:border-zinc-800/60">
+              {COMPARACION.map((clave) => (
+                <tr key={clave} className="border-b border-zinc-200 dark:border-zinc-800/60">
                   <th
                     scope="row"
                     className="py-4 pr-4 text-sm font-medium text-zinc-900 dark:text-white"
                   >
-                    {fila.punto}
+                    {t(`landing.${clave}Punto`)}
                   </th>
                   <td className="px-4 py-4 text-sm text-zinc-500 dark:text-zinc-500">
-                    {fila.link}
+                    {t(`landing.${clave}Link`)}
                   </td>
                   <td className="py-4 pl-4 text-sm text-zinc-700 dark:text-zinc-300">
-                    {fila.wander}
+                    {t(`landing.${clave}Wander`)}
                   </td>
                 </tr>
               ))}
@@ -293,6 +257,7 @@ function Comparacion() {
 // ─────────────────────────────────────────────────────────────────────
 
 function LlamadoFinal({ autenticado }: { autenticado: boolean }) {
+  const { t } = useTranslation();
   if (autenticado) return null;
 
   return (
@@ -300,13 +265,13 @@ function LlamadoFinal({ autenticado }: { autenticado: boolean }) {
       <div className="contenedor-seccion">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-zinc-900 md:text-5xl dark:text-white">
-            Arma el tuyo
+            {t('landing.finalTitulo')}
           </h2>
           <p className="mb-10 text-base leading-relaxed text-zinc-600 md:text-lg dark:text-zinc-400">
-            Toma dos minutos. Eliges tu nombre, conectas Steam y ya tienes algo que compartir.
+            {t('landing.finalTexto')}
           </p>
           <Link to="/registro" className="btn-primario">
-            Crear mi perfil
+            {t('landing.crearMiPerfil')}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>

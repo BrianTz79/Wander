@@ -9,6 +9,8 @@ export interface Usuario {
   avatarUrl: string | null;
   rol: string;
   emailVerified: boolean;
+  /** Idioma de la interfaz guardado en la cuenta: 'es' | 'en' (Fase 6.5). */
+  idioma?: string;
 }
 
 interface EstadoAuth {

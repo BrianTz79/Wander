@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Bloque } from '../../lib/perfil';
 import { useSteam } from '../../lib/steamContexto';
 import { horasDe, type JuegoSteam } from '../../lib/steam';
@@ -12,12 +13,13 @@ import { EsqueletoSteam, PortadaJuego, SinDatosSteam } from './steamComunes';
  * nadie edite nada.
  */
 export function BloqueFavoritos({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { datos, cargando, vinculado } = useSteam();
 
   const titulo =
     typeof bloque.config['titulo'] === 'string' && bloque.config['titulo'].trim() !== ''
       ? bloque.config['titulo']
-      : 'Juegos favoritos';
+      : t('bloques.tituloFavoritos');
 
   const appids = Array.isArray(bloque.config['appids'])
     ? (bloque.config['appids'] as unknown[]).filter((a): a is number => typeof a === 'number')
@@ -28,7 +30,7 @@ export function BloqueFavoritos({ bloque }: { bloque: Bloque }) {
 
   if (appids.length === 0) {
     return (
-      <SinDatosSteam titulo={titulo} mensaje="Todavía no hay juegos destacados en este perfil." />
+      <SinDatosSteam titulo={titulo} mensaje={t('bloques.sinDestacados')} />
     );
   }
 
@@ -48,7 +50,7 @@ export function BloqueFavoritos({ bloque }: { bloque: Bloque }) {
     (appid) =>
       catalogo.get(appid) ?? {
         appid,
-        nombre: `Juego #${appid}`,
+        nombre: t('bloques.juegoDesconocido', { appid }),
         minutosTotales: 0,
         minutosDosSemanas: 0,
         portada: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,

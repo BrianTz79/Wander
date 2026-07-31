@@ -13,7 +13,7 @@ import {
   rotarSesion,
 } from '../services/sesion.service';
 import { HANDLES_RESERVADOS } from '../schemas/auth.schema';
-import type { LoginInput, RegistroInput } from '../schemas/auth.schema';
+import type { LoginInput, PreferenciasInput, RegistroInput } from '../schemas/auth.schema';
 import { PLANTILLA_POR_DEFECTO } from '../schemas/plantillas';
 
 /**
@@ -121,6 +121,7 @@ function usuarioPublico(u: {
   avatarUrl: string | null;
   rol: string;
   emailVerified: boolean;
+  idioma?: string;
 }) {
   return {
     id: u.id,
@@ -130,6 +131,9 @@ function usuarioPublico(u: {
     avatarUrl: u.avatarUrl,
     rol: u.rol,
     emailVerified: u.emailVerified,
+    // Fase 6.5: el cliente lo aplica al arrancar, para que el idioma siga
+    // al usuario entre dispositivos y no solo entre pestañas.
+    idioma: u.idioma ?? 'es',
   };
 }
 
@@ -180,6 +184,7 @@ export async function registro(req: Request, res: Response): Promise<void> {
         avatarUrl: true,
         rol: true,
         emailVerified: true,
+        idioma: true,
         tokenVersion: true,
       },
     })
@@ -214,6 +219,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       avatarUrl: true,
       rol: true,
       emailVerified: true,
+      idioma: true,
       passwordHash: true,
       tokenVersion: true,
       intentosFallidos: true,
@@ -308,6 +314,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
       avatarUrl: true,
       rol: true,
       emailVerified: true,
+      idioma: true,
     },
   });
   if (!completo) throw errores.noAutenticado();
@@ -354,6 +361,7 @@ export async function yo(req: Request, res: Response): Promise<void> {
       avatarUrl: true,
       rol: true,
       emailVerified: true,
+      idioma: true,
     },
   });
   res.json({ usuario: usuario ? usuarioPublico(usuario) : null });
@@ -375,7 +383,7 @@ export async function cambiarPassword(req: Request, res: Response): Promise<void
   });
   if (!usuario?.passwordHash) {
     throw errores.invalido(
-      'Esta cuenta no tiene contraseña. Configurá una desde los ajustes de seguridad.'
+      'Esta cuenta no tiene contraseña. Configura una desde los ajustes de seguridad.'
     );
   }
 
@@ -397,6 +405,29 @@ export async function cambiarPassword(req: Request, res: Response): Promise<void
   res.json({
     mensaje: 'Contraseña actualizada. Se cerraron todas las sesiones; vuelve a iniciar sesión.',
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  PATCH /api/auth/preferencias
+// ─────────────────────────────────────────────────────────────────────
+/**
+ * Preferencias de interfaz (Fase 6.5). Hoy solo el idioma.
+ *
+ * El cliente ya cambió de idioma antes de llamar aquí y no espera la
+ * respuesta: esto es para que la preferencia sobreviva al navegador y
+ * llegue al servidor, que la necesitará cuando escriba notificaciones y
+ * correos. Por eso un fallo aquí no rompe nada en pantalla.
+ */
+export async function preferencias(req: Request, res: Response): Promise<void> {
+  if (!req.usuario) throw errores.noAutenticado();
+  const { idioma } = req.body as PreferenciasInput;
+
+  await prisma.user.update({
+    where: { id: req.usuario.id },
+    data: { idioma },
+  });
+
+  res.json({ idioma });
 }
 
 // ─────────────────────────────────────────────────────────────────────

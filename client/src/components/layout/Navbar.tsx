@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
   Compass,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../store/authStore';
 import { useTema } from '../../lib/tema';
+import { SelectorIdioma } from '../SelectorIdioma';
 
 /**
  * Navbar de la aplicación (§5.9 del sistema de diseño).
@@ -28,6 +30,7 @@ import { useTema } from '../../lib/tema';
  * donde la gente ya busca "ajustes" por convención.
  */
 export function Navbar() {
+  const { t } = useTranslation();
   const { usuario, logout } = useAuth();
   const { tema, alternar } = useTema();
   const navegar = useNavigate();
@@ -87,15 +90,15 @@ export function Navbar() {
           {/* Enlaces de escritorio */}
           <div className="hidden items-center gap-8 md:flex">
             <NavLink to="/explorar" className={claseEnlace}>
-              Explorar
+              {t('navbar.explorar')}
             </NavLink>
             {usuario && (
               <>
                 <NavLink to="/feed" className={claseEnlace}>
-                  Actividad
+                  {t('navbar.actividad')}
                 </NavLink>
                 <NavLink to="/mensajes" className={claseEnlace}>
-                  Mensajes
+                  {t('navbar.mensajes')}
                 </NavLink>
               </>
             )}
@@ -107,7 +110,7 @@ export function Navbar() {
               type="button"
               onClick={alternar}
               className="btn-fantasma h-10 w-10 px-0"
-              aria-label={tema === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'}
+              aria-label={tema === 'dark' ? t('navbar.temaClaro') : t('navbar.temaOscuro')}
             >
               {tema === 'dark' ? (
                 <Sun className="h-5 w-5" aria-hidden="true" />
@@ -115,6 +118,14 @@ export function Navbar() {
                 <Moon className="h-5 w-5" aria-hidden="true" />
               )}
             </button>
+
+            {/* Quien no tiene sesión no tiene menú de cuenta, así que su
+                única vía al idioma en escritorio es este botón. */}
+            {!usuario && (
+              <div className="hidden md:block">
+                <SelectorIdioma variante="compacto" />
+              </div>
+            )}
 
             {usuario ? (
               /* El icono suelto de Mensajes que había aquí se quitó: ya está
@@ -127,7 +138,7 @@ export function Navbar() {
                   className="btn-fantasma gap-2"
                   aria-expanded={menuCuenta}
                   aria-haspopup="menu"
-                  aria-label="Menú de cuenta"
+                  aria-label={t('navbar.menuCuenta')}
                 >
                   {usuario.avatarUrl ? (
                     <img
@@ -165,21 +176,29 @@ export function Navbar() {
                       <OpcionMenu
                         to={`/u/${usuario.handle}`}
                         Icono={User}
-                        etiqueta="Ver mi perfil"
+                        etiqueta={t('navbar.verMiPerfil')}
                         alElegir={() => setMenuCuenta(false)}
                       />
                       <OpcionMenu
                         to="/editor"
                         Icono={Pencil}
-                        etiqueta="Editar perfil"
+                        etiqueta={t('navbar.editarPerfil')}
                         alElegir={() => setMenuCuenta(false)}
                       />
                       <OpcionMenu
                         to="/configuracion"
                         Icono={Settings}
-                        etiqueta="Configuración"
+                        etiqueta={t('navbar.configuracion')}
                         alElegir={() => setMenuCuenta(false)}
                       />
+                    </div>
+
+                    {/* El idioma también vive en /configuracion; aquí está
+                        porque quien acaba de entrar y ve la interfaz en un
+                        idioma que no lee necesita cambiarlo sin tener que
+                        encontrar antes una pantalla de ajustes. */}
+                    <div className="border-t border-zinc-200 py-1 dark:border-zinc-800">
+                      <SelectorIdioma variante="menu" />
                     </div>
 
                     <div className="border-t border-zinc-200 py-1 dark:border-zinc-800">
@@ -192,7 +211,7 @@ export function Navbar() {
                                    dark:text-zinc-300 dark:hover:bg-zinc-800"
                       >
                         <LogOut className="h-4 w-4" aria-hidden="true" />
-                        Cerrar sesión
+                        {t('navbar.cerrarSesion')}
                       </button>
                     </div>
                   </div>
@@ -204,7 +223,7 @@ export function Navbar() {
                   to="/login"
                   className="btn-fantasma"
                 >
-                  Iniciar sesión
+                  {t('navbar.iniciarSesion')}
                 </Link>
                 <Link
                   to="/registro"
@@ -213,7 +232,7 @@ export function Navbar() {
                              hover:scale-105 hover:bg-zinc-800 active:scale-95
                              dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
                 >
-                  Crear perfil
+                  {t('navbar.crearPerfil')}
                 </Link>
               </div>
             )}
@@ -223,7 +242,7 @@ export function Navbar() {
               type="button"
               onClick={() => setAbierto((v) => !v)}
               className="btn-fantasma h-10 w-10 px-0 md:hidden"
-              aria-label={abierto ? 'Cerrar menú' : 'Abrir menú'}
+              aria-label={abierto ? t('navbar.cerrarMenu') : t('navbar.abrirMenu')}
               aria-expanded={abierto}
             >
               {abierto ? (
@@ -241,15 +260,15 @@ export function Navbar() {
         <div className="border-t border-zinc-200 bg-white md:hidden dark:border-zinc-800 dark:bg-zinc-950">
           <div className="contenedor-app flex flex-col gap-1 py-4">
             <Link to="/explorar" onClick={() => setAbierto(false)} className="btn-fantasma justify-start">
-              Explorar
+              {t('navbar.explorar')}
             </Link>
             {usuario ? (
               <>
                 <Link to="/feed" onClick={() => setAbierto(false)} className="btn-fantasma justify-start">
-                  Actividad
+                  {t('navbar.actividad')}
                 </Link>
                 <Link to="/mensajes" onClick={() => setAbierto(false)} className="btn-fantasma justify-start">
-                  Mensajes
+                  {t('navbar.mensajes')}
                 </Link>
                 {/* Separador: arriba está la navegación del sitio, aquí abajo
                     las acciones sobre tu propia cuenta. */}
@@ -260,7 +279,7 @@ export function Navbar() {
                   className="btn-fantasma justify-start gap-3"
                 >
                   <User className="h-4 w-4" aria-hidden="true" />
-                  Mi perfil
+                  {t('navbar.miPerfil')}
                 </Link>
                 <Link
                   to="/editor"
@@ -268,7 +287,7 @@ export function Navbar() {
                   className="btn-fantasma justify-start gap-3"
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
-                  Editar perfil
+                  {t('navbar.editarPerfil')}
                 </Link>
                 <Link
                   to="/configuracion"
@@ -276,7 +295,7 @@ export function Navbar() {
                   className="btn-fantasma justify-start gap-3"
                 >
                   <Settings className="h-4 w-4" aria-hidden="true" />
-                  Configuración
+                  {t('navbar.configuracion')}
                 </Link>
                 <button
                   type="button"
@@ -284,19 +303,25 @@ export function Navbar() {
                   className="btn-fantasma justify-start gap-3"
                 >
                   <LogOut className="h-4 w-4" aria-hidden="true" />
-                  Cerrar sesión
+                  {t('navbar.cerrarSesion')}
                 </button>
               </>
             ) : (
               <>
                 <Link to="/login" onClick={() => setAbierto(false)} className="btn-fantasma justify-start">
-                  Iniciar sesión
+                  {t('navbar.iniciarSesion')}
                 </Link>
                 <Link to="/registro" onClick={() => setAbierto(false)} className="btn-primario mt-2 h-11">
-                  Crear perfil
+                  {t('navbar.crearPerfil')}
                 </Link>
               </>
             )}
+
+            {/* El selector va al final y fuera del condicional: en móvil
+                es el único sitio donde aparece, y quien no tiene sesión
+                también necesita poder cambiar de idioma. */}
+            <hr className="my-2 border-zinc-200 dark:border-zinc-800" />
+            <SelectorIdioma variante="menu" />
           </div>
         </div>
       )}

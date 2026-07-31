@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Bloque } from '../../lib/perfil';
 import { useSteam } from '../../lib/steamContexto';
 import { horasDe, type JuegoSteam } from '../../lib/steam';
@@ -10,12 +11,13 @@ import { EsqueletoSteam, PortadaJuego, SinDatosSteam } from './steamComunes';
  * solos". El usuario no escribe nada: juega, y su perfil se actualiza.
  */
 export function BloqueSteamActividad({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { datos, cargando, vinculado } = useSteam();
 
   const titulo =
     typeof bloque.config['titulo'] === 'string' && bloque.config['titulo'].trim() !== ''
       ? bloque.config['titulo']
-      : 'Jugando últimamente';
+      : t('bloques.tituloJugandoUltimamente');
 
   const limite = typeof bloque.config['limite'] === 'number' ? bloque.config['limite'] : 6;
   const mostrarTotales = bloque.config['mostrarHorasTotales'] !== false;
@@ -34,8 +36,8 @@ export function BloqueSteamActividad({ bloque }: { bloque: Bloque }) {
         titulo={titulo}
         mensaje={
           datos?.resumen && !datos.resumen.publico
-            ? 'Este perfil de Steam es privado, así que su actividad no se puede mostrar.'
-            : 'Sin partidas en las últimas dos semanas.'
+            ? t('bloques.steamPrivado')
+            : t('bloques.sinPartidas')
         }
       />
     );
@@ -54,6 +56,7 @@ export function BloqueSteamActividad({ bloque }: { bloque: Bloque }) {
 }
 
 function FilaJuego({ juego, mostrarTotales }: { juego: JuegoSteam; mostrarTotales: boolean }) {
+  const { t } = useTranslation();
   return (
     <li
       className="flex items-center gap-3 p-2"
@@ -69,7 +72,7 @@ function FilaJuego({ juego, mostrarTotales }: { juego: JuegoSteam; mostrarTotale
         <p className="truncate text-sm font-semibold">{juego.nombre}</p>
         {mostrarTotales && juego.minutosTotales > 0 && (
           <p className="truncate text-xs" style={{ opacity: 0.6 }}>
-            {horasDe(juego.minutosTotales)} en total
+            {t('bloques.enTotal', { horas: horasDe(juego.minutosTotales) })}
           </p>
         )}
       </div>
@@ -81,7 +84,7 @@ function FilaJuego({ juego, mostrarTotales }: { juego: JuegoSteam; mostrarTotale
           border: '1px solid var(--p-borde)',
           borderRadius: 'var(--p-radio)',
         }}
-        title="Tiempo jugado en las últimas 2 semanas"
+        title={t('bloques.dosSemanas')}
       >
         {horasDe(juego.minutosDosSemanas)}
       </span>

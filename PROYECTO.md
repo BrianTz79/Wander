@@ -4,17 +4,19 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 30 de julio de 2026
+> **Última actualización:** 31 de julio de 2026
 
 ---
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4, 5 y 6 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
+**Fases 1, 3, 4, 5, 6 y 6.5 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
 central por partida doble: quien entra con Steam ve sus juegos, sus horas y su actividad
-sin escribir nada, y quien vincula Discord tiene además su estado y su música en vivo.**
-Lo único que le falta a la Fase 2 es la verificación de correo, que **se aplazó a
-propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comentarios)**.
+sin escribir nada, y quien vincula Discord tiene además su estado y su música en vivo.
+Y desde la 6.5 hace las dos cosas en español o en inglés, eligiendo sola según el
+navegador de quien entra.** Lo único que le falta a la Fase 2 es la verificación de
+correo, que **se aplazó a propósito** (30/07). Lo siguiente es la **Fase 7 (social:
+seguir, feed, comentarios)**.
 
 ### Resumen por fases
 
@@ -26,6 +28,7 @@ propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comenta
 | 4 | Tema y plantillas | ✅ **Completa** |
 | 5 | Steam | ✅ **Completa** |
 | 6 | Cuentas vinculadas | ✅ **Completa** |
+| 6.5 | i18n (español + inglés) | ✅ **Completa** |
 | 7 | Social | ⬜ **Siguiente** |
 | 8 | Mensajería | ⬜ |
 | 9 | CSS propio | ⬜ |
@@ -238,20 +241,70 @@ propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comenta
 - `llms.txt` describiendo qué es Wander para los motores generativos.
 - `sitemap.xml` dinámico, que solo lista perfiles publicados **y** públicos.
 
-**Idioma**
-- Toda la interfaz y los mensajes están en español neutro/mexicano (de «tú»). Se eliminó
+**Idioma e i18n (Fase 6.5)**
+- **Dos idiomas: español neutro/mexicano (de «tú») e inglés estadounidense.** El español
+  es la fuente —los textos se escribieron así— y también el idioma de respaldo. Se eliminó
   el voseo que se había colado en la primera versión de los textos.
+- **`react-i18next` con los catálogos importados, no cargados por HTTP.** Con dos idiomas
+  y unos pocos kilobytes, un backend de carga asíncrona solo añadiría un parpadeo de texto
+  sin traducir en el primer render y una petición más que puede fallar.
+- **La detección se escribió a mano** (quince líneas en `client/src/i18n/index.ts`) en vez
+  de usar `i18next-browser-languagedetector`: hacía falta control exacto sobre el orden de
+  prioridades y sobre cómo se normaliza `es-MX` → `es`. Se recorre `navigator.languages`
+  entera, no solo `navigator.language`: alguien con el sistema en inglés y el español como
+  segunda preferencia debe caer en español antes que en el respaldo.
+- **Orden de prioridades:** lo elegido en ESTE navegador (`localStorage`) → lo guardado en
+  la cuenta → el idioma del navegador → español. El 1 va por delante del 2 a propósito: si
+  alguien acaba de pulsar «English», que `/auth/yo` responda `es` medio segundo después no
+  puede devolverle la página al español delante de sus ojos.
+- **El idioma vive también en la cuenta** (`User.idioma`, migración
+  `20260730120000_idioma_usuario`) y no solo en el navegador. No es simetría con el tema:
+  en la Fase 8 el servidor tendrá que escribir notificaciones y correos, y para eso
+  necesita saber en qué idioma hablarle a cada quien. `PATCH /api/auth/preferencias`, con
+  `limiteEscritura` y un `z.enum` cerrado — el idioma acaba en `<html lang>`.
+- **Selector en tres sitios**, según quién mire: menú de cuenta (con sesión), botón
+  compacto en la navbar de escritorio (sin sesión, que no tiene menú donde buscarlo) y
+  sección propia en `/configuracion`. Cada idioma se nombra **en su propio idioma**
+  («English», no «Inglés»): quien necesita cambiarlo es, por definición, quien no entiende
+  el que está viendo.
+- **`Intl` para todo lo que no es una cadena fija:** `PluralRules` vía i18next para
+  «1 juego / 5 juegos» y «1 view / 5 views», `toLocaleString` para los miles (56,312 en
+  inglés pero 56.312 en español de España — el separador cambia de significado), y
+  `RelativeTimeFormat` para los «hace 3 días», donde el orden de las palabras no es algo
+  que se pueda parchear con interpolación.
+- **Los marcadores de `<Trans>` van por NOMBRE (`<terminos>`), no por índice (`<1>`).**
+  Con índices hay que contar los hijos del JSX y ahí cuentan también los `{' '}` sueltos:
+  el E2E cazó exactamente ese fallo — el consentimiento del registro renderizaba
+  «I accept the and the .», sin los dos enlaces y sin que nada reventara.
+- **`<html lang>` se actualiza al cambiar de idioma.** No es cosmético: es lo que usan los
+  lectores de pantalla para elegir voz y pronunciación.
+- **Las páginas legales NO se traducen.** `/terminos` y `/privacidad` son ~480 líneas de
+  prosa jurídica; traducirlas genera una segunda versión que puede decir algo ligeramente
+  distinto, y entonces hay que decidir cuál manda. Quedan en español, y
+  `AvisoIdiomaLegal` lo dice —en inglés— cuando la interfaz no está en español.
+- **Lo que sigue en español: los mensajes de error del backend.** Traducirlos exige que el
+  servidor mande un código por cada error de zod, que hay decenas repartidos por todos los
+  schemas. Sí están traducidos los que se originan en el cliente (red, timeout) y los
+  **códigos** de los flujos externos, que son los que la gente ve a menudo. Ver pendientes.
+- Probado E2E contra el sitio real con Playwright, en dos tandas: **detección automática
+  por `Accept-Language`** (en-US → inglés, es-MX → español, de-DE → respaldo español),
+  cambio manual sin recargar, persistencia tras recargar, **persistencia en la cuenta
+  verificada desde un segundo navegador sin `localStorage`**, y ausencia de texto español
+  colado en `/editor`, `/configuracion` y el perfil público. **Dos bugs encontrados y
+  corregidos**: el de `<Trans>` de arriba y un `PATCH` que mandaba el idioma *viejo*
+  (`idioma` en vez de `nuevo`), con lo que la cuenta nunca se enteraba del cambio.
 
 ### ⬜ Lo siguiente
 
 1. **Fase 7 — Social**: seguir, feed de a quién sigues, comentarios, likes y `/explorar`
    con búsqueda. El schema ya tiene `Seguimiento`, `Publicacion`, `Comentario`,
    `Reaccion`, `ActividadFeed`, `Bloqueo` y `Notificacion` desde la migración inicial.
-2. **i18n antes de la Fase 7**, si se va a hacer. Es el último momento barato: la
-   interfaz ya creció con `/configuracion` y `/privacidad`, y la Fase 7 la duplica.
-3. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
+   **Añadir ahí el campo `idioma`** a `Publicacion` y `Comentario` (§8): ponerlo cuando
+   ya haya filas con texto obliga a adivinar el idioma de contenido viejo.
+   **Y escribir cada pantalla nueva ya con `t()`** — para eso se hizo antes la 6.5.
+2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
-4. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
+3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
    y "solo cambia los colores" es una promesa mucho más fácil de cumplir.
@@ -316,10 +369,24 @@ propósito** (30/07). Lo siguiente es la **Fase 7 (social: seguir, feed, comenta
     Postmark son 100 correos **al mes**.
   Nota para cuando se haga: usar un subdominio (`mail.ourocore.net`) y no la raíz, para
   aislar la reputación de envío del dominio principal.
-- **i18n antes de que la interfaz crezca.** «Español + inglés» está decidido (§2) pero no
-  asignado a ninguna fase, y todo el texto está incrustado en los componentes. Meterlo
-  con la interfaz pequeña (antes de la Fase 7) cuesta poco; hacerlo al final significa
-  tocar cada pantalla dos veces.
+- **Los mensajes de error del backend siguen en español** (pendiente que deja la Fase
+  6.5). Un usuario con la interfaz en inglés ve inglés en todas partes menos cuando un
+  endpoint rechaza algo: ahí `mensajeError` pinta tal cual lo que manda el servidor.
+  Arreglarlo bien significa que el backend devuelva un **código** por error y que el
+  cliente lo resuelva contra su catálogo — el mismo patrón que ya usan los flujos externos
+  (`lib/erroresExternos.ts`). Son decenas de mensajes repartidos por todos los schemas de
+  zod, así que es una tarea con nombre propio, no un retoque. Mientras tanto los que más
+  se ven —red, timeout y los códigos de OAuth/Steam— sí están traducidos.
+  Lo mismo aplica a las listas de «qué leemos / qué guardamos» de `/privacidad` y de la
+  pantalla de consentimiento: las redacta `cuentas.controller.ts`.
+- **Páginas legales en un solo idioma.** `/terminos` y `/privacidad` son ~480 líneas de
+  prosa jurídica y **no** se meten en los catálogos de i18n: traducir términos legales
+  tiene consecuencias que no son técnicas. Quedan en español con el aviso de que la
+  versión en español es la que rige. Si algún día se traducen, van como documento
+  aparte por idioma, no como cadenas sueltas.
+- **Cuota de DeepL (Fase 8).** El plan gratuito son 500.000 caracteres al mes para toda
+  la plataforma, no por usuario. Hace falta vigilar el consumo y decidir qué pasa al
+  agotarse — lo sensato es que el botón de traducir desaparezca, no que dé error.
 
 ---
 
@@ -364,7 +431,8 @@ la personaliza hasta donde quiera.
 | Alcance v1 | Paquete social completo (seguir, feed, comentarios, likes, búsqueda) |
 | Mensajería | DM + grupos, con imágenes, GIFs y archivos |
 | Estructura del perfil | Scroll único por bloques |
-| Idioma | Español + inglés |
+| Idioma | Español neutro/mexicano + inglés estadounidense, con `react-i18next` (Fase 6.5) |
+| Traducir contenido | Botón bajo demanda en mensajes y posts, vía la API de DeepL (Fase 8, §8) |
 | Dominio | `wander.ourocore.net`. Dominio propio más adelante, no ahora. |
 | Steam API key | El usuario la consigue (gratis, `steamcommunity.com/dev/apikey`) |
 | Música de fondo | Cada perfil puede tener audio propio, al 30 % y con control del visitante (§7) |
@@ -385,6 +453,7 @@ bcrypt + React), corrigiendo sus puntos débiles.
 | Frontend | React 19 + Vite 8 + TypeScript | Mismo stack que `PaginaClips/client`. Un editor con vista previa en vivo necesita SPA, no Astro estático. |
 | Rutas | `react-router-dom` 7 | Ya usado en Frieren. |
 | Estado | `zustand` 5 | Ya usado en Clips. |
+| i18n | `i18next` 26 + `react-i18next` 17 | Español e inglés (Fase 6.5). Catálogos importados, sin backend de carga: con dos idiomas no compensa. |
 | Estilos | Tailwind 4 (`@tailwindcss/vite`) | Config en CSS. Los perfiles necesitan variables CSS por usuario en runtime. |
 | Backend | Express 5 + TypeScript | Réplica de la estructura por capas de `PaginaClips/server`. |
 | ORM / DB | Prisma 7 + PostgreSQL 17 | Relacional es lo correcto: usuarios, seguidores, bloques, mensajes. |
@@ -802,6 +871,63 @@ en Discord. Mensajes de sistema (`tipo: 'sistema'`) para "X se unió".
 - **GIFs de Giphy/Tenor**: se guarda solo la URL (`Adjunto.externo: true`), no se
   rehospedan. Requiere añadir su host a `img-src` y una API key del proveedor.
 
+**Traducción de mensajes y publicaciones — DeepL, bajo demanda**
+
+Dos personas que hablan idiomas distintos escriben cada una en el suyo, y quien lee
+decide si quiere la traducción. El modelo es el de X: un botón «Ver traducción» debajo
+del mensaje, nunca automático.
+
+**Proveedor: la API de DeepL** (decidido el 30/07). El nivel gratuito son 500.000
+caracteres al mes, que para el volumen de la v1 sobra, y la calidad en el par
+inglés↔español es la mejor de las opciones evaluadas. Se descartaron Google Cloud
+Translation (más idiomas y más barato a escala, pero nada de eso hace falta todavía) y
+Claude vía la API de Anthropic (mejor con jerga gamer y apodos, pero se paga desde el
+primer carácter — reconsiderar si la calidad de DeepL con abreviaturas de gamer resulta
+pobre en la práctica). Clave en `DEEPL_API_KEY`; el endpoint del plan gratuito es
+`api-free.deepl.com`, **distinto** del de pago (`api.deepl.com`) — mandar a la URL
+equivocada devuelve 403 y parece un problema de clave.
+
+**La regla que ordena la fase es la misma de la Fase 5: el render nunca llama a DeepL.**
+Lee de Postgres. La traducción se pide una sola vez por (mensaje, idioma destino), se
+guarda, y el resto de la gente la lee de la base. En un grupo de 20 personas, la primera
+paga la llamada y las otras 19 no cuestan nada.
+
+```prisma
+model Traduccion {
+  id            String   @id @default(cuid())
+  // Excluyentes: una traducción es de un mensaje O de una publicación/comentario.
+  mensajeId     String?
+  publicacionId String?
+  comentarioId  String?
+  idiomaDestino String   // 'es' | 'en'
+  texto         String   @db.Text
+  proveedor     String   @default("deepl")
+  createdAt     DateTime @default(now())
+  @@unique([mensajeId, idiomaDestino])
+  @@unique([publicacionId, idiomaDestino])
+  @@unique([comentarioId, idiomaDestino])
+}
+```
+
+`Mensaje`, `Publicacion` y `Comentario` llevan además un campo `idioma String?`, que se
+rellena **al escribir** el contenido. Añadirlo en la Fase 7 y no aquí: poner la columna
+cuando ya hay filas con texto obliga a rellenarlas a posteriori, y el idioma de un texto
+viejo ya no se puede preguntar a quien lo escribió. Con `idioma` nulo, el botón
+simplemente no aparece.
+
+- **El botón solo se ofrece si `idioma` ≠ idioma de quien mira.** Detección al guardar,
+  local y sin llamadas externas.
+- **Traducir un DM privado es mandárselo a un tercero.** Por eso el botón es explícito:
+  quien lo pulsa consiente ese envío. Va dicho en `PRIVACIDAD.md` y en la interfaz, y es
+  la razón principal para no traducir de oficio.
+- **Límite de tasa propio**, como el `limiteOAuth` de Steam, más un tope de caracteres
+  por usuario y día. Es un endpoint que gasta cuota ajena: sin tope, alguien pega un
+  texto enorme en bucle y deja el mes sin traducciones para todos.
+- **Solo el texto original.** Nunca traducir handles, títulos de juegos, ni retraducir lo
+  ya traducido.
+- Se muestra bajo el original, con la marca de «traducido automáticamente» y la opción de
+  volver a ver el original. El original nunca se sustituye ni se pierde.
+
 **Escalado:** con un solo contenedor de backend, socket.io en memoria basta. Si algún
 día hay varias réplicas se añade `@socket.io/redis-adapter` 8 + Redis, y el código de
 los eventos no cambia. No se añade Redis en la v1 por no complicar sin necesidad.
@@ -849,8 +975,12 @@ los eventos no cambia. No se añade Redis en la v1 por no complicar sin necesida
         ├── store/{authStore,editorStore,chatStore}.ts
         ├── hooks/useSocket.ts
         ├── utils/axiosConfig.ts   # interceptor 401
-        ├── lib/{tema,bloques}.ts
+        ├── lib/{tema,idioma,bloques}.ts
+        ├── i18n/
+        │   ├── index.ts           # init + detección de idioma
+        │   └── locales/{es,en}.ts # `en` tipado contra la forma de `es`
         ├── components/
+        │   ├── {SelectorIdioma,AvisoIdiomaLegal}.tsx
         │   ├── layout/{Navbar,Footer}.tsx
         │   ├── bloques/           # un componente por tipo + registro.ts
         │   ├── editor/{ListaBloques,PanelTema,EditorCss,VistaPrevia}.tsx
@@ -901,6 +1031,7 @@ DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
 GIPHY_API_KEY
+DEEPL_API_KEY                  # Fase 8. Plan gratuito → api-free.deepl.com
 TUNNEL_TOKEN
 PUBLIC_URL, PORT_FRONTEND
 ```
@@ -950,8 +1081,9 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 4 | ✅ **Tema y plantillas** | `PanelTema` y vista previa en vivo (salieron con la Fase 3) + las 5 plantillas y su selector con miniaturas. El tema lo escribe el servidor desde el catálogo. |
 | 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
 | 6 | ✅ **Cuentas vinculadas** | Discord y Google por OAuth 2.0 con PKCE, `/configuracion` con consentimiento granular, vincular/desvincular con borrado real, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
-| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. |
-| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. |
+| 6.5 | ✅ **i18n** | `react-i18next`, catálogos `es`/`en`, selector en navbar y `/configuracion`, detección por navegador con respaldo a español, `User.idioma` para que la preferencia siga al usuario entre dispositivos. Se hizo **antes** de la 7 porque la Fase 7 duplica el número de pantallas: cada una escrita sin i18n habría que reabrirla. Los errores de zod del backend quedan pendientes (ver §0). |
+| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` para la traducción de la Fase 8. |
+| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. Incluye la **traducción bajo demanda con DeepL** (§8). |
 | 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
 | 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
 | 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
@@ -961,6 +1093,21 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fase 6.5 desplegada: la interfaz habla dos idiomas**
+
+- `react-i18next` con catálogos `es`/`en` importados (no cargados por HTTP), tipados uno
+  contra otro: al inglés no le puede faltar una clave sin que falle la compilación.
+- Toda la interfaz extraída — landing, auth, editor, `/configuracion`, perfil público,
+  bloques y los formateadores de Steam y Discord. Unas 400 cadenas.
+- Detección por `navigator.languages` con respaldo a español, elección manual desde tres
+  sitios distintos y `User.idioma` para que la preferencia cruce dispositivos.
+- Las páginas legales se quedan solo en español a propósito, con aviso.
+- Verificado con Playwright contra `wander.ourocore.net`, no en local. **Encontró dos
+  bugs que el typecheck y el build no podían ver**: `<Trans>` con marcadores por índice
+  perdía los enlaces del consentimiento («I accept the and the .»), y el `PATCH` de
+  preferencias mandaba el idioma que se estaba abandonando en vez del elegido. Los dos
+  corregidos y vueltos a verificar.
 
 **30/07/2026 — Fase 6 desplegada: cuentas vinculadas**
 
@@ -1170,7 +1317,10 @@ Wander vive de que la gente encuentre los perfiles. Dos frentes distintos:
   `WebSite` con `SearchAction` en la landing.
 - `sitemap.xml` dinámico (ya proxyeado en `nginx.conf` a `/api/seo/sitemap.xml`) y
   `robots.txt`. Falta implementar el endpoint en el backend.
-- Etiquetas `hreflang` para español e inglés.
+- Etiquetas `hreflang` para español e inglés. **Sigue pendiente tras la Fase 6.5**: el
+  idioma se elige en el cliente y no cambia la URL, así que hoy no hay dos direcciones que
+  enlazar entre sí. Hacerlo de verdad exige decidir antes si el idioma pasa a la ruta
+  (`/en/...`) o a un parámetro — y eso solo tiene sentido junto con el prerender.
 - Perfiles privados o marcados como no indexables → `noindex` y fuera del sitemap.
 - Rendimiento como factor de posicionamiento: Core Web Vitals, imágenes en `webp`/`avif`
   con `width`/`height` para no provocar saltos de layout.
@@ -1278,6 +1428,36 @@ Lo que **no** cubre la suite y hay que probar a mano al menos una vez: el ida y 
 real contra Discord y Google (hace falta un humano autenticándose), y que el avatar
 remoto se pinte de verdad en el navegador — la CSP se comprueba por cabecera, pero un
 host mal escrito solo se ve en la consola del visitante.
+
+### i18n ✅ (31/07)
+
+**Esta fase hay que verificarla en un navegador de verdad, no con `curl`.** El typecheck
+y el build pasaron limpios con dos bugs dentro: una clave de traducción mal formada
+compila igual, y un `<Trans>` que pierde sus enlaces devuelve una frase perfectamente
+válida a la que le faltan palabras. Solo se ven mirando el DOM renderizado.
+
+Lo que hay que repetir si se toca `i18n/`, `lib/idioma.ts` o cualquier `<Trans>`:
+
+- **Detección automática**, abriendo con tres `locale` distintos: `en-US` → inglés,
+  `es-MX` → español, y uno que no tenemos (`de-DE`) → español, no una página en blanco ni
+  claves crudas. Comprobar `<html lang>` además del texto.
+- **Cambio manual sin recargar**, y que sobreviva a la recarga (`localStorage`).
+- **Persistencia en la cuenta**: cambiar el idioma, leer `GET /api/auth/yo` y ver el valor
+  nuevo; luego abrir un **contexto de navegador limpio** con las mismas cookies y el
+  sistema en el OTRO idioma — debe heredar el de la cuenta. Este paso es el que cazó el
+  `PATCH` que mandaba el idioma viejo, porque en el navegador original todo se veía bien.
+- **Cada `<Trans>` con sus hijos**: contar los `<a>`/`<Link>` que quedan en el DOM, no solo
+  buscar el texto. `label[for="acepta"]` debe tener **2** enlaces, y el `.font-mono` de la
+  landing debe seguir conteniendo `wander/u/`.
+- **Barrido de español colado** en `/editor`, `/configuracion` y `/u/:handle` con la
+  interfaz en inglés: buscar «Vista previa», «Añadir bloque», «Cuentas vinculadas»,
+  «Compartir», «horas jugadas»… Cero coincidencias.
+- **Plurales** por `Intl`, no por ternario: `1 view` / `5 views`.
+
+Ojo con dos cosas al correr la suite: las pausas tienen que ser generosas (con esperas
+cortas la SPA todavía no ha pintado y salen **falsos negativos** que parecen fallos de
+traducción), y una tanda seguida agota `limiteGeneral` y empieza a devolver 429 en HTML —
+que es un fallo de la prueba, no del código. `docker compose restart backend` lo limpia.
 
 ---
 

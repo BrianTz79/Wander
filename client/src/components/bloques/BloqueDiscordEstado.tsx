@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Bloque } from '../../lib/perfil';
 import { useDiscord } from '../../lib/discordContexto';
 import {
@@ -18,12 +19,13 @@ import { EsqueletoSteam, SinDatosSteam } from './steamComunes';
  * mantiene solo, sin que su dueño escriba nada.
  */
 export function BloqueDiscordEstado({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { datos, cargando, vinculado } = useDiscord();
 
   const titulo =
     typeof bloque.config['titulo'] === 'string' && bloque.config['titulo'].trim() !== ''
       ? bloque.config['titulo']
-      : 'Discord';
+      : t('bloques.tituloDiscord');
 
   const mostrarActividad = bloque.config['mostrarActividad'] !== false;
   const mostrarAvatar = bloque.config['mostrarAvatar'] !== false;
@@ -158,10 +160,6 @@ function FilaActividad({ actividad }: { actividad: ActividadDiscord }) {
 /** Se exporta el aviso para reusarlo desde el editor, donde el dueño SÍ
  *  necesita saber que le falta unirse al servidor de Lanyard. */
 export function AvisoLanyard({ titulo }: { titulo: string }) {
-  return (
-    <SinDatosSteam
-      titulo={titulo}
-      mensaje="Para mostrar tu estado en vivo tienes que unirte al servidor de Lanyard: discord.gg/UrXF2cfJ7F"
-    />
-  );
+  const { t } = useTranslation();
+  return <SinDatosSteam titulo={titulo} mensaje={t('bloques.avisoLanyard')} />;
 }

@@ -7,20 +7,22 @@ import type { TemaPerfil } from './perfil';
  * tiene la copia autoritativa y es quien escribe el tema al aplicar una.
  * Si las dos listas se desincronizan, manda el servidor: el editor recarga
  * el tema que devuelve el PATCH, no el de esta constante.
+ *
+ * Aquí solo están el `id` y los colores. El nombre y la descripción que se
+ * enseñan viven en los catálogos de i18n bajo `plantillas.<id>Nombre` y
+ * `plantillas.<id>Descripcion` (Fase 6.5): son texto de interfaz, y este
+ * módulo se evalúa una vez al importarlo, así que un texto puesto aquí se
+ * quedaría congelado en el idioma que hubiera al arrancar.
  */
 
 export interface Plantilla {
   id: string;
-  nombre: string;
-  descripcion: string;
   tema: Required<TemaPerfil>;
 }
 
 export const PLANTILLAS: readonly Plantilla[] = [
   {
     id: 'base-oscuro',
-    nombre: 'Base oscura',
-    descripcion: 'Fondo casi negro y acento azul. El punto de partida por defecto.',
     tema: {
       colorFondo: '#09090b',
       colorTexto: '#fafafa',
@@ -33,8 +35,6 @@ export const PLANTILLAS: readonly Plantilla[] = [
   },
   {
     id: 'minimal-claro',
-    nombre: 'Minimal claro',
-    descripcion: 'Blanco, mucho aire y contraste alto. Se lee bien en cualquier pantalla.',
     tema: {
       colorFondo: '#ffffff',
       colorTexto: '#18181b',
@@ -47,8 +47,6 @@ export const PLANTILLAS: readonly Plantilla[] = [
   },
   {
     id: 'cyber-violeta',
-    nombre: 'Cyber violeta',
-    descripcion: 'Morados saturados sobre negro azulado. Esquinas muy redondeadas.',
     tema: {
       colorFondo: '#0b0714',
       colorTexto: '#f5f3ff',
@@ -61,8 +59,6 @@ export const PLANTILLAS: readonly Plantilla[] = [
   },
   {
     id: 'retro-crt',
-    nombre: 'Retro CRT',
-    descripcion: 'Verde fósforo sobre negro y tipografía monoespaciada. Esquinas rectas.',
     tema: {
       colorFondo: '#04120a',
       colorTexto: '#c8f7d4',
@@ -75,8 +71,6 @@ export const PLANTILLAS: readonly Plantilla[] = [
   },
   {
     id: 'shooter-angular',
-    nombre: 'Shooter angular',
-    descripcion: 'Grises fríos, naranja de aviso y cero curvas. Aire táctico.',
     tema: {
       colorFondo: '#101214',
       colorTexto: '#e7e9ea',

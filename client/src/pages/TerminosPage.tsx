@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Check, X } from 'lucide-react';
 
+import { AvisoIdiomaLegal } from '../components/AvisoIdiomaLegal';
+
 /**
  * Términos del servicio.
  *
@@ -12,10 +14,15 @@ import { AlertTriangle, Check, X } from 'lucide-react';
  * También son honestos sobre lo que Wander es hoy: un proyecto personal, no
  * una empresa con equipo de soporte. Prometer disponibilidad o permanencia
  * que no se pueden sostener sería peor que no prometer nada.
+ *
+ * **Este documento no pasa por i18n** (Fase 6.5): existe solo en español, y
+ * `AvisoIdiomaLegal` lo dice cuando la interfaz está en otro idioma.
  */
 export function TerminosPage() {
   return (
     <div className="contenedor-app max-w-3xl py-12">
+      <AvisoIdiomaLegal />
+
       <header className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
           Términos del servicio

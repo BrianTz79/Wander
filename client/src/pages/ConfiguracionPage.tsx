@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Check,
@@ -11,9 +12,10 @@ import {
   X,
 } from 'lucide-react';
 import { api, mensajeError } from '../lib/api';
+import { SelectorIdioma } from '../components/SelectorIdioma';
 import {
+  CLAVE_RESUMEN,
   NOMBRES,
-  RESUMEN_PROVEEDOR,
   mensajeRetorno,
   urlVincular,
   type CuentaVinculada,
@@ -39,13 +41,17 @@ import {
  *     conectar Discord, y casi ningún sitio lo responde.
  */
 export function ConfiguracionPage() {
+  const { t } = useTranslation();
   const [datos, setDatos] = useState<RespuestaCuentas | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [params, setParams] = useSearchParams();
 
   // Mensaje de vuelta de un flujo OAuth (?vinculado=discord, ?error=…).
-  const [aviso, setAviso] = useState(() => mensajeRetorno(params));
+  // Se calcula una sola vez porque los parámetros se limpian de la URL en
+  // cuanto se leen: si cambias de idioma después, este aviso concreto se
+  // queda en el idioma en el que llegaste, y es un texto efímero.
+  const [aviso, setAviso] = useState(() => mensajeRetorno(params, t));
 
   const cargar = useCallback(async () => {
     try {
@@ -75,13 +81,12 @@ export function ConfiguracionPage() {
     <div className="contenedor-app max-w-3xl py-8">
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          Cuentas vinculadas
+          {t('configuracion.titulo')}
         </h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Conecta tus plataformas para que tu perfil se mantenga solo. Tú decides qué se muestra, y
-          puedes desconectar cuando quieras.{' '}
+          {t('configuracion.subtitulo')}{' '}
           <Link to="/privacidad" className="enlace-acento">
-            Cómo tratamos tus datos
+            {t('configuracion.comoTratamosDatos')}
           </Link>
         </p>
       </header>
@@ -105,7 +110,7 @@ export function ConfiguracionPage() {
             type="button"
             onClick={() => setAviso(null)}
             className="shrink-0 opacity-60 hover:opacity-100"
-            aria-label="Cerrar aviso"
+            aria-label={t('configuracion.cerrarAviso')}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -115,7 +120,7 @@ export function ConfiguracionPage() {
       {cargando && (
         <div className="flex justify-center py-16" role="status">
           <Loader2 className="h-6 w-6 animate-spin text-zinc-400" aria-hidden="true" />
-          <span className="sr-only">Cargando tus cuentas…</span>
+          <span className="sr-only">{t('configuracion.cargando')}</span>
         </div>
       )}
 
@@ -145,12 +150,18 @@ export function ConfiguracionPage() {
           {!datos.tienePassword && (
             <p className="mt-6 rounded-xl bg-zinc-100 p-4 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400">
               <ShieldCheck className="mr-1.5 inline h-4 w-4" aria-hidden="true" />
-              Entras a Wander solo con las cuentas de arriba. Si algún día pierdes el acceso a
-              ellas, perderías también esta cuenta: por eso no te dejamos desvincular la última.
+              {t('configuracion.soloProveedores')}
             </p>
           )}
         </>
       )}
+
+      {/* Idioma. Va debajo de las cuentas porque estas son el motivo por el
+          que se entra a esta pantalla, pero es la otra preferencia real que
+          hay hoy — y el sitio donde la gente la buscará. */}
+      <div className="mt-8">
+        <SelectorIdioma />
+      </div>
     </div>
   );
 }
@@ -170,6 +181,7 @@ function TarjetaCuenta({
   hayOtroLogin: boolean;
   alCambiar: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState('');
@@ -240,26 +252,26 @@ function TarjetaCuenta({
             <h2 className="font-semibold text-zinc-900 dark:text-white">{nombre}</h2>
             {cuenta.vinculada && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.7rem] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                Conectado
+                {t('configuracion.conectado')}
               </span>
             )}
             {cuenta.esMetodoLogin && (
               <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[0.7rem] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                Sirve para entrar
+                {t('configuracion.sirveParaEntrar')}
               </span>
             )}
           </div>
 
           <p className="mt-0.5 truncate text-sm text-zinc-600 dark:text-zinc-400">
             {cuenta.vinculada
-              ? (cuenta.usuarioRemoto ?? 'Cuenta conectada')
-              : RESUMEN_PROVEEDOR[cuenta.proveedor]}
+              ? (cuenta.usuarioRemoto ?? t('configuracion.cuentaConectada'))
+              : t(CLAVE_RESUMEN[cuenta.proveedor])}
           </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           {!cuenta.disponible ? (
-            <span className="text-xs text-zinc-500">No disponible</span>
+            <span className="text-xs text-zinc-500">{t('configuracion.noDisponible')}</span>
           ) : cuenta.vinculada ? (
             <button
               type="button"
@@ -267,13 +279,13 @@ function TarjetaCuenta({
               disabled={ocupado || esUltimaEntrada}
               title={
                 esUltimaEntrada
-                  ? `${nombre} es tu única forma de entrar. Ponle una contraseña a tu cuenta o vincula otro proveedor antes de quitarlo.`
+                  ? t('configuracion.ultimaEntrada', { proveedor: nombre })
                   : undefined
               }
               className="btn-secundario h-9 text-xs"
             >
               <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
-              Desconectar
+              {t('configuracion.desconectar')}
             </button>
           ) : (
             <button
@@ -281,7 +293,7 @@ function TarjetaCuenta({
               onClick={() => setMostrarDetalle(true)}
               className="btn-primario h-9 text-xs"
             >
-              Conectar
+              {t('configuracion.conectar')}
             </button>
           )}
         </div>
@@ -289,8 +301,7 @@ function TarjetaCuenta({
 
       {cuenta.requiereReconexion && (
         <p className="mx-4 mb-4 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          El permiso caducó o lo revocaste desde {nombre}. Vuelve a conectarlo para que tus datos
-          sigan actualizándose.
+          {t('configuracion.requiereReconexion', { proveedor: nombre })}
         </p>
       )}
 
@@ -298,8 +309,7 @@ function TarjetaCuenta({
           móvil, así que el motivo también va como texto visible. */}
       {esUltimaEntrada && (
         <p className="mx-4 mb-4 rounded-lg bg-zinc-100 p-2.5 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400">
-          {nombre} es tu única forma de entrar a Wander. Ponle una contraseña a tu cuenta o vincula
-          otro proveedor antes de desconectarlo.
+          {t('configuracion.ultimaEntrada', { proveedor: nombre })}
         </p>
       )}
 
@@ -309,7 +319,7 @@ function TarjetaCuenta({
       {cuenta.vinculada && clavesPermisos.length > 0 && (
         <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
           <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Qué se muestra en tu perfil
+            {t('configuracion.queSeMuestra')}
           </h3>
           <ul className="space-y-3">
             {clavesPermisos.map((clave) => {
@@ -340,18 +350,25 @@ function TarjetaCuenta({
 
           {cuenta.proveedor === 'discord' && permisos['mostrarPresencia'] && (
             <p className="mt-3 rounded-lg bg-zinc-100 p-2.5 text-xs text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400">
-              Para leer tu estado en vivo hace falta que estés en el servidor de Lanyard:{' '}
-              <a
-                href="https://discord.gg/UrXF2cfJ7F"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="enlace-acento inline-flex items-center gap-1"
-              >
-                discord.gg/UrXF2cfJ7F
-                <ExternalLink className="h-3 w-3" aria-hidden="true" />
-              </a>
-              . Es un servicio externo que lee la presencia de Discord; sin él, Discord no la
-              comparte con nadie.
+              <Trans
+                i18nKey="configuracion.avisoLanyard"
+                components={{
+                  /* El icono va DENTRO del componente y no en la cadena: el
+                     catálogo es texto, no puede llevar JSX. Se pinta detrás
+                     del texto del enlace, que es lo que traduce el
+                     marcador. */
+                  lanyard: (
+                    <a
+                      href="https://discord.gg/UrXF2cfJ7F"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="enlace-acento inline-flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  ),
+                }}
+              />
             </p>
           )}
         </div>
@@ -371,7 +388,7 @@ function TarjetaCuenta({
             onClick={() => setMostrarDetalle(true)}
             className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:hover:text-zinc-300"
           >
-            Ver qué datos se leerían
+            {t('configuracion.verQueDatos')}
           </button>
         </div>
       )}
@@ -390,20 +407,24 @@ function PantallaConsentimiento({
   cuenta: CuentaVinculada;
   alCancelar: () => void;
 }) {
+  const { t } = useTranslation();
   const nombre = NOMBRES[cuenta.proveedor];
   const { lee, guarda, noPide } = cuenta.descripcion;
 
   return (
     <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
+      {/* Ojo: los elementos de estas listas los redacta el BACKEND y
+          siguen llegando en español. Traducirlos exige mover
+          `cuentas.controller.ts` a claves — anotado en PROYECTO.md. */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Lista titulo={`Qué leemos de ${nombre}`} elementos={lee} />
-        <Lista titulo="Qué guardamos" elementos={guarda} />
+        <Lista titulo={t('configuracion.queLeemos', { proveedor: nombre })} elementos={lee} />
+        <Lista titulo={t('configuracion.queGuardamos')} elementos={guarda} />
       </div>
 
       {noPide.length > 0 && (
         <div className="mt-4">
           <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Qué NO pedimos
+            {t('configuracion.queNoPedimos')}
           </h3>
           <ul className="space-y-1">
             {noPide.map((item) => (
@@ -420,8 +441,7 @@ function PantallaConsentimiento({
       )}
 
       <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-        Podrás elegir qué se muestra después de conectar, y desconectar cuando quieras: al hacerlo
-        se borran tanto la conexión como los datos que hubiéramos guardado de {nombre}.
+        {t('configuracion.podrasElegir', { proveedor: nombre })}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -429,15 +449,13 @@ function PantallaConsentimiento({
           // <a> con navegación real, no fetch: OAuth es una cadena de
           // redirecciones que termina con las cookies puestas.
           <a href={urlVincular(cuenta.proveedor)} rel="noopener" className="btn-primario h-10">
-            Continuar a {nombre}
+            {t('configuracion.continuarA', { proveedor: nombre })}
           </a>
         ) : (
-          <span className="text-sm text-zinc-500">
-            Este proveedor no está configurado en el servidor ahora mismo.
-          </span>
+          <span className="text-sm text-zinc-500">{t('configuracion.noConfigurado')}</span>
         )}
         <button type="button" onClick={alCancelar} className="btn-secundario h-10">
-          Cancelar
+          {t('comun.cancelar')}
         </button>
       </div>
     </div>

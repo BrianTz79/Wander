@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 /**
  * Presencia de Discord en el cliente (Fase 6).
  *
@@ -60,13 +62,13 @@ export const COLORES_ESTADO: Record<string, string> = {
 export function estadoDiscordTexto(estado: string): string {
   switch (estado) {
     case 'online':
-      return 'En línea';
+      return i18n.t('discord.enLinea');
     case 'idle':
-      return 'Ausente';
+      return i18n.t('discord.ausente');
     case 'dnd':
-      return 'No molestar';
+      return i18n.t('discord.noMolestar');
     default:
-      return 'Desconectado';
+      return i18n.t('discord.desconectado');
   }
 }
 
@@ -78,15 +80,15 @@ export function estadoDiscordTexto(estado: string): string {
 export function verboActividad(tipo: number): string {
   switch (tipo) {
     case 1:
-      return 'Transmitiendo';
+      return i18n.t('discord.transmitiendo');
     case 2:
-      return 'Escuchando';
+      return i18n.t('discord.escuchando');
     case 3:
-      return 'Viendo';
+      return i18n.t('discord.viendo');
     case 5:
-      return 'Compitiendo en';
+      return i18n.t('discord.compitiendoEn');
     default:
-      return 'Jugando a';
+      return i18n.t('discord.jugandoA');
   }
 }
 
@@ -106,10 +108,12 @@ export function desdeHace(inicio: number | null): string {
   if (!Number.isFinite(ms) || ms < 0) return '';
 
   const minutos = Math.floor(ms / 60_000);
-  if (minutos < 1) return 'acaba de empezar';
-  if (minutos < 60) return `${minutos} min`;
+  if (minutos < 1) return i18n.t('discord.acabaDeEmpezar');
+  if (minutos < 60) return i18n.t('discord.llevaMinutos', { minutos });
 
   const horas = Math.floor(minutos / 60);
   const resto = minutos % 60;
-  return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`;
+  return resto === 0
+    ? i18n.t('discord.llevaHoras', { horas })
+    : i18n.t('discord.llevaHorasMinutos', { horas, minutos: resto });
 }

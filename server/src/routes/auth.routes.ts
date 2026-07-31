@@ -7,12 +7,14 @@ import { validarBody } from '../middlewares/validar.middleware';
 import {
   limiteAuth,
   limiteBusqueda,
+  limiteEscritura,
   limiteOAuth,
   limiteRegistro,
 } from '../middlewares/rateLimit.middleware';
 import {
   cambiarPasswordSchema,
   loginSchema,
+  preferenciasSchema,
   registroSchema,
 } from '../schemas/auth.schema';
 
@@ -42,6 +44,17 @@ router.post(
   limiteAuth,
   validarBody(cambiarPasswordSchema),
   asyncHandler(ctrl.cambiarPassword)
+);
+
+// Preferencias de interfaz (Fase 6.5). Es una escritura pequeña y propia
+// del usuario, pero se dispara al pulsar un botón, así que lleva el límite
+// de escritura general para que no se pueda usar en bucle.
+router.patch(
+  '/preferencias',
+  requiereAuth,
+  limiteEscritura,
+  validarBody(preferenciasSchema),
+  asyncHandler(ctrl.preferencias)
 );
 
 router.get('/handle-disponible', limiteBusqueda, asyncHandler(ctrl.handleDisponible));

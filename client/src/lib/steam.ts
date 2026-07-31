@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 /**
  * Datos de Steam en el cliente (Fase 5).
  *
@@ -49,6 +51,14 @@ export interface RespuestaSteam {
 
 // ── Formato ──────────────────────────────────────────────────────────
 
+/*
+ * Estas funciones no son componentes, así que usan la instancia de i18next
+ * directamente en vez del hook. El idioma sale de `i18n.language`, que es
+ * también lo que hace que `Intl` agrupe los miles como toca: 56,312 en
+ * inglés pero 56.312 en español de España — el separador NO es cosmético,
+ * cambia de significado según quién lea.
+ */
+
 /**
  * Minutos → texto de horas. Steam da minutos; nadie quiere leer "7117
  * minutos".
@@ -57,18 +67,24 @@ export interface RespuestaSteam {
  * acabas de estrenar parece un error del sitio.
  */
 export function horasDe(minutos: number): string {
-  if (!Number.isFinite(minutos) || minutos <= 0) return 'Sin jugar';
-  if (minutos < 60) return `${Math.round(minutos)} min`;
+  if (!Number.isFinite(minutos) || minutos <= 0) return i18n.t('steam.sinJugar');
+  if (minutos < 60) return i18n.t('steam.minutos', { minutos: Math.round(minutos) });
 
   const horas = minutos / 60;
   // Con menos de 10 h, un decimal informa ("3.5 h"); con 300 h no aporta.
-  const texto = horas < 10 ? horas.toFixed(1) : Math.round(horas).toLocaleString('es-MX');
-  return `${texto} h`;
+  const texto =
+    horas < 10
+      ? horas.toLocaleString(i18n.language, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })
+      : numero(horas);
+  return i18n.t('steam.horas', { horas: texto });
 }
 
 /** Números grandes con separador de miles: "942" y "56,312". */
 export function numero(valor: number): string {
-  return Number.isFinite(valor) ? Math.round(valor).toLocaleString('es-MX') : '0';
+  return Number.isFinite(valor) ? Math.round(valor).toLocaleString(i18n.language) : '0';
 }
 
 /** Estados de persona de Steam. 0 es desconectado; el resto son matices
@@ -76,31 +92,38 @@ export function numero(valor: number): string {
 export function estadoTexto(estado: number): { texto: string; enLinea: boolean } {
   switch (estado) {
     case 0:
-      return { texto: 'Desconectado', enLinea: false };
+      return { texto: i18n.t('steam.desconectado'), enLinea: false };
     case 2:
-      return { texto: 'Ocupado', enLinea: true };
+      return { texto: i18n.t('steam.ocupado'), enLinea: true };
     case 3:
-      return { texto: 'Ausente', enLinea: true };
+      return { texto: i18n.t('steam.ausente'), enLinea: true };
     case 4:
-      return { texto: 'Durmiendo', enLinea: false };
+      return { texto: i18n.t('steam.durmiendo'), enLinea: false };
     default:
-      return { texto: 'En línea', enLinea: true };
+      return { texto: i18n.t('steam.enLinea'), enLinea: true };
   }
 }
 
-/** "hace 5 minutos" a partir de un ISO. Para el aviso de frescura. */
+/**
+ * "hace 5 minutos" a partir de un ISO. Para el aviso de frescura.
+ *
+ * Con `Intl.RelativeTimeFormat` en vez de plantillas propias: cada idioma
+ * arma esta frase a su manera ("hace 3 días" / "3 days ago"), y el orden
+ * de las palabras no es algo que se pueda parchear con interpolación.
+ */
 export function haceCuanto(iso: string | null): string {
   if (!iso) return '';
   const ms = Date.now() - new Date(iso).getTime();
   if (!Number.isFinite(ms) || ms < 0) return '';
 
+  const relativo = new Intl.RelativeTimeFormat(i18n.language, { numeric: 'auto' });
+
   const minutos = Math.floor(ms / 60_000);
-  if (minutos < 2) return 'hace un momento';
-  if (minutos < 60) return `hace ${minutos} min`;
+  if (minutos < 2) return relativo.format(0, 'minute');
+  if (minutos < 60) return relativo.format(-minutos, 'minute');
 
   const horas = Math.floor(minutos / 60);
-  if (horas < 24) return `hace ${horas} h`;
+  if (horas < 24) return relativo.format(-horas, 'hour');
 
-  const dias = Math.floor(horas / 24);
-  return dias === 1 ? 'hace 1 día' : `hace ${dias} días`;
+  return relativo.format(-Math.floor(horas / 24), 'day');
 }

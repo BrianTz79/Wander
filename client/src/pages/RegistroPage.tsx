@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import { Check, Compass, Eye, EyeOff, Loader2, X } from 'lucide-react';
 
 import { useAuth } from '../store/authStore';
@@ -17,6 +18,7 @@ type EstadoHandle =
 const LARGO_MINIMO_PASSWORD = 12;
 
 export function RegistroPage() {
+  const { t } = useTranslation();
   const registro = useAuth((e) => e.registro);
   const navegar = useNavigate();
 
@@ -58,7 +60,7 @@ export function RegistroPage() {
         setEstadoHandle(
           data.disponible
             ? { tipo: 'libre' }
-            : { tipo: 'ocupado', motivo: data.motivo ?? 'No está disponible.' }
+            : { tipo: 'ocupado', motivo: data.motivo ?? t('registro.handleNoDisponible') }
         );
       } catch {
         // Si la comprobación falla no se bloquea el registro: el backend
@@ -71,7 +73,7 @@ export function RegistroPage() {
       cancelado = true;
       clearTimeout(temporizador);
     };
-  }, [handle]);
+  }, [handle, t]);
 
   async function alEnviar(evento: FormEvent) {
     evento.preventDefault();
@@ -112,11 +114,9 @@ export function RegistroPage() {
             <span className="text-xl text-zinc-900 dark:text-white">Wander</span>
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Crea tu perfil
+            {t('registro.titulo')}
           </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Elige tu enlace. Después conectas tus cuentas.
-          </p>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t('registro.subtitulo')}</p>
         </div>
 
         <form onSubmit={alEnviar} className="tarjeta" noValidate>
@@ -133,7 +133,7 @@ export function RegistroPage() {
           {/* ── Handle ── */}
           <div className="mb-5">
             <label htmlFor="handle" className="etiqueta">
-              Nombre de usuario
+              {t('registro.handle')}
             </label>
             <div className="relative">
               <span
@@ -187,15 +187,15 @@ export function RegistroPage() {
                 (estadoHandle.tipo === 'ocupado'
                   ? estadoHandle.motivo
                   : estadoHandle.tipo === 'libre'
-                    ? 'Disponible.'
-                    : 'Será la dirección de tu perfil. 3-24 caracteres.')}
+                    ? t('registro.handleDisponible')
+                    : t('registro.handleAyuda'))}
             </p>
           </div>
 
           {/* ── Nombre para mostrar ── */}
           <div className="mb-5">
             <label htmlFor="displayName" className="etiqueta">
-              Nombre para mostrar
+              {t('registro.displayName')}
             </label>
             <input
               id="displayName"
@@ -216,7 +216,7 @@ export function RegistroPage() {
           {/* ── Correo ── */}
           <div className="mb-5">
             <label htmlFor="email" className="etiqueta">
-              Correo
+              {t('registro.correo')}
             </label>
             <input
               id="email"
@@ -227,7 +227,7 @@ export function RegistroPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`campo ${errores['email'] ? 'campo-error' : ''}`}
-              placeholder="tu@ejemplo.com"
+              placeholder={t('registro.correoPlaceholder')}
               aria-invalid={Boolean(errores['email'])}
             />
             {errores['email'] && <p className="texto-error">{errores['email']}</p>}
@@ -236,7 +236,7 @@ export function RegistroPage() {
           {/* ── Contraseña ── */}
           <div className="mb-5">
             <label htmlFor="password" className="etiqueta">
-              Contraseña
+              {t('registro.password')}
             </label>
             <div className="relative">
               <input
@@ -250,7 +250,7 @@ export function RegistroPage() {
                 className={`campo pr-12 ${
                   errores['password'] || passwordCorta ? 'campo-error' : ''
                 }`}
-                placeholder="Una frase que recuerdes"
+                placeholder={t('registro.passwordPlaceholder')}
                 aria-invalid={Boolean(errores['password'])}
                 aria-describedby="ayuda-password"
               />
@@ -260,7 +260,7 @@ export function RegistroPage() {
                 className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center
                            justify-center rounded-md text-zinc-500 transition-colors
                            hover:text-zinc-900 dark:hover:text-white"
-                aria-label={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-label={verPassword ? t('login.ocultarPassword') : t('login.mostrarPassword')}
               >
                 {verPassword ? (
                   <EyeOff className="h-5 w-5" aria-hidden="true" />
@@ -278,7 +278,7 @@ export function RegistroPage() {
               }
             >
               {errores['password'] ??
-                `Mínimo ${LARGO_MINIMO_PASSWORD} caracteres. Una frase larga es más segura que un símbolo raro.`}
+                t('registro.passwordAyuda', { minimo: LARGO_MINIMO_PASSWORD })}
             </p>
           </div>
 
@@ -296,16 +296,22 @@ export function RegistroPage() {
                          dark:border-zinc-700 dark:accent-white"
               aria-describedby={errores['aceptaTerminos'] ? 'error-acepta' : undefined}
             />
+            {/* <Trans> y no una concatenación: los enlaces van DENTRO de la
+                frase, y cada idioma los coloca en un orden distinto.
+
+                Los marcadores van por NOMBRE (`<terminos>`) y no por índice
+                (`<1>`): con índices hay que contar los hijos del JSX, y ahí
+                cuentan también los `{' '}` sueltos, así que basta reacomodar
+                el formato para que los enlaces desaparezcan del render sin
+                que nada falle. Con nombres no hay nada que contar. */}
             <label htmlFor="acepta" className="text-sm text-zinc-600 dark:text-zinc-400">
-              Acepto los{' '}
-              <Link to="/terminos" className="enlace-acento">
-                términos
-              </Link>{' '}
-              y la{' '}
-              <Link to="/privacidad" className="enlace-acento">
-                política de privacidad
-              </Link>
-              .
+              <Trans
+                i18nKey="registro.acepto"
+                components={{
+                  terminos: <Link to="/terminos" className="enlace-acento" />,
+                  privacidad: <Link to="/privacidad" className="enlace-acento" />,
+                }}
+              />
             </label>
           </div>
           {errores['aceptaTerminos'] && (
@@ -318,10 +324,10 @@ export function RegistroPage() {
             {enviando ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Creando…
+                {t('registro.creando')}
               </>
             ) : (
-              'Crear mi perfil'
+              t('registro.crear')
             )}
           </button>
 
@@ -330,16 +336,16 @@ export function RegistroPage() {
               la identidad del proveedor basta para crear la cuenta y el
               handle se genera automáticamente. */}
           <div className="space-y-2">
-            <BotonSteam texto="Crear cuenta con Steam" />
-            <BotonDiscord texto="Crear cuenta con Discord" />
-            <BotonGoogle texto="Crear cuenta con Google" />
+            <BotonSteam registro />
+            <BotonDiscord registro />
+            <BotonGoogle registro />
           </div>
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          ¿Ya tienes cuenta?{' '}
+          {t('registro.yaTienesCuenta')}{' '}
           <Link to="/login" className="enlace-acento">
-            Inicia sesión
+            {t('registro.iniciarSesion')}
           </Link>
         </p>
       </div>

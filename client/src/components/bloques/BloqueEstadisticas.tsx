@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import type { Bloque } from '../../lib/perfil';
 import { useSteam } from '../../lib/steamContexto';
-import { estadoTexto, horasDe, numero } from '../../lib/steam';
+import { estadoTexto, numero } from '../../lib/steam';
 import { EsqueletoSteam } from './steamComunes';
 
 /**
@@ -11,12 +12,13 @@ import { EsqueletoSteam } from './steamComunes';
  * suelto en una rejilla, no.
  */
 export function BloqueEstadisticas({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { datos, cargando, vinculado } = useSteam();
 
   const titulo =
     typeof bloque.config['titulo'] === 'string' && bloque.config['titulo'].trim() !== ''
       ? bloque.config['titulo']
-      : 'En números';
+      : t('bloques.tituloEnNumeros');
 
   if (cargando) return <EsqueletoSteam titulo={titulo} filas={1} />;
   if (!vinculado || !datos?.estadisticas) return null;
@@ -28,13 +30,22 @@ export function BloqueEstadisticas({ bloque }: { bloque: Bloque }) {
   const contadores: Array<{ valor: string; etiqueta: string }> = [];
 
   if (bloque.config['mostrarTotalJuegos'] !== false && totalJuegos > 0) {
-    contadores.push({ valor: numero(totalJuegos), etiqueta: totalJuegos === 1 ? 'juego' : 'juegos' });
+    // El plural lo decide `Intl.PluralRules` vía i18next, no un ternario:
+    // no todos los idiomas parten en uno/muchos por el mismo sitio.
+    contadores.push({
+      valor: numero(totalJuegos),
+      etiqueta: t('steam.juegos', { count: totalJuegos }),
+    });
   }
   if (bloque.config['mostrarHoras'] !== false && minutosTotales > 0) {
-    contadores.push({ valor: horasDe(minutosTotales).replace(' h', ''), etiqueta: 'horas jugadas' });
+    // El número va sin la unidad porque la etiqueta de abajo ya la dice.
+    contadores.push({
+      valor: numero(minutosTotales / 60),
+      etiqueta: t('steam.horasJugadas'),
+    });
   }
   if (bloque.config['mostrarNivel'] !== false && nivel) {
-    contadores.push({ valor: numero(nivel), etiqueta: 'nivel de Steam' });
+    contadores.push({ valor: numero(nivel), etiqueta: t('steam.nivel') });
   }
 
   if (contadores.length === 0) return null;
@@ -55,7 +66,7 @@ export function BloqueEstadisticas({ bloque }: { bloque: Bloque }) {
               }}
               aria-hidden="true"
             />
-            {estado.texto} en Steam
+            {t('bloques.enSteam', { estado: estado.texto })}
           </span>
         )}
       </div>

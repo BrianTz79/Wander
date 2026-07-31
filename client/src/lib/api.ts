@@ -1,5 +1,7 @@
 import axios, { AxiosError } from 'axios';
 
+import i18n from '../i18n';
+
 /**
  * Cliente HTTP.
  *
@@ -15,7 +17,28 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-/** Extrae el mensaje de error legible que manda el backend. */
+/*
+ * El idioma viaja en `Accept-Language` en cada petición. Hoy el backend
+ * apenas lo necesita —sus mensajes siguen viniendo en español—, pero es la
+ * cabecera estándar para esto y estará puesta el día que el servidor
+ * escriba algo destinado a leerse (Fase 8).
+ */
+api.interceptors.request.use((config) => {
+  config.headers.set('Accept-Language', i18n.language);
+  return config;
+});
+
+/**
+ * Extrae el mensaje de error legible que manda el backend.
+ *
+ * **Los mensajes del servidor siguen llegando en español.** Traducirlos
+ * exigiría que el backend mandara un código por cada error de validación
+ * de zod —hay decenas, repartidos por todos los schemas— y ese cambio es
+ * bastante más grande que esta fase. Lo que sí está traducido es todo lo
+ * que se origina aquí: red, tiempo de espera y los códigos de los flujos
+ * externos, que son los errores que la gente ve de verdad a menudo.
+ * Queda anotado como pendiente en PROYECTO.md.
+ */
 export function mensajeError(error: unknown): string {
   if (error instanceof AxiosError) {
     const datos = error.response?.data as
@@ -26,10 +49,10 @@ export function mensajeError(error: unknown): string {
       return datos.detalles.map((d) => d.mensaje).join(' ');
     }
     if (datos?.error) return datos.error;
-    if (error.code === 'ECONNABORTED') return 'La petición tardó demasiado. Inténtalo de nuevo.';
-    if (!error.response) return 'No se pudo conectar con el servidor.';
+    if (error.code === 'ECONNABORTED') return i18n.t('errores.timeout');
+    if (!error.response) return i18n.t('errores.sinConexion');
   }
-  return 'Ocurrió un error inesperado.';
+  return i18n.t('errores.inesperado');
 }
 
 /** Errores de validación por campo, para pintarlos junto a cada input. */

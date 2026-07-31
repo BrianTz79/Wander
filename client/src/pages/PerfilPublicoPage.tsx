@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Check, Eye, EyeOff, Pencil, Share2 } from 'lucide-react';
 
 import { api } from '../lib/api';
@@ -22,6 +23,7 @@ type Estado =
  * cualquier otra persona un perfil no publicado es un 404.
  */
 export function PerfilPublicoPage() {
+  const { t } = useTranslation();
   const { handle } = useParams<{ handle: string }>();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
   const [copiado, setCopiado] = useState(false);
@@ -44,15 +46,16 @@ export function PerfilPublicoPage() {
     };
   }, [handle]);
 
-  // Título de pestaña con el nombre del perfil.
+  // Título de pestaña con el nombre del perfil. Al salir lo restaura App,
+  // que lo repone en cada cambio de ruta y de idioma.
   useEffect(() => {
     if (estado.fase === 'listo') {
-      document.title = `${estado.datos.usuario.displayName} (@${estado.datos.usuario.handle}) — Wander`;
+      document.title = t('perfilPublico.tituloPestana', {
+        nombre: estado.datos.usuario.displayName,
+        handle: estado.datos.usuario.handle,
+      });
     }
-    return () => {
-      document.title = 'Wander — tu identidad como jugador';
-    };
-  }, [estado]);
+  }, [estado, t]);
 
   async function compartir() {
     const url = window.location.href;
@@ -74,7 +77,7 @@ export function PerfilPublicoPage() {
   if (estado.fase === 'cargando') {
     return (
       <div className="flex min-h-[60vh] items-center justify-center" role="status">
-        <span className="sr-only">Cargando perfil…</span>
+        <span className="sr-only">{t('perfilPublico.cargando')}</span>
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900
                      dark:border-zinc-700 dark:border-t-white"
@@ -99,9 +102,9 @@ export function PerfilPublicoPage() {
           style={{ backgroundColor: 'var(--p-tarjeta)', borderBottom: '1px solid var(--p-borde)' }}
         >
           <EyeOff className="h-4 w-4" style={{ color: 'var(--p-acento)' }} aria-hidden="true" />
-          <span>Este perfil todavía no está publicado: solo tú puedes verlo.</span>
+          <span>{t('perfilPublico.sinPublicar')}</span>
           <Link to="/editor" className="font-semibold underline" style={{ color: 'var(--p-acento)' }}>
-            Publicar desde el editor
+            {t('perfilPublico.publicarDesdeEditor')}
           </Link>
         </div>
       )}
@@ -115,7 +118,7 @@ export function PerfilPublicoPage() {
 
         {bloques.length === 0 && (
           <p className="py-24 text-center text-sm" style={{ opacity: 0.6 }}>
-            Este perfil todavía no tiene contenido.
+            {t('perfilPublico.sinContenido')}
           </p>
         )}
 
@@ -137,12 +140,12 @@ export function PerfilPublicoPage() {
             {copiado ? (
               <>
                 <Check className="h-4 w-4" style={{ color: 'var(--p-acento)' }} aria-hidden="true" />
-                Enlace copiado
+                {t('perfilPublico.enlaceCopiado')}
               </>
             ) : (
               <>
                 <Share2 className="h-4 w-4" style={{ color: 'var(--p-acento)' }} aria-hidden="true" />
-                Compartir
+                {t('perfilPublico.compartir')}
               </>
             )}
           </button>
@@ -158,13 +161,13 @@ export function PerfilPublicoPage() {
               }}
             >
               <Pencil className="h-4 w-4" style={{ color: 'var(--p-acento)' }} aria-hidden="true" />
-              Editar mi perfil
+              {t('perfilPublico.editarMiPerfil')}
             </Link>
           )}
 
           <span className="inline-flex items-center gap-1.5" style={{ opacity: 0.6 }}>
             <Eye className="h-4 w-4" aria-hidden="true" />
-            {perfil.vistas} {perfil.vistas === 1 ? 'vista' : 'vistas'}
+            {t('perfilPublico.vistas', { count: perfil.vistas })}
           </span>
         </div>
       </div>

@@ -111,5 +111,18 @@ export const completarPerfilSchema = z.object({
   }),
 });
 
+/**
+ * Preferencias de interfaz (Fase 6.5).
+ *
+ * `z.enum` y no `z.string()`: el idioma acaba en `<html lang>` y algún día
+ * en la elección de plantilla de correo, así que la lista cerrada es la
+ * garantía de que ahí nunca llega nada que no sea un idioma que existe.
+ * Los catálogos del cliente viven en `client/src/i18n/locales/`.
+ */
+export const preferenciasSchema = z.object({
+  idioma: z.enum(['es', 'en'], { error: 'Ese idioma no está disponible.' }),
+});
+
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type PreferenciasInput = z.infer<typeof preferenciasSchema>;

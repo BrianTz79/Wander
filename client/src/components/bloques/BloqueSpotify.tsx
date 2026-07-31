@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Music } from 'lucide-react';
 import type { Bloque } from '../../lib/perfil';
 import { useDiscord } from '../../lib/discordContexto';
@@ -17,12 +18,13 @@ import { EsqueletoSteam } from './steamComunes';
  * sitio en el perfil para decir que no hay nada.
  */
 export function BloqueSpotify({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
   const { datos, cargando, vinculado } = useDiscord();
 
   const titulo =
     typeof bloque.config['titulo'] === 'string' && bloque.config['titulo'].trim() !== ''
       ? bloque.config['titulo']
-      : 'Sonando ahora';
+      : t('bloques.tituloSonandoAhora');
 
   const mostrarProgreso = bloque.config['mostrarProgreso'] !== false;
 
@@ -102,6 +104,7 @@ function Portada({ url }: { url: string | null }) {
  * llegar datos nuevos daría saltos de un minuto y parecería congelada.
  */
 function Progreso({ inicio, fin }: { inicio: number; fin: number }) {
+  const { t } = useTranslation();
   const [ahora, setAhora] = useState(() => Date.now());
 
   useEffect(() => {
@@ -126,7 +129,7 @@ function Progreso({ inicio, fin }: { inicio: number; fin: number }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(porcentaje)}
-        aria-label="Progreso de la canción"
+        aria-label={t('bloques.progresoCancion')}
       >
         <div
           className="h-full"

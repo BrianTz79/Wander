@@ -51,6 +51,13 @@ model User {
   suspendidoHasta DateTime?
   motivoSuspension String?
 
+  // Idioma de la interfaz: 'es' | 'en' (Fase 6.5). Vive en la cuenta y no
+  // solo en el navegador porque el servidor tendrá que escribirle
+  // notificaciones y correos a esta persona, y necesita saber en qué
+  // idioma. Sin valor por defecto explícito manda `es`, que es el idioma
+  // en el que está escrita la plataforma.
+  idioma String @default("es")
+
   // ── Privacidad (todo opt-out explícito, por defecto lo más cerrado
   //    que siga siendo útil) ──
   perfilPublico  Boolean @default(true)

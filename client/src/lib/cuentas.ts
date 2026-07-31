@@ -1,3 +1,7 @@
+import type { TFunction } from 'i18next';
+
+import { textoErrorExterno } from './erroresExternos';
+
 /**
  * Cuentas vinculadas en el cliente (Fase 6).
  *
@@ -52,11 +56,15 @@ export const NOMBRES: Record<ProveedorVinculable, string> = {
 /**
  * Qué aporta cada proveedor, en una línea. Es lo que se lee ANTES de
  * pulsar "vincular", así que dice el beneficio concreto, no el mecanismo.
+ *
+ * Se guarda la CLAVE del catálogo, no el texto: es un objeto de módulo, se
+ * evalúa una sola vez al importarlo, y un texto resuelto ahí se quedaría
+ * congelado en el idioma que hubiera al arrancar.
  */
-export const RESUMEN_PROVEEDOR: Record<ProveedorVinculable, string> = {
-  steam: 'Tus juegos, tus horas y tu actividad, actualizados solos.',
-  discord: 'Tu estado en vivo y lo que escuchas en Spotify.',
-  google: 'Una forma rápida de entrar, sin contraseña.',
+export const CLAVE_RESUMEN: Record<ProveedorVinculable, string> = {
+  steam: 'configuracion.resumenSteam',
+  discord: 'configuracion.resumenDiscord',
+  google: 'configuracion.resumenGoogle',
 };
 
 /**
@@ -69,35 +77,37 @@ export function urlVincular(proveedor: ProveedorVinculable): string {
   return proveedor === 'steam' ? '/api/auth/steam' : `/api/oauth/${proveedor}`;
 }
 
-/** Traduce los códigos que llegan como query al volver de un flujo. */
-export function mensajeRetorno(params: URLSearchParams): {
-  tipo: 'ok' | 'error';
-  texto: string;
-} | null {
+/**
+ * Traduce los códigos que llegan como query al volver de un flujo.
+ *
+ * Recibe `t` en vez de importarlo: así el componente que lo llama se
+ * vuelve a ejecutar —y este mensaje se recalcula— al cambiar de idioma.
+ *
+ * El nombre del proveedor se resuelve contra `NOMBRES`, nunca se pinta el
+ * valor crudo de la query: `?vinculado=<lo que sea>` acabaría si no en
+ * pantalla tal cual.
+ */
+export function mensajeRetorno(
+  params: URLSearchParams,
+  t: TFunction
+): { tipo: 'ok' | 'error'; texto: string } | null {
   const vinculado = params.get('vinculado');
-  if (vinculado) {
-    const nombre = NOMBRES[vinculado as ProveedorVinculable] ?? vinculado;
-    return { tipo: 'ok', texto: `${nombre} quedó vinculado a tu cuenta.` };
+  if (vinculado && vinculado in NOMBRES) {
+    const nombre = NOMBRES[vinculado as ProveedorVinculable];
+    return { tipo: 'ok', texto: t('configuracion.vinculado', { proveedor: nombre }) };
   }
 
   for (const proveedor of ['discord', 'google', 'steam'] as const) {
     if (params.get(proveedor) === 'cancelado') {
-      return { tipo: 'error', texto: `Cancelaste la conexión con ${NOMBRES[proveedor]}.` };
+      return {
+        tipo: 'error',
+        texto: t('configuracion.canceloConexion', { proveedor: NOMBRES[proveedor] }),
+      };
     }
   }
 
   const error = params.get('error');
   if (!error) return null;
 
-  const textos: Record<string, string> = {
-    'ya-vinculada':
-      'Esa cuenta ya está vinculada a otro usuario de Wander. Desvincúlala allí primero.',
-    'no-configurado': 'Ese proveedor no está disponible ahora mismo.',
-    state: 'La conexión caducó o no se pudo verificar. Inténtalo otra vez.',
-    'sin-codigo': 'El proveedor no devolvió lo necesario para continuar.',
-    proveedor: 'No se pudo hablar con el proveedor. Inténtalo en un momento.',
-    sesion: 'Tu sesión cambió durante el proceso. Vuelve a intentarlo.',
-  };
-
-  return { tipo: 'error', texto: textos[error] ?? 'No se pudo completar la conexión.' };
+  return { tipo: 'error', texto: textoErrorExterno(error, t) };
 }

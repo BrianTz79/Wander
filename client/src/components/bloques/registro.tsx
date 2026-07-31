@@ -23,8 +23,10 @@ export interface PropsBloque {
 }
 
 interface DefinicionBloque {
-  nombre: string;
-  descripcion: string;
+  /** Prefijo de las claves `bloques.<clave>Nombre` y `<clave>Descripcion`.
+   *  Se guarda la clave y no el texto para que el menú de "añadir bloque"
+   *  cambie de idioma sin recargar. */
+  clave: string;
   Icono: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
   configInicial: Record<string, unknown>;
   Componente: ComponentType<PropsBloque>;
@@ -37,37 +39,32 @@ interface DefinicionBloque {
 
 export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
   hero: {
-    nombre: 'Presentación',
-    descripcion: 'Tu avatar, nombre, frase y bio.',
+    clave: 'hero',
     Icono: User,
     configInicial: {},
     Componente: BloqueHero,
   },
   texto: {
-    nombre: 'Texto',
-    descripcion: 'Un bloque de texto libre con título opcional.',
+    clave: 'texto',
     Icono: Type,
     configInicial: { titulo: '', contenido: '' },
     Componente: BloqueTexto,
   },
   enlaces: {
-    nombre: 'Enlaces',
-    descripcion: 'Botones a tus perfiles y redes.',
+    clave: 'enlaces',
     Icono: Link2,
     configInicial: { titulo: '', enlaces: [] },
     Componente: BloqueEnlaces,
   },
   'steam-actividad': {
-    nombre: 'Actividad de Steam',
-    descripcion: 'Lo que has jugado estas dos semanas. Se actualiza solo.',
+    clave: 'steamActividad',
     Icono: Gamepad2,
     configInicial: { titulo: '', limite: 6, mostrarHorasTotales: true },
     Componente: BloqueSteamActividad,
     requiereSteam: true,
   },
   estadisticas: {
-    nombre: 'Estadísticas',
-    descripcion: 'Tus juegos, horas y nivel de Steam en números.',
+    clave: 'estadisticas',
     Icono: BarChart3,
     configInicial: {
       titulo: '',
@@ -79,24 +76,21 @@ export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
     requiereSteam: true,
   },
   favoritos: {
-    nombre: 'Juegos favoritos',
-    descripcion: 'Los juegos que quieres destacar, con su carátula.',
+    clave: 'favoritos',
     Icono: Star,
     configInicial: { titulo: '', appids: [] },
     Componente: BloqueFavoritos,
     requiereSteam: true,
   },
   'discord-estado': {
-    nombre: 'Estado de Discord',
-    descripcion: 'Si estás en línea y a qué juegas, en vivo.',
+    clave: 'discordEstado',
     Icono: MessageCircle,
     configInicial: { titulo: '', mostrarActividad: true, mostrarAvatar: true },
     Componente: BloqueDiscordEstado,
     requiereDiscord: true,
   },
   spotify: {
-    nombre: 'Spotify',
-    descripcion: 'La canción que suena ahora mismo. Se oculta si no escuchas nada.',
+    clave: 'spotify',
     Icono: Music,
     configInicial: { titulo: '', mostrarProgreso: true },
     Componente: BloqueSpotify,

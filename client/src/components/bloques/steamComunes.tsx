@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Gamepad2 } from 'lucide-react';
 import type { JuegoSteam } from '../../lib/steam';
 
@@ -81,6 +82,7 @@ function Marco({ titulo, children }: { titulo: string; children: React.ReactNode
 /** Estado de carga. Existe para que el perfil no dé un salto de layout
  *  cuando lleguen los datos: ocupa aproximadamente el mismo alto. */
 export function EsqueletoSteam({ titulo, filas = 3 }: { titulo: string; filas?: number }) {
+  const { t } = useTranslation();
   return (
     <section aria-busy="true">
       <h2 className="mb-3 text-xl font-bold">{titulo}</h2>
@@ -98,7 +100,7 @@ export function EsqueletoSteam({ titulo, filas = 3 }: { titulo: string; filas?: 
           />
         ))}
       </ul>
-      <span className="sr-only">Cargando datos de Steam…</span>
+      <span className="sr-only">{t('bloques.cargandoSteam')}</span>
     </section>
   );
 }

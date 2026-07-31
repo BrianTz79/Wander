@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Compass } from 'lucide-react';
 import { useAuth } from '../../store/authStore';
 
 /** Footer (§5.10 del sistema de diseño). */
 export function Footer() {
+  const { t } = useTranslation();
   const anio = new Date().getFullYear();
   // Con sesión, el footer ofrece también las páginas de cuenta: es el otro
   // sitio donde la gente busca "configuración" cuando no la encuentra arriba.
@@ -18,16 +20,13 @@ export function Footer() {
               <Compass className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
               <span className="text-zinc-900 dark:text-white">Wander</span>
             </Link>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Tu identidad como jugador, en un solo enlace. Conecta tus cuentas, arma tu perfil y
-              compártelo.
-            </p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{t('footer.lema')}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             <div>
               <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
-                Plataforma
+                {t('footer.plataforma')}
               </h3>
               <ul className="space-y-2 text-sm">
                 <li>
@@ -35,7 +34,7 @@ export function Footer() {
                     to="/explorar"
                     className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   >
-                    Explorar perfiles
+                    {t('footer.explorarPerfiles')}
                   </Link>
                 </li>
                 {!usuario && (
@@ -44,7 +43,7 @@ export function Footer() {
                       to="/registro"
                       className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                     >
-                      Crear perfil
+                      {t('footer.crearPerfil')}
                     </Link>
                   </li>
                 )}
@@ -55,7 +54,7 @@ export function Footer() {
             {usuario && (
               <div>
                 <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
-                  Tu cuenta
+                  {t('footer.tuCuenta')}
                 </h3>
                 <ul className="space-y-2 text-sm">
                   <li>
@@ -63,7 +62,7 @@ export function Footer() {
                       to={`/u/${usuario.handle}`}
                       className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                     >
-                      Mi perfil
+                      {t('footer.miPerfil')}
                     </Link>
                   </li>
                   <li>
@@ -71,7 +70,7 @@ export function Footer() {
                       to="/editor"
                       className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                     >
-                      Editar perfil
+                      {t('footer.editarPerfil')}
                     </Link>
                   </li>
                   <li>
@@ -79,7 +78,7 @@ export function Footer() {
                       to="/configuracion"
                       className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                     >
-                      Configuración
+                      {t('footer.configuracion')}
                     </Link>
                   </li>
                 </ul>
@@ -87,14 +86,16 @@ export function Footer() {
             )}
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Legal</h3>
+              <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
+                {t('footer.legal')}
+              </h3>
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     to="/privacidad"
                     className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   >
-                    Privacidad
+                    {t('footer.privacidad')}
                   </Link>
                 </li>
                 <li>
@@ -102,7 +103,7 @@ export function Footer() {
                     to="/terminos"
                     className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   >
-                    Términos
+                    {t('footer.terminos')}
                   </Link>
                 </li>
               </ul>
@@ -112,7 +113,7 @@ export function Footer() {
 
         <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            © {anio} Wander. Hecho en Tijuana.
+            {t('footer.derechos', { anio })}
           </p>
         </div>
       </div>
