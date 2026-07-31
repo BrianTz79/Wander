@@ -106,7 +106,7 @@ export async function miPerfil(req: Request, res: Response): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────
 export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
   const userId = req.usuario!.id;
-  const { tema, plantilla, publicado, displayName, bio, cssPropio } =
+  const { tema, plantilla, publicado, displayName, bio, cssPropio, avatarUrl } =
     req.body as ActualizarPerfilInput;
 
   // Asegura que el perfil exista antes del update.
@@ -162,6 +162,21 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     }
   }
 
+  /*
+   * Foto de perfil. El schema ya garantizó que sea una ruta de
+   * `/uploads/`, pero eso solo dice que es de Wander, no que sea TUYA:
+   * sin esta comprobación se podría poner de avatar el archivo de otra
+   * persona conociendo su URL. Se exige que el archivo exista, sea del
+   * usuario y se haya subido como imagen.
+   */
+  if (avatarUrl !== undefined && avatarUrl !== null) {
+    const archivo = await prisma.archivo.findFirst({
+      where: { url: avatarUrl, userId, mime: { startsWith: 'image/' } },
+      select: { id: true },
+    });
+    if (!archivo) throw errores.invalido('Esa foto no existe o no es tuya.');
+  }
+
   const [perfil, usuario] = await prisma.$transaction([
     prisma.perfil.update({
       where: { userId },
@@ -177,6 +192,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
       data: {
         ...(displayName !== undefined ? { displayName } : {}),
         ...(bio !== undefined ? { bio } : {}),
+        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
       },
       select: {
         handle: true,

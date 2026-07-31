@@ -254,6 +254,11 @@ export const es = {
     sinBloques: 'Añade bloques para dar vida a tu perfil.',
 
     identidad: 'Identidad',
+    fotoPerfil: 'Foto de perfil',
+    cambiarFoto: 'Cambiar foto',
+    subiendoFoto: 'Subiendo…',
+    quitarFoto: 'Quitar',
+    fotoAyuda: 'JPG, PNG, WebP o GIF. Se recorta en círculo al mostrarla.',
     nombreMostrar: 'Nombre para mostrar',
     bio: 'Bio',
     bioPlaceholder: 'Cuenta quién eres como jugador.',
@@ -275,17 +280,16 @@ export const es = {
     tipografia: 'Tipografía',
     redondez: 'Redondez de esquinas: {{radio}}px',
 
-    cssPropio: 'CSS propio',
-    cssAbrir: 'Abrir',
+    vistaPreviaTelefono: 'Vista de teléfono',
+
+    cssPropio: 'Edición avanzada',
     cssAyuda:
-      'Para cuando el tema se te queda corto. Tu CSS solo afecta a tu perfil: no puede tocar el resto de Wander ni el perfil de nadie más.',
-    cssEtiqueta: 'Tu CSS',
-    // El <codigo> es un <code> con el selector del contenedor.
-    cssScope:
-      'Todos tus selectores se limitan a <codigo>{{scope}}</codigo> automáticamente, así que escríbelos como si tu perfil fuera la página entera. Se quitan las reglas que se saldrían de él (como <codigo>position: fixed</codigo>) y las que cargarían archivos de otros sitios.',
+      'Para cuando el tema se te queda corto. Escribe tu propio CSS y cambia tu perfil a fondo.',
+    cssActivo: 'Tienes CSS propio aplicado a tu perfil.',
+    cssAbrirAvanzada: 'Abrir edición avanzada',
+    cssEditarAvanzada: 'Editar mi CSS',
     cssGuardar: 'Guardar CSS',
     cssGuardando: 'Guardando…',
-    cssRestaurar: 'Restaurar',
     cssAvisosTitulo: 'Se guardó, pero hubo cosas que no se pudieron aceptar:',
 
     bloques: 'Bloques',
@@ -340,6 +344,118 @@ export const es = {
     mostrarProgreso: 'Mostrar la barra de progreso',
     spotifySeOculta:
       'Este bloque se oculta solo cuando no estás escuchando nada, así que no deja un hueco vacío en tu perfil.',
+  },
+
+  /** Edición avanzada: la página de CSS propio (`/editor/css`). */
+  cssPagina: {
+    volver: 'Volver al editor',
+    titulo: 'Edición avanzada',
+    entradilla:
+      'Aquí escribes CSS y cambias tu perfil a fondo: colores, tipografías, espaciado, animaciones y hasta la forma de las tarjetas. Solo afecta a tu perfil.',
+
+    avisoTitulo: 'Esto es la parte difícil, y no hace falta para tener un buen perfil.',
+    avisoTexto:
+      'Con el <editor>editor normal</editor> puedes cambiar colores, tipografía, redondez y el orden de tus bloques sin escribir una línea. Ven aquí solo si quieres algo que ahí no se pueda. Si rompes algo, «Borrar todo» lo deja como estaba.',
+
+    tuCss: 'Tu CSS',
+    // El <codigo> es un <code> con el selector del contenedor.
+    scopeAviso:
+      'Todos tus selectores se limitan a <codigo>{{scope}}</codigo> automáticamente, así que escribe como si tu perfil fuera la página entera. Puedes usar <codigo>body</codigo> y se traduce a tu contenedor.',
+    placeholder: 'Escribe aquí tu CSS, o aplica uno de los presets de abajo para empezar.',
+    borrarTodo: 'Borrar todo',
+    verPerfil: 'Ver mi perfil',
+    vistaPreviaNota:
+      'Es tu perfil real con tu CSS aplicado. En escritorio los bloques se reparten en dos columnas; aquí se ven en una por el ancho.',
+
+    presetsTitulo: 'Presets',
+    presetsAyuda:
+      'Temas completos listos para usar. Al aplicar uno reemplaza tu CSS actual, y después puedes editarlo a tu gusto.',
+    aplicar: 'Aplicar',
+    copiar: 'Copiar',
+    copiado: 'Copiado',
+    copiarContexto: 'Copiar contexto',
+    anadirAlEditor: 'Añadir al editor',
+
+    presets: {
+      neonNombre: 'Neón',
+      neonDescripcion: 'Morado oscuro, rosa eléctrico y tarjetas que brillan al pasar el ratón.',
+      cristalNombre: 'Cristal',
+      cristalDescripcion: 'Tarjetas translúcidas con desenfoque sobre un fondo con luces.',
+      minimalNombre: 'Minimal',
+      minimalDescripcion: 'Claro, sin adornos y con mucho aire. Todo el peso en el contenido.',
+      terminalNombre: 'Terminal',
+      terminalDescripcion: 'Monoespaciado y verde fósforo, como una consola.',
+      revistaNombre: 'Revista',
+      revistaDescripcion: 'Serif, títulos grandes y un acento rojo. Se lee como una portada.',
+    },
+
+    guiaTitulo: '¿Qué es esto?',
+    guiaQueEs:
+      'El CSS es el lenguaje con el que se decide cómo se ve una página: colores, tamaños, posiciones y animaciones. Se escribe eligiendo QUÉ quieres cambiar (el selector) y luego CÓMO (las propiedades). Por ejemplo, «h2 { color: red }» pone en rojo todos los títulos de tus bloques.',
+
+    ganchosTitulo: 'A qué te puedes agarrar',
+    ganchosAyuda:
+      'Estos selectores son estables y no van a cambiar. Por dentro los bloques usan clases de la herramienta con la que están hechos, que sí cambian entre versiones: si te agarras a esas, tu CSS se romperá solo algún día.',
+
+    ganchos: {
+      bloque: 'Cualquier bloque de tu perfil',
+      hero: 'El bloque de tu avatar, nombre y bio',
+      enlaces: 'El bloque de enlaces',
+      texto: 'Un bloque de texto libre',
+      steamActividad: 'El bloque de lo que juegas últimamente',
+      estadisticas: 'El bloque de contadores (juegos, horas, nivel)',
+      favoritos: 'El bloque de juegos favoritos',
+      discordEstado: 'El bloque de tu estado de Discord',
+      spotify: 'El bloque de Spotify',
+      lateral: 'La columna estrecha de la izquierda (solo en escritorio)',
+      principal: 'La columna ancha de la derecha (solo en escritorio)',
+      h1: 'Tu nombre',
+      h2: 'El título de cada bloque',
+      section: 'La caja de cada bloque',
+      enlace: 'Cualquier enlace',
+      imagen: 'Cualquier imagen (avatar, carátulas)',
+    },
+
+    variablesTitulo: 'Las variables de tu tema',
+    variablesAyuda:
+      'Es la forma más limpia de cambiarlo todo de golpe: cada una se usa en muchos sitios a la vez, así que si redefines el acento se actualiza en todos.',
+
+    variables: {
+      fondo: 'El color de fondo del perfil',
+      texto: 'El color del texto',
+      acento: 'El color de los detalles: enlaces, iconos, números',
+      tarjeta: 'El fondo de cada bloque',
+      borde: 'El color de los bordes',
+      radio: 'Qué tan redondeadas son las esquinas',
+    },
+
+    limitesTitulo: 'Lo que no se puede',
+    limiteFixed:
+      '«position: fixed» y «sticky» se quitan: se saldrían de tu perfil y taparían el resto de la página. «relative» y «absolute» sí funcionan.',
+    limiteUrl:
+      'Las imágenes de otros sitios se quitan. Puedes usar las que subas a Wander (/uploads/…) y las incrustadas como «data:image/…».',
+    limiteImport: '«@import» y «@font-face» se quitan enteros: los dos cargan archivos de fuera.',
+    limiteContent:
+      'La propiedad «content» está prohibida, así que «::before» y «::after» no te van a servir (un pseudo-elemento sin «content» no llega a existir).',
+    limiteSintaxis: 'Si el CSS tiene un error de sintaxis no se guarda nada y te decimos la línea.',
+    limiteTamano: 'Máximo 20 KB y 400 reglas.',
+
+    recetasTitulo: 'Cómo están hechos tus bloques',
+    recetasAyuda:
+      'El CSS que pinta cada bloque hoy, para que veas cómo se escribe y lo puedas modificar. Cópialo, cámbiale lo que quieras y pégalo arriba.',
+
+    iaTitulo: 'Pedirle ayuda a una IA',
+    iaAyuda:
+      'Copia este texto y pégaselo a ChatGPT, Claude o el que uses, añadiendo al final lo que quieres. Lleva dentro las reglas de Wander para que no se invente clases que aquí no existen.',
+    ideasTitulo: 'Ideas para pedir',
+    ideas: {
+      neonRosa: 'Haz que mis tarjetas tengan un borde neón rosa que brille al pasar el ratón.',
+      tarjetasCristal: 'Quiero tarjetas translúcidas con efecto de cristal esmerilado.',
+      animarHover: 'Que mis bloques se levanten un poco y crezcan al pasar el ratón por encima.',
+      fondoDegradado: 'Ponme un fondo con un degradado oscuro de morado a azul.',
+      compactar: 'Compacta todo: menos espacio entre bloques y tipografía más pequeña.',
+      tipografia: 'Quiero una tipografía monoespaciada y títulos en mayúsculas muy espaciadas.',
+    },
   },
 
   /**
@@ -622,7 +738,12 @@ export const es = {
  * menos, ni una de más— sin exigir además el texto español literal. Una
  * clave que se añada aquí rompe la compilación del inglés hasta que se
  * traduzca, que es precisamente el punto.
+ *
+ * Es RECURSIVO porque hay secciones con un nivel más de anidamiento
+ * (`cssPagina.presets.neonNombre`). Con un `Record<clave, string>` plano,
+ * un grupo anidado se exigía como `string` y el inglés no compilaba
+ * aunque estuviera bien traducido.
  */
-export type Catalogo = {
-  [Seccion in keyof typeof es]: Record<keyof (typeof es)[Seccion], string>;
-};
+type Traducible<T> = T extends string ? string : { [C in keyof T]: Traducible<T[C]> };
+
+export type Catalogo = Traducible<typeof es>;

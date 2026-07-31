@@ -36,6 +36,8 @@ interface EstadoEditor {
     publicado?: boolean;
     displayName?: string;
     bio?: string;
+    /** Ruta de `/uploads/…` de una foto propia, o `null` para quitarla. */
+    avatarUrl?: string | null;
   }) => Promise<void>;
   /**
    * Guarda el CSS propio. Devuelve los avisos del sanitizador para que el

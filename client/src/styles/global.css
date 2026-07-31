@@ -186,6 +186,27 @@
     color: var(--p-texto);
     font-family: var(--p-fuente);
   }
+
+  /*
+   * En la columna lateral el Hero deja de ser una portada a lo ancho y
+   * pasa a ser una tarjeta más, como el resto de bloques de esa columna.
+   * Se hace desde aquí y no con clases en el componente porque el Hero no
+   * sabe —ni debe saber— en qué columna lo pusieron: se pinta igual en el
+   * perfil, en la vista previa del editor y en una sola columna.
+   *
+   * Va dentro de la media query del punto `lg` de Tailwind, que es el
+   * mismo de `CONSULTA_ESCRITORIO` en `lib/media.ts`. Si se cambia uno,
+   * hay que cambiar el otro.
+   */
+  @media (min-width: 1024px) {
+    .perfil-lateral .wander-bloque-hero header {
+      padding-block: 1.5rem;
+      padding-inline: 1.25rem;
+      background-color: var(--p-tarjeta);
+      border: 1px solid var(--p-borde);
+      border-radius: var(--p-radio);
+    }
+  }
   .contenedor-seccion {
     @apply container mx-auto px-4 md:px-6;
   }

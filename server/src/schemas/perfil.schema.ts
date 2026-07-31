@@ -222,10 +222,39 @@ const cssPropioSchema = z
   .max(MAX_CSS_CARACTERES, `El CSS es demasiado largo (máximo ${MAX_CSS_CARACTERES} caracteres).`)
   .nullable();
 
+/**
+ * Foto de perfil elegida por el usuario.
+ *
+ * **Solo se aceptan rutas de `/uploads/`**, nunca una URL cualquiera. Un
+ * `avatarUrl` libre convertiría el campo en dos agujeros a la vez:
+ *
+ *  - **Fuga de datos:** el avatar se pinta en el perfil, en el feed y en el
+ *    chat, así que apuntarlo a un servidor propio es un contador de quién
+ *    ha visto tu contenido, con su IP y su user-agent.
+ *  - **Saltarse la validación:** las subidas pasan por magic bytes y se
+ *    reescriben con sharp para tirar EXIF; una URL externa se salta todo.
+ *
+ * Los avatares que vienen de Steam/Discord/Google los escribe el SERVIDOR
+ * en su propio flujo (`steamAuth.controller.ts`), no este campo, así que
+ * restringirlo aquí no rompe nada de eso.
+ *
+ * `null` es "quítala": vuelve a la inicial sobre el color de acento.
+ */
+const avatarUrlSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(
+    (u) => /^\/uploads\/[\w./-]+$/.test(u) && !u.includes('..'),
+    'La foto tiene que ser una que hayas subido a Wander.'
+  )
+  .nullable();
+
 export const actualizarPerfilSchema = z
   .object({
     tema: temaSchema.optional(),
     cssPropio: cssPropioSchema.optional(),
+    avatarUrl: avatarUrlSchema.optional(),
     // Aplicar una plantilla: el servidor resuelve el id contra el catálogo
     // y escribe SU tema. Nunca se guarda un id que no exista.
     plantilla: z.enum(IDS_PLANTILLA, { error: 'Esa plantilla no existe.' }).optional(),

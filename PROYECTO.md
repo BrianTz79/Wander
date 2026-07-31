@@ -1385,6 +1385,37 @@ Lo encontró un usuario de prueba: entró con Google, pulsó «conectar Steam» 
   correo existente cambiaría en silencio la vía de recuperación de la cuenta.
 - Las dos cuentas del incidente se borraron para que la persona pudiera repetirlo limpio.
 
+**31/07/2026 — Perfil a dos columnas, edición avanzada y foto de perfil**
+
+- **El perfil aprovecha el ancho en escritorio**: barra lateral fija (Hero, enlaces,
+  Discord, Spotify) + columna principal con scroll (Steam, favoritos, texto, muro). El
+  reparto lo decide `columnaDe()` por TIPO de bloque, en `registro.tsx`. Por debajo de
+  `lg` vuelve a una sola columna en el orden del editor — la vista de teléfono de siempre.
+  Solo se parte en dos si hay bloques en las DOS columnas; si no, media pantalla quedaría
+  en blanco.
+- **Se decide con `matchMedia` en JS, no con `lg:hidden`**: pintar las dos versiones y
+  esconder una montaría cada bloque dos veces, y los de Steam/Discord piden datos al
+  montarse. Nuevo `lib/media.ts`.
+- **Clases semánticas estables** (`.wander-bloque`, `.wander-bloque-<tipo>`,
+  `.perfil-lateral`, `.perfil-principal`). Son el **contrato público** para el CSS propio:
+  por dentro los bloques usan utilidades de Tailwind, que cambian entre versiones.
+- **`/editor/css`: la edición avanzada**. El panel pequeño del editor pasa a ser un botón.
+  La página trae guía de qué es el CSS, tabla de ganchos y variables, límites, 5 presets
+  aplicables de un clic, el CSS de cada bloque para copiar, y un contexto listo para
+  pegarle a una IA (con las reglas de Wander dentro, para que no invente clases).
+- **Foto de perfil editable**: `avatarUrl` se acepta en el PATCH del perfil, pero **solo
+  como ruta de `/uploads/` y solo si el archivo es TUYO** — una URL libre sería un contador
+  de visitas con IP ajena y se saltaría la validación por magic bytes. Antes el avatar solo
+  lo escribía el servidor al entrar con Steam/Discord/Google y no había forma de cambiarlo.
+- **Dos bugs de CSS que solo se ven en un navegador:**
+  · Las **variables del tema iban en el `style` en línea**, y una propiedad personalizada
+    en línea gana a cualquier regla — así que `:root { --p-acento: … }` en el CSS propio no
+    hacía nada, y eso es justo lo que hacen todos los presets. Ahora el tema se emite como
+    una REGLA en el mismo `<style>`, antes del CSS del usuario, que gana por orden.
+  · `Catalogo` (i18n) solo tipaba dos niveles: una sección con un nivel más de anidamiento
+    exigía `string` y el inglés no compilaba. Ahora es recursivo — y sigue cazando una
+    clave que falte, también en los grupos anidados.
+
 **31/07/2026 — Fase 9 desplegada: CSS propio con red debajo**
 
 - **`sanitizar.service.ts`**: PostCSS con el parser estricto, prefijado de cada selector

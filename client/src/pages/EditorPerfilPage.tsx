@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import {
@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  ImagePlus,
   Loader2,
   Plus,
   RefreshCw,
@@ -21,11 +22,11 @@ import { useAuth } from '../store/authStore';
 import { useEditor } from '../store/editorStore';
 import { api, mensajeError } from '../lib/api';
 import { horasDe } from '../lib/steam';
+import { archivos } from '../lib/archivos';
 import {
   FUENTES_ETIQUETAS,
   idDeScope,
   temaCompleto,
-  varsDeTema,
   type Bloque,
   type TemaPerfil,
   type TipoBloque,
@@ -127,9 +128,19 @@ export function EditorPerfilPage() {
 
         {/* ── Vista previa ── */}
         <div className="min-w-0">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {t('editor.vistaPrevia')}
-          </p>
+          {/* La vista previa vive en una columna estrecha, así que enseña
+              siempre el perfil en UNA columna. Es la vista de teléfono, y
+              se dice para que nadie crea que su perfil se verá así en
+              escritorio: ahí los bloques se reparten en dos columnas. El
+              enlace «ver mi perfil» de arriba lleva al real. */}
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {t('editor.vistaPrevia')}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {t('editor.vistaPreviaTelefono')}
+            </p>
+          </div>
           <div
             /* El mismo id que el perfil público: es lo que hace que el CSS
                propio (prefijado con `#perfil-<id>`) también aplique aquí.
@@ -137,9 +148,8 @@ export function EditorPerfilPage() {
                más falta hace que no mienta. */
             id={idDeScope(perfil.id)}
             className="perfil-raiz overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
-            style={varsDeTema(perfil.tema)}
           >
-            <CssDePerfil css={perfil.cssPropio} />
+            <CssDePerfil perfilId={perfil.id} tema={perfil.tema} css={perfil.cssPropio} />
             {/* Sin fondo propio: lo hereda de `.perfil-raiz`, para que el
                 CSS del usuario pueda cambiarlo también en la vista previa
                 (un `background` en línea aquí le ganaría siempre). */}
@@ -227,6 +237,126 @@ function BotonPublicar() {
 //  Panel: identidad (displayName + bio, campos de User)
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Foto de perfil: subir una propia o volver a la de la cuenta vinculada.
+ *
+ * El avatar inicial lo pone el servidor al entrar con Steam, Discord o
+ * Google, y eso está bien como punto de partida — pero era irreversible:
+ * no había forma de cambiarlo. Aquí se sube una imagen (que pasa por la
+ * misma validación por magic bytes y el mismo reescalado con sharp que
+ * cualquier adjunto) y se guarda su ruta.
+ *
+ * Se guarda AL INSTANTE, sin esperar al botón «guardar identidad»: elegir
+ * un archivo ya es una confirmación explícita, y dejar la foto nueva a la
+ * vista pero sin aplicar hasta pulsar otro botón es de las cosas que más
+ * confunden en un formulario.
+ */
+function CampoAvatar() {
+  const { t } = useTranslation();
+  const { usuario, guardarPerfil } = useEditor();
+  const setUsuarioAuth = useAuth((e) => e.setUsuario);
+  const usuarioAuth = useAuth((e) => e.usuario);
+  const entradaRef = useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [errorFoto, setErrorFoto] = useState('');
+
+  if (!usuario) return null;
+
+  /** Aplica un avatar (o lo quita con `null`) y sincroniza la navbar. */
+  async function aplicar(url: string | null) {
+    await guardarPerfil({ avatarUrl: url });
+    // La navbar y el menú de cuenta pintan el avatar del authStore.
+    if (usuarioAuth) setUsuarioAuth({ ...usuarioAuth, avatarUrl: url });
+  }
+
+  async function alElegir(e: ChangeEvent<HTMLInputElement>) {
+    const fichero = e.target.files?.[0];
+    // El input se limpia siempre: si no, elegir el MISMO archivo dos veces
+    // seguidas no dispara `change` y parecería que no hace nada.
+    e.target.value = '';
+    if (!fichero) return;
+
+    setSubiendo(true);
+    setErrorFoto('');
+    try {
+      const [subido] = await archivos.subir([fichero], 'avatar');
+      if (subido) await aplicar(subido.url);
+    } catch (err) {
+      setErrorFoto(mensajeError(err));
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <span className="etiqueta">{t('editor.fotoPerfil')}</span>
+
+      <div className="mt-1 flex items-center gap-4">
+        {usuario.avatarUrl ? (
+          <img
+            src={usuario.avatarUrl}
+            alt=""
+            className="h-16 w-16 shrink-0 rounded-full border border-zinc-200 object-cover dark:border-zinc-700"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-2xl font-bold text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+          >
+            {usuario.displayName.charAt(0).toUpperCase()}
+          </div>
+        )}
+
+        <div className="flex min-w-0 flex-col gap-2">
+          <input
+            ref={entradaRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(e) => void alElegir(e)}
+            className="sr-only"
+            id="ed-avatar"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => entradaRef.current?.click()}
+              disabled={subiendo}
+              className="btn-secundario h-9 px-4 text-sm"
+            >
+              {subiendo ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {t('editor.subiendoFoto')}
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                  {t('editor.cambiarFoto')}
+                </>
+              )}
+            </button>
+
+            {usuario.avatarUrl && (
+              <button
+                type="button"
+                onClick={() => void aplicar(null).catch((e) => setErrorFoto(mensajeError(e)))}
+                disabled={subiendo}
+                className="btn-fantasma h-9 px-3 text-sm"
+              >
+                {t('editor.quitarFoto')}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('editor.fotoAyuda')}</p>
+        </div>
+      </div>
+
+      {errorFoto && <p className="texto-error mt-2">{errorFoto}</p>}
+    </div>
+  );
+}
+
 function PanelIdentidad() {
   const { t } = useTranslation();
   const { usuario, guardarPerfil } = useEditor();
@@ -259,6 +389,8 @@ function PanelIdentidad() {
       </h2>
 
       {error && <p className="texto-error mb-3">{error}</p>}
+
+      <CampoAvatar />
 
       <label htmlFor="ed-nombre" className="etiqueta">
         {t('editor.nombreMostrar')}
@@ -503,138 +635,23 @@ function PanelTema() {
  */
 function PanelCssPropio() {
   const { t } = useTranslation();
-  const { perfil, guardarCss } = useEditor();
-  const [abierto, setAbierto] = useState(false);
-  const [borrador, setBorrador] = useState(perfil?.cssOriginal ?? '');
-  const [avisos, setAvisos] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-
-  // Si el perfil se recarga (o se restaura), el borrador sigue al dato.
-  const cssGuardado = perfil?.cssOriginal ?? '';
-  useEffect(() => {
-    setBorrador(cssGuardado);
-  }, [cssGuardado]);
-
+  const { perfil } = useEditor();
   if (!perfil) return null;
 
-  const sucio = borrador !== cssGuardado;
-
-  async function guardar() {
-    setGuardando(true);
-    setError(null);
-    try {
-      setAvisos(await guardarCss(borrador));
-    } catch (e) {
-      setError(mensajeError(e));
-      setAvisos([]);
-    } finally {
-      setGuardando(false);
-    }
-  }
-
-  async function restaurar() {
-    setGuardando(true);
-    setError(null);
-    try {
-      await guardarCss('');
-      setBorrador('');
-      setAvisos([]);
-    } catch (e) {
-      setError(mensajeError(e));
-    } finally {
-      setGuardando(false);
-    }
-  }
+  const tieneCss = Boolean(perfil.cssOriginal);
 
   return (
     <section className="tarjeta">
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
-          <Code className="h-4 w-4" aria-hidden="true" />
-          {t('editor.cssPropio')}
-        </h2>
-        <button
-          type="button"
-          onClick={() => setAbierto((v) => !v)}
-          className="btn-fantasma h-8 px-3 text-xs"
-          aria-expanded={abierto}
-        >
-          {abierto ? t('comun.cerrar') : t('editor.cssAbrir')}
-        </button>
-      </div>
-
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{t('editor.cssAyuda')}</p>
-
-      {abierto && (
-        <div className="mt-4">
-          <label htmlFor="ed-css" className="etiqueta">
-            {t('editor.cssEtiqueta')}
-          </label>
-          <textarea
-            id="ed-css"
-            value={borrador}
-            onChange={(e) => setBorrador(e.target.value)}
-            rows={12}
-            spellCheck={false}
-            className="campo font-mono text-xs"
-            placeholder={'.bloque-hero {\n  border: 2px solid #f0f;\n}'}
-            aria-describedby="ed-css-ayuda"
-          />
-
-          <p id="ed-css-ayuda" className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-            {/* El scope no es un detalle interno: es la respuesta a "¿por
-                qué mi selector no hace nada?", así que se dice. */}
-            <Trans
-              i18nKey="editor.cssScope"
-              values={{ scope: `#${idDeScope(perfil.id)}` }}
-              components={{ codigo: <code className="font-mono" /> }}
-            />
-          </p>
-
-          {error && (
-            <p
-              role="alert"
-              className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
-            >
-              {error}
-            </p>
-          )}
-
-          {avisos.length > 0 && (
-            <div
-              role="status"
-              className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
-            >
-              <p className="font-medium">{t('editor.cssAvisosTitulo')}</p>
-              <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs">
-                {avisos.map((aviso) => (
-                  <li key={aviso}>{aviso}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void guardar()}
-              disabled={guardando || !sucio}
-              className="btn-primario h-9 px-4 text-sm"
-            >
-              {guardando ? t('editor.cssGuardando') : t('editor.cssGuardar')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void restaurar()}
-              disabled={guardando || (!cssGuardado && !borrador)}
-              className="btn-secundario h-9 px-4 text-sm"
-            >
-              {t('editor.cssRestaurar')}
-            </button>
-          </div>
-        </div>
-      )}
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+        <Code className="h-4 w-4" aria-hidden="true" />
+        {t('editor.cssPropio')}
+      </h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+        {tieneCss ? t('editor.cssActivo') : t('editor.cssAyuda')}
+      </p>
+      <Link to="/editor/css" className="btn-secundario h-10 w-full px-4 text-sm">
+        {tieneCss ? t('editor.cssEditarAvanzada') : t('editor.cssAbrirAvanzada')}
+      </Link>
     </section>
   );
 }

@@ -13,6 +13,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegistroPage } from './pages/RegistroPage';
 import { PerfilPublicoPage } from './pages/PerfilPublicoPage';
 import { EditorPerfilPage } from './pages/EditorPerfilPage';
+import { EditorCssPage } from './pages/EditorCssPage';
 import { NoEncontradaPage } from './pages/NoEncontradaPage';
 import { FeedPage } from './pages/FeedPage';
 import { ExplorarPage } from './pages/ExplorarPage';
@@ -158,6 +159,17 @@ export function App() {
             element={
               <RutaProtegida>
                 <EditorPerfilPage />
+              </RutaProtegida>
+            }
+          />
+          {/* Edición avanzada (CSS propio). Va en su propia ruta y no como
+              un panel del editor: quien entra aquí ya sabe a qué viene, y
+              el editor de bloques se queda limpio para todos los demás. */}
+          <Route
+            path="/editor/css"
+            element={
+              <RutaProtegida>
+                <EditorCssPage />
               </RutaProtegida>
             }
           />

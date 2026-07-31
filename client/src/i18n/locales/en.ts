@@ -249,6 +249,11 @@ export const en: Catalogo = {
     sinBloques: 'Add blocks to bring your profile to life.',
 
     identidad: 'Identity',
+    fotoPerfil: 'Profile picture',
+    cambiarFoto: 'Change picture',
+    subiendoFoto: 'Uploading…',
+    quitarFoto: 'Remove',
+    fotoAyuda: 'JPG, PNG, WebP or GIF. It is cropped to a circle when shown.',
     nombreMostrar: 'Display name',
     bio: 'Bio',
     bioPlaceholder: 'Tell people who you are as a gamer.',
@@ -270,17 +275,16 @@ export const en: Catalogo = {
     tipografia: 'Font',
     redondez: 'Corner roundness: {{radio}}px',
 
-    cssPropio: 'Custom CSS',
-    cssAbrir: 'Open',
+    vistaPreviaTelefono: 'Phone view',
+
+    cssPropio: 'Advanced editing',
     cssAyuda:
-      'For when the theme is not enough. Your CSS only affects your profile: it cannot touch the rest of Wander or anyone else’s profile.',
-    cssEtiqueta: 'Your CSS',
-    // The <codigo> is a <code> holding the container selector.
-    cssScope:
-      'All your selectors are scoped to <codigo>{{scope}}</codigo> automatically, so write them as if your profile were the whole page. Rules that would escape it (like <codigo>position: fixed</codigo>) and rules that would load files from other sites are stripped.',
+      'For when the theme is not enough. Write your own CSS and change your profile from the ground up.',
+    cssActivo: 'You have custom CSS applied to your profile.',
+    cssAbrirAvanzada: 'Open advanced editing',
+    cssEditarAvanzada: 'Edit my CSS',
     cssGuardar: 'Save CSS',
     cssGuardando: 'Saving…',
-    cssRestaurar: 'Reset',
     cssAvisosTitulo: 'Saved, but some things could not be accepted:',
 
     bloques: 'Blocks',
@@ -333,6 +337,118 @@ export const en: Catalogo = {
     mostrarProgreso: 'Show the progress bar',
     spotifySeOculta:
       'This block hides itself when you are not listening to anything, so it never leaves an empty gap on your profile.',
+  },
+
+  /** Advanced editing: the custom CSS page (`/editor/css`). */
+  cssPagina: {
+    volver: 'Back to the editor',
+    titulo: 'Advanced editing',
+    entradilla:
+      'Here you write CSS and change your profile from the ground up: colors, fonts, spacing, animations, even the shape of the cards. It only affects your profile.',
+
+    avisoTitulo: 'This is the hard part, and you do not need it to have a good profile.',
+    avisoTexto:
+      'The <editor>normal editor</editor> lets you change colors, fonts, roundness and the order of your blocks without writing a line. Come here only if you want something you cannot do there. If you break something, “Clear everything” puts it back.',
+
+    tuCss: 'Your CSS',
+    // The <codigo> is a <code> holding the container selector.
+    scopeAviso:
+      'All your selectors are scoped to <codigo>{{scope}}</codigo> automatically, so write as if your profile were the whole page. You can use <codigo>body</codigo> and it maps to your container.',
+    placeholder: 'Write your CSS here, or apply one of the presets below to get started.',
+    borrarTodo: 'Clear everything',
+    verPerfil: 'View my profile',
+    vistaPreviaNota:
+      'This is your real profile with your CSS applied. On desktop the blocks split into two columns; here they show in one because of the width.',
+
+    presetsTitulo: 'Presets',
+    presetsAyuda:
+      'Complete themes ready to use. Applying one replaces your current CSS, and you can edit it afterwards.',
+    aplicar: 'Apply',
+    copiar: 'Copy',
+    copiado: 'Copied',
+    copiarContexto: 'Copy context',
+    anadirAlEditor: 'Add to editor',
+
+    presets: {
+      neonNombre: 'Neon',
+      neonDescripcion: 'Dark purple, electric pink and cards that glow on hover.',
+      cristalNombre: 'Glass',
+      cristalDescripcion: 'Translucent blurred cards over a background with lights.',
+      minimalNombre: 'Minimal',
+      minimalDescripcion: 'Light, undecorated and roomy. All the weight on the content.',
+      terminalNombre: 'Terminal',
+      terminalDescripcion: 'Monospace and phosphor green, like a console.',
+      revistaNombre: 'Magazine',
+      revistaDescripcion: 'Serif, big headings and a red accent. Reads like a cover.',
+    },
+
+    guiaTitulo: 'What is this?',
+    guiaQueEs:
+      'CSS is the language that decides how a page looks: colors, sizes, positions and animations. You write it by picking WHAT you want to change (the selector) and then HOW (the properties). For example, “h2 { color: red }” turns every block heading red.',
+
+    ganchosTitulo: 'What you can hook into',
+    ganchosAyuda:
+      'These selectors are stable and will not change. Internally the blocks use classes from the tool they are built with, and those do change between versions: hook into those and your CSS will break on its own some day.',
+
+    ganchos: {
+      bloque: 'Any block on your profile',
+      hero: 'The block with your avatar, name and bio',
+      enlaces: 'The links block',
+      texto: 'A free text block',
+      steamActividad: 'The block with what you have been playing',
+      estadisticas: 'The counters block (games, hours, level)',
+      favoritos: 'The favorite games block',
+      discordEstado: 'Your Discord status block',
+      spotify: 'The Spotify block',
+      lateral: 'The narrow left column (desktop only)',
+      principal: 'The wide right column (desktop only)',
+      h1: 'Your name',
+      h2: 'Each block heading',
+      section: 'The box around each block',
+      enlace: 'Any link',
+      imagen: 'Any image (avatar, cover art)',
+    },
+
+    variablesTitulo: 'Your theme variables',
+    variablesAyuda:
+      'This is the cleanest way to change everything at once: each one is used in many places, so redefining the accent updates all of them.',
+
+    variables: {
+      fondo: 'The profile background color',
+      texto: 'The text color',
+      acento: 'The color of the details: links, icons, numbers',
+      tarjeta: 'The background of each block',
+      borde: 'The border color',
+      radio: 'How rounded the corners are',
+    },
+
+    limitesTitulo: 'What you cannot do',
+    limiteFixed:
+      '“position: fixed” and “sticky” are stripped: they would escape your profile and cover the rest of the page. “relative” and “absolute” do work.',
+    limiteUrl:
+      'Images from other sites are stripped. You can use the ones you upload to Wander (/uploads/…) and inline ones as “data:image/…”.',
+    limiteImport: '“@import” and “@font-face” are stripped entirely: both load files from outside.',
+    limiteContent:
+      'The “content” property is forbidden, so “::before” and “::after” will not work for you (a pseudo-element without “content” never exists).',
+    limiteSintaxis: 'If the CSS has a syntax error nothing is saved and we tell you the line.',
+    limiteTamano: 'Maximum 20 KB and 400 rules.',
+
+    recetasTitulo: 'How your blocks are built',
+    recetasAyuda:
+      'The CSS that paints each block today, so you can see how it is written and change it. Copy it, tweak whatever you want and paste it above.',
+
+    iaTitulo: 'Asking an AI for help',
+    iaAyuda:
+      'Copy this text and paste it into ChatGPT, Claude or whichever you use, adding what you want at the end. It carries Wander’s rules so the model does not invent classes that do not exist here.',
+    ideasTitulo: 'Ideas to ask for',
+    ideas: {
+      neonRosa: 'Make my cards have a pink neon border that glows on hover.',
+      tarjetasCristal: 'I want translucent cards with a frosted glass effect.',
+      animarHover: 'Make my blocks lift slightly and grow when I hover over them.',
+      fondoDegradado: 'Give me a background with a dark gradient from purple to blue.',
+      compactar: 'Compact everything: less space between blocks and smaller type.',
+      tipografia: 'I want a monospace font and headings in widely spaced uppercase.',
+    },
   },
 
   plantillas: {

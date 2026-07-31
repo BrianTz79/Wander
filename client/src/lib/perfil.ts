@@ -123,29 +123,44 @@ export function temaCompleto(tema: TemaPerfil | undefined | null): Required<Tema
 }
 
 /**
- * Convierte el tema en variables CSS para el contenedor del perfil.
- * Los valores ya vienen validados por el backend (hex estricto, enum de
- * fuentes, radio numérico), así que inyectarlos como style es seguro.
+ * El tema del perfil como una REGLA CSS, no como estilo en línea.
  *
- * Solo se emiten VARIABLES, nunca `backgroundColor`/`color`/`fontFamily`
- * directamente. La diferencia importa desde la Fase 9: un estilo en línea
- * gana a cualquier regla de una hoja de estilos, así que si el fondo se
- * pusiera aquí, el `body { background: … }` de quien escribe su CSS propio
- * no haría nada — y esa es de las primeras cosas que alguien intenta.
- * Poniéndolo en `.perfil-raiz` (una clase, en `index.css`), el CSS del
- * usuario tiene la misma especificidad y puede ganarle.
+ * Esto es una decisión de la Fase 9 y tiene dos capas de motivo:
+ *
+ *  1. Ni el fondo ni el color ni la tipografía se ponen aquí como
+ *     propiedades: van en la clase `.perfil-raiz` de `global.css`. Un
+ *     estilo en línea gana a cualquier hoja de estilos, así que ponerlos
+ *     aquí dejaría el `body { background: … }` del usuario sin efecto para
+ *     siempre.
+ *  2. Las **variables tampoco pueden ir en línea**. Una propiedad
+ *     personalizada declarada en el atributo `style` gana a cualquier
+ *     regla, incluida `#perfil-<id> { --p-acento: … }`. Como el CSS del
+ *     usuario se prefija justo con ese selector, redefinir una variable
+ *     —que es la forma más limpia de recolorear el perfil entero y lo que
+ *     hacen todos los presets— no funcionaba nunca.
+ *
+ * Emitiéndolas como una regla con el mismo selector, el CSS del usuario
+ * queda DESPUÉS en el mismo `<style>` y gana por orden de aparición, que
+ * es lo que cualquiera espera al escribir CSS.
+ *
+ * Los valores ya vienen validados por el backend (hex estricto, enum de
+ * fuentes, radio numérico). Aun así se escapa `}` y `<` antes de meterlos
+ * en un `<style>`: son datos que acaban en una hoja de estilos, y la
+ * validación de hoy no tiene por qué seguir siendo la de mañana.
  */
-export function varsDeTema(tema: TemaPerfil | undefined | null): CSSProperties {
+export function reglaDeTema(perfilId: string, tema: TemaPerfil | undefined | null): string {
   const t = temaCompleto(tema);
-  return {
-    '--p-fondo': t.colorFondo,
-    '--p-texto': t.colorTexto,
-    '--p-acento': t.colorAcento,
-    '--p-tarjeta': t.colorTarjeta,
-    '--p-borde': t.colorBorde,
-    '--p-radio': `${t.radio}px`,
-    '--p-fuente': FUENTES[t.fuente],
-  } as CSSProperties;
+  const limpio = (valor: string) => valor.replace(/[<>{}\\]/g, '');
+
+  return `#${idDeScope(perfilId)}{
+--p-fondo:${limpio(t.colorFondo)};
+--p-texto:${limpio(t.colorTexto)};
+--p-acento:${limpio(t.colorAcento)};
+--p-tarjeta:${limpio(t.colorTarjeta)};
+--p-borde:${limpio(t.colorBorde)};
+--p-radio:${Number(t.radio) || 0}px;
+--p-fuente:${limpio(FUENTES[t.fuente] ?? FUENTES.inter)};
+}`;
 }
 
 /** Color de texto atenuado: el color del tema con opacidad, sin pedirle
