@@ -6,6 +6,7 @@ import { Check, Eye, EyeOff, Pencil, Share2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { varsDeTema, type RespuestaPerfilPublico } from '../lib/perfil';
 import { necesitaDiscord, necesitaSteam, RenderBloque } from '../components/bloques/registro';
+import { SocialDePerfil } from '../components/social/SocialDePerfil';
 import { ProveedorSteam } from '../lib/steamContexto';
 import { ProveedorDiscord } from '../lib/discordContexto';
 import { NoEncontradaPage } from './NoEncontradaPage';
@@ -121,6 +122,12 @@ export function PerfilPublicoPage() {
             {t('perfilPublico.sinContenido')}
           </p>
         )}
+
+        {/* Capa social (Fase 7): seguidores, seguir, publicaciones y muro.
+            Va después de los bloques porque el perfil —lo que la persona
+            armó— es lo que se viene a ver; lo social es lo que se hace
+            DESPUÉS de verlo. */}
+        <SocialDePerfil handle={usuario.handle} />
 
         {/* Pie del perfil: compartir, vistas y (para el dueño) editar. */}
         <div

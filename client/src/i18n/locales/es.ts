@@ -413,6 +413,71 @@ export const es = {
     llevaHorasMinutos: '{{horas}} h {{minutos}} min',
   },
 
+  /** Capa social (Fase 7): feed, explorar, publicaciones y comentarios. */
+  social: {
+    tituloFeed: 'Actividad',
+    tituloExplorar: 'Explorar',
+    subtituloExplorar: 'Encuentra gente que juega lo mismo que tú.',
+
+    // ── Redactar y publicar ──
+    queJuegas: '¿Qué estás jugando?',
+    publicar: 'Publicar',
+    enviar: 'Enviar',
+    cargarMas: 'Cargar más',
+    editado: '(editado)',
+    borrar: 'Borrar',
+    confirmarBorrarPublicacion: '¿Borrar esta publicación? No se puede deshacer.',
+    juegoNumero: 'Juego #{{appid}}',
+
+    // ── Interacción ──
+    meGusta: 'Me gusta',
+    comentarios: 'Comentarios',
+    publicaciones: 'Publicaciones',
+    escribeComentario: 'Escribe un comentario…',
+    verMasComentarios: 'Ver más comentarios',
+    inicioParaComentar: 'Inicia sesión para comentar.',
+    inicioParaInteractuar: 'Inicia sesión para reaccionar.',
+    nMeGusta_one: '{{count}} me gusta',
+    nMeGusta_other: '{{count}} me gusta',
+    nComentarios_one: '{{count}} comentario',
+    nComentarios_other: '{{count}} comentarios',
+
+    // ── Seguir y bloquear ──
+    seguir: 'Seguir',
+    siguiendo: 'Siguiendo',
+    dejarDeSeguir: 'Dejar de seguir',
+    seguidores: 'seguidores',
+    siguiendoA: 'siguiendo',
+    teSigue: 'Te sigue',
+    bloquear: 'Bloquear',
+    desbloquear: 'Desbloquear',
+    confirmarBloqueo:
+      '¿Bloquear a @{{handle}}? Dejarán de seguirse mutuamente y no podrán interactuar.',
+
+    // ── Muro del perfil ──
+    muro: 'Muro',
+    dejaUnComentario: 'Deja un comentario…',
+    muroVacio: 'Todavía no hay comentarios en este perfil.',
+
+    // ── Vacíos del feed ──
+    // Dos mensajes distintos a propósito: "no sigues a nadie" se arregla
+    // yendo a explorar y "no han publicado" no se arregla con nada.
+    feedVacioSinSeguidos: 'Todavía no sigues a nadie. Busca gente y su actividad aparecerá aquí.',
+    feedVacioSilencio: 'La gente que sigues no ha publicado nada todavía.',
+    buscarGente: 'Buscar gente',
+
+    // ── Explorar ──
+    buscar: 'Buscar',
+    buscarPlaceholder: 'Busca por nombre o @usuario',
+    perfilesDestacados: 'Perfiles destacados',
+    perfilesQueCoinciden: 'Perfiles',
+    publicacionesQueCoinciden: 'Publicaciones',
+    sinPerfiles: 'No se encontró ningún perfil.',
+    sinPublicaciones: 'No se encontró ninguna publicación.',
+    filtrandoPorJuego: 'Filtrando por el juego #{{appid}}.',
+    quitarFiltro: 'Quitar filtro',
+  },
+
   configuracion: {
     titulo: 'Cuentas vinculadas',
     subtitulo:

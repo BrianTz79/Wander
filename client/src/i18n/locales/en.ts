@@ -398,6 +398,70 @@ export const en: Catalogo = {
     llevaHorasMinutos: '{{horas}} h {{minutos}} min',
   },
 
+  /** Social layer (Phase 7): feed, explore, posts and comments. */
+  social: {
+    tituloFeed: 'Activity',
+    tituloExplorar: 'Explore',
+    subtituloExplorar: 'Find people who play what you play.',
+
+    // ── Composing and posting ──
+    queJuegas: "What are you playing?",
+    publicar: 'Post',
+    enviar: 'Send',
+    cargarMas: 'Load more',
+    editado: '(edited)',
+    borrar: 'Delete',
+    confirmarBorrarPublicacion: "Delete this post? This can't be undone.",
+    juegoNumero: 'Game #{{appid}}',
+
+    // ── Interaction ──
+    meGusta: 'Like',
+    comentarios: 'Comments',
+    publicaciones: 'Posts',
+    escribeComentario: 'Write a comment…',
+    verMasComentarios: 'See more comments',
+    inicioParaComentar: 'Sign in to comment.',
+    inicioParaInteractuar: 'Sign in to react.',
+    nMeGusta_one: '{{count}} like',
+    nMeGusta_other: '{{count}} likes',
+    nComentarios_one: '{{count}} comment',
+    nComentarios_other: '{{count}} comments',
+
+    // ── Following and blocking ──
+    seguir: 'Follow',
+    siguiendo: 'Following',
+    dejarDeSeguir: 'Unfollow',
+    seguidores: 'followers',
+    siguiendoA: 'following',
+    teSigue: 'Follows you',
+    bloquear: 'Block',
+    desbloquear: 'Unblock',
+    confirmarBloqueo:
+      "Block @{{handle}}? You'll both stop following each other and won't be able to interact.",
+
+    // ── Profile wall ──
+    muro: 'Wall',
+    dejaUnComentario: 'Leave a comment…',
+    muroVacio: 'No comments on this profile yet.',
+
+    // ── Empty feed ──
+    feedVacioSinSeguidos:
+      "You're not following anyone yet. Find some people and their activity will show up here.",
+    feedVacioSilencio: "The people you follow haven't posted anything yet.",
+    buscarGente: 'Find people',
+
+    // ── Explore ──
+    buscar: 'Search',
+    buscarPlaceholder: 'Search by name or @handle',
+    perfilesDestacados: 'Featured profiles',
+    perfilesQueCoinciden: 'Profiles',
+    publicacionesQueCoinciden: 'Posts',
+    sinPerfiles: 'No profiles found.',
+    sinPublicaciones: 'No posts found.',
+    filtrandoPorJuego: 'Filtering by game #{{appid}}.',
+    quitarFiltro: 'Clear filter',
+  },
+
   configuracion: {
     titulo: 'Linked accounts',
     subtitulo:

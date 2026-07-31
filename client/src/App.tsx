@@ -15,6 +15,8 @@ import { PerfilPublicoPage } from './pages/PerfilPublicoPage';
 import { EditorPerfilPage } from './pages/EditorPerfilPage';
 import { NoEncontradaPage } from './pages/NoEncontradaPage';
 import { EnConstruccionPage } from './pages/EnConstruccionPage';
+import { FeedPage } from './pages/FeedPage';
+import { ExplorarPage } from './pages/ExplorarPage';
 import { ConfiguracionPage } from './pages/ConfiguracionPage';
 import { PrivacidadPage } from './pages/PrivacidadPage';
 import { TerminosPage } from './pages/TerminosPage';
@@ -26,6 +28,7 @@ import { TerminosPage } from './pages/TerminosPage';
  * `EnConstruccionPage` en vez de omitirse. Es deliberado: la Navbar y el
  * Footer ya enlazan a /explorar, /feed, /mensajes y /privacidad, y un
  * enlace a una ruta inexistente caería en el 404 y parecería un bug.
+ * Tras la Fase 7 solo queda así /mensajes, que llega en la 8.
  */
 export function App() {
   const { t } = useTranslation();
@@ -105,10 +108,9 @@ export function App() {
             }
           />
 
-          <Route
-            path="/explorar"
-            element={<EnConstruccionPage claveTitulo="explorar" claveFase="fase7" />}
-          />
+          {/* Explorar es público a propósito: es la puerta de entrada para
+              quien llega sin cuenta y quiere ver qué hay aquí. */}
+          <Route path="/explorar" element={<ExplorarPage />} />
           <Route path="/u/:handle" element={<PerfilPublicoPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />
           <Route path="/terminos" element={<TerminosPage />} />
@@ -117,7 +119,7 @@ export function App() {
             path="/feed"
             element={
               <RutaProtegida>
-                <EnConstruccionPage claveTitulo="actividad" claveFase="fase7" />
+                <FeedPage />
               </RutaProtegida>
             }
           />

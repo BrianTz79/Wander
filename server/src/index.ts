@@ -20,6 +20,7 @@ import oauthRoutes from './routes/oauth.routes';
 import cuentasRoutes from './routes/cuentas.routes';
 import seoRoutes from './routes/seo.routes';
 import perfilesRoutes from './routes/perfiles.routes';
+import socialRoutes from './routes/social.routes';
 import externoRoutes from './routes/externo.routes';
 
 const app = express();
@@ -161,6 +162,10 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/cuentas', cuentasRoutes);
 
 app.use('/api/perfiles', perfilesRoutes);
+
+// Social (Fase 7): seguir, feed, publicaciones, comentarios, reacciones,
+// explorar y notificaciones.
+app.use('/api/social', socialRoutes);
 
 // Datos de proveedores externos (Steam en la Fase 5). Sirve de la caché
 // de Postgres: el render de un perfil nunca sale a la red de Valve.

@@ -268,6 +268,12 @@ model Publicacion {
   autorId  String
   autor    User   @relation(fields: [autorId], references: [id], onDelete: Cascade)
   texto    String @db.Text // sanitizado
+  // Idioma en que está escrito el texto, detectado AL GUARDAR. Se rellena
+  // desde el primer día aunque hoy nadie lo lea: la traducción de contenido
+  // está aplazada (§8), pero esta columna es la única parte que no se puede
+  // añadir después — el idioma de un texto viejo ya no se le puede
+  // preguntar a quien lo escribió. Nulo = no se pudo determinar.
+  idioma   String?
   // Juego al que se refiere (appid de Steam), opcional. Permite filtrar
   // el feed por juego y descubrir gente que juega lo mismo.
   juegoAppid Int?
@@ -290,6 +296,9 @@ model Publicacion {
 model Comentario {
   id      String @id @default(cuid())
   texto   String @db.Text // sanitizado
+  // Ver la nota de `Publicacion.idioma`: se guarda ahora porque después
+  // ya no habría a quién preguntárselo.
+  idioma  String?
   autorId String
   autor   User   @relation(fields: [autorId], references: [id], onDelete: Cascade)
 
@@ -322,7 +331,15 @@ model Reaccion {
   createdAt DateTime @default(now())
 
   // Un usuario no puede reaccionar dos veces al mismo objeto con el mismo
-  // tipo. Los índices parciales de Postgres se añaden en la migración.
+  // tipo.
+  //
+  // OJO: estos dos `@@unique` NO bastan por sí solos. En Postgres dos NULL
+  // nunca son iguales, así que el de `publicacionId` no impide nada cuando
+  // esa columna es nula (una reacción a un perfil), y viceversa. Lo que de
+  // verdad garantiza la unicidad son los índices únicos PARCIALES que crea
+  // `20260731090000_fase7_social`; se declaran igualmente aquí para que
+  // Prisma exponga los `where` compuestos y para que `migrate diff` no los
+  // vea como una diferencia.
   @@unique([userId, perfilUserId, tipo])
   @@unique([userId, publicacionId, tipo])
   @@index([publicacionId])
@@ -426,6 +443,10 @@ model Mensaje {
   autor          User         @relation(fields: [autorId], references: [id], onDelete: Cascade)
 
   texto String? @db.Text // sanitizado
+  // Ver la nota de `Publicacion.idioma`. Se añade aquí en la Fase 7, con la
+  // tabla todavía vacía, y no en la 8: es gratis ahora y no tiene arreglo
+  // después.
+  idioma String?
   // texto | imagen | gif | archivo | audio | sistema
   tipo  String  @default("texto")
 

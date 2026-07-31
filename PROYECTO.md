@@ -4,19 +4,20 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 31 de julio de 2026
+> **Última actualización:** 31 de julio de 2026 (Fase 7 completa)
 
 ---
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4, 5, 6 y 6.5 completas, y la 2 al 90 %. La plataforma cumple ya su promesa
-central por partida doble: quien entra con Steam ve sus juegos, sus horas y su actividad
-sin escribir nada, y quien vincula Discord tiene además su estado y su música en vivo.
-Y desde la 6.5 hace las dos cosas en español o en inglés, eligiendo sola según el
-navegador de quien entra.** Lo único que le falta a la Fase 2 es la verificación de
-correo, que **se aplazó a propósito** (30/07). Lo siguiente es la **Fase 7 (social:
-seguir, feed, comentarios)**.
+**Fases 1, 3, 4, 5, 6, 6.5 y 7 completas, y la 2 al 90 %. La plataforma cumple ya su
+promesa central por partida doble: quien entra con Steam ve sus juegos, sus horas y su
+actividad sin escribir nada, y quien vincula Discord tiene además su estado y su música
+en vivo. Desde la 6.5 hace las dos cosas en español o en inglés, y desde la 7 dejó de ser
+una colección de perfiles sueltos: se sigue gente, hay un feed, se comenta y se
+descubre.** Lo único que le falta a la Fase 2 es la verificación de correo, que **se
+aplazó a propósito** (30/07). Lo siguiente es la **Fase 8 (mensajería)** — sin la
+traducción de contenido, que queda **aplazada hasta nuevo aviso** (31/07, ver §8).
 
 ### Resumen por fases
 
@@ -29,8 +30,8 @@ seguir, feed, comentarios)**.
 | 5 | Steam | ✅ **Completa** |
 | 6 | Cuentas vinculadas | ✅ **Completa** |
 | 6.5 | i18n (español + inglés) | ✅ **Completa** |
-| 7 | Social | ⬜ **Siguiente** |
-| 8 | Mensajería | ⬜ |
+| 7 | Social | ✅ **Completa** |
+| 8 | Mensajería | ⬜ **Siguiente** (sin traducción: aplazada) |
 | 9 | CSS propio | ⬜ |
 | 10 | Pulido | ⬜ |
 | 11 | Música de fondo | ⬜ |
@@ -294,14 +295,74 @@ seguir, feed, comentarios)**.
   corregidos**: el de `<Trans>` de arriba y un `PATCH` que mandaba el idioma *viejo*
   (`idioma` en vez de `nuevo`), con lo que la cuenta nunca se enteraba del cambio.
 
+**Social (Fase 7)**
+- **API completa en `/api/social`**: seguir/dejar de seguir, bloquear/desbloquear,
+  relación entre dos cuentas, publicaciones (crear, editar, borrar, ver, listar por
+  autor), comentarios en publicaciones **y** en el muro de un perfil, reacciones, feed,
+  `/explorar` y notificaciones. Las tablas ya existían desde la migración inicial; esta
+  fase las estrena.
+- **Pantallas nuevas**: `/feed` (redactor + publicaciones de quien sigues, protegida) y
+  `/explorar` (pública a propósito: es la puerta de entrada de quien llega sin cuenta).
+  Las dos sustituyen a su `EnConstruccionPage`. El perfil público estrena `SocialDePerfil`
+  —contadores, botón de seguir, publicaciones y muro— pintado con las variables `--p-*`
+  del tema del usuario, no con las de Wander.
+- **Escritas ya con `t()` desde la primera línea**, en español e inglés. Para esto se hizo
+  la 6.5 antes: la fase duplicó el número de pantallas.
+- **El bloqueo es simétrico y se comprueba en cada interacción**, no solo al crear la
+  relación: alguien puede bloquearte después de que ya te siguiera. Bloquear rompe el
+  seguimiento **en ambos sentidos** dentro de la misma transacción y borra las
+  notificaciones que esa persona ya había generado — si solo se creara la fila de
+  `Bloqueo`, quien fue bloqueado seguiría en la lista de seguidores y seguiría viendo las
+  publicaciones, que es justo lo que el bloqueo debía impedir. Desbloquear **no** restaura
+  el seguimiento.
+- **Bug real corregido en el camino:** el esquema decía que los índices únicos parciales
+  de `Reaccion` «se añaden en la migración», pero la migración inicial nunca los añadió —
+  creó dos índices únicos normales sobre columnas que pueden ser NULL. Como en Postgres
+  dos NULL nunca son iguales, `UNIQUE(userId, publicacionId, tipo)` **no impedía nada**
+  cuando `publicacionId` era nulo: un mismo usuario podía dar «me gusta» al mismo perfil
+  tantas veces como quisiera e inflar el contador sin límite. Arreglado con índices
+  parciales de verdad (`WHERE ... IS NOT NULL`) y verificado con un `INSERT` duplicado
+  contra la base real, que ahora sí rebota.
+- **Paginación por cursor, nunca por `?pagina=3`.** El offset es incorrecto en un feed:
+  si alguien publica entre la página 1 y la 2, todo se desplaza y la 2 repite el último
+  elemento de la 1. Se pide siempre un elemento de más que el límite para saber si hay
+  página siguiente sin un `count(*)` aparte.
+- **`idioma` en `Publicacion`, `Comentario` y `Mensaje`** (migración
+  `20260731090000_fase7_social`), detectado al escribir con
+  `services/texto.service.ts` — palabras funcionales, sin librería ni llamadas externas.
+  **Hoy no lo lee nadie**: la traducción de contenido está aplazada (§8). Se rellena
+  igualmente porque es la única pieza de aquel diseño que no se puede añadir después. La
+  columna es nullable y `null` significa «no se sabe», no «español»: un DEFAULT sería una
+  mentira sobre las filas viejas.
+- **El texto se guarda tal cual, y eso es deliberado.** La defensa contra XSS es que el
+  cliente lo pinta como texto (`{texto}` en JSX, jamás `dangerouslySetInnerHTML`), así que
+  un `<script>` se ve literalmente. «Sanitizar» el texto rompería una publicación
+  legítima sobre código (`if (a < b && c > d)`). Lo que sí se quita son los caracteres de
+  control invisibles, incluidos los **bidi** (el truco del *Trojan Source*, que hace que
+  un texto se renderice en un orden distinto al que tiene guardado).
+- **El nombre del juego lo resuelve el servidor** contra la caché de Steam del autor; el
+  cliente solo manda el `appid`. Aceptar el nombre permitiría inventarse juegos o colar
+  variantes con espacios raros, y el filtro por juego dejaría de agrupar nada.
+- **`pg_trgm` + índices GIN** en `handle` y `displayName`: sin ellos, cada búsqueda de
+  `/explorar` es un recorrido completo de la tabla de usuarios. Más índices parciales
+  `WHERE borradoEn IS NULL` para el feed y los hilos, que son las únicas filas que se
+  miran nunca.
+- Probado E2E por HTTPS contra el sitio real: **45 comprobaciones, todas en verde** —
+  flujo feliz completo (publicar, seguir, feed, reaccionar, comentar, muro, explorar,
+  notificaciones) más los casos de seguridad: publicar sin sesión, campo extra,
+  texto vacío, texto de 1001 caracteres, tipo de reacción inventado, `q` de 41
+  caracteres, parámetro de query inventado, editar y borrar contenido ajeno, y las cinco
+  vías que el bloqueo tiene que cortar (comentar, reaccionar, seguir, ver el muro, y el
+  seguimiento roto en ambos sentidos).
+
 ### ⬜ Lo siguiente
 
-1. **Fase 7 — Social**: seguir, feed de a quién sigues, comentarios, likes y `/explorar`
-   con búsqueda. El schema ya tiene `Seguimiento`, `Publicacion`, `Comentario`,
-   `Reaccion`, `ActividadFeed`, `Bloqueo` y `Notificacion` desde la migración inicial.
-   **Añadir ahí el campo `idioma`** a `Publicacion` y `Comentario` (§8): ponerlo cuando
-   ya haya filas con texto obliga a adivinar el idioma de contenido viejo.
-   **Y escribir cada pantalla nueva ya con `t()`** — para eso se hizo antes la 6.5.
+1. **Fase 8 — Mensajería**: socket.io en el namespace `/chat`, DMs primero, luego grupos,
+   luego adjuntos. Bloqueo y privacidad de DM (`privacidadDm` ya está en `User`), que
+   dependen del grafo social que acaba de construir la Fase 7. `Mensaje.idioma` ya existe
+   desde la migración de la 7, así que la tabla arranca con la columna puesta. **Sin la
+   traducción con DeepL: aplazada hasta nuevo aviso** (§8).
+   **Escribir cada pantalla nueva ya con `t()`**, como en la 7.
 2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
 3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
@@ -384,9 +445,15 @@ seguir, feed, comentarios)**.
   tiene consecuencias que no son técnicas. Quedan en español con el aviso de que la
   versión en español es la que rige. Si algún día se traducen, van como documento
   aparte por idioma, no como cadenas sueltas.
-- **Cuota de DeepL (Fase 8).** El plan gratuito son 500.000 caracteres al mes para toda
-  la plataforma, no por usuario. Hace falta vigilar el consumo y decidir qué pasa al
-  agotarse — lo sensato es que el botón de traducir desaparezca, no que dé error.
+- **Traducción de contenido: aplazada hasta nuevo aviso (30/07).** No se construye en la
+  Fase 8 ni en ninguna fecha fijada. La gente lee las publicaciones y los mensajes en su
+  idioma original y se entiende con lo que sabe; el idioma de la **interfaz** sí está
+  resuelto (Fase 6.5) y es lo que de verdad hacía falta. El diseño con DeepL queda
+  escrito en §8 por si algún día se retoma, junto con lo que habría que vigilar entonces
+  (el plan gratuito son 500.000 caracteres al mes **para toda la plataforma**, no por
+  usuario, así que haría falta un tope y decidir qué pasa al agotarse). Lo único que se
+  adelanta es el campo `idioma` del contenido, porque es el único pedazo que no se puede
+  añadir después: rellenarlo exige preguntárselo a quien escribió el texto.
 
 ---
 
@@ -432,7 +499,7 @@ la personaliza hasta donde quiera.
 | Mensajería | DM + grupos, con imágenes, GIFs y archivos |
 | Estructura del perfil | Scroll único por bloques |
 | Idioma | Español neutro/mexicano + inglés estadounidense, con `react-i18next` (Fase 6.5) |
-| Traducir contenido | Botón bajo demanda en mensajes y posts, vía la API de DeepL (Fase 8, §8) |
+| Traducir contenido | ⏸️ **Aplazado hasta nuevo aviso** (30/07). Cada quien lee en el idioma original y conversa con lo que sabe. El diseño con DeepL queda escrito en §8 para retomarlo mucho después, si hace falta. Solo se conserva el campo `idioma` en el contenido. |
 | Dominio | `wander.ourocore.net`. Dominio propio más adelante, no ahora. |
 | Steam API key | El usuario la consigue (gratis, `steamcommunity.com/dev/apikey`) |
 | Música de fondo | Cada perfil puede tener audio propio, al 30 % y con control del visitante (§7) |
@@ -822,10 +889,15 @@ Cada usuario puede subir un archivo de audio que se reproduce al abrir su perfil
 DMCA. Hace falta al menos un aviso al subir y un botón de reporte; conviene decidir la
 política antes de abrir el registro.
 
-### Social
+### Social ✅ (Fase 7)
 
-Seguir · feed de a quién sigues · comentarios en perfiles · likes · `/explorar` con
-búsqueda y filtros (por juego, plataforma, etiqueta).
+Seguir · feed de a quién sigues · publicaciones · comentarios en publicaciones y en el
+muro de un perfil · reacciones · bloqueo · notificaciones · `/explorar` con búsqueda y
+filtro por juego.
+
+Queda fuera de la v1 el filtro por **plataforma y etiqueta** de `/explorar`: hoy no hay
+ni etiquetas ni más plataforma que Steam, así que serían dos desplegables con una sola
+opción. Vuelven cuando haya de qué filtrar.
 
 ---
 
@@ -871,7 +943,24 @@ en Discord. Mensajes de sistema (`tipo: 'sistema'`) para "X se unió".
 - **GIFs de Giphy/Tenor**: se guarda solo la URL (`Adjunto.externo: true`), no se
   rehospedan. Requiere añadir su host a `img-src` y una API key del proveedor.
 
-**Traducción de mensajes y publicaciones — DeepL, bajo demanda**
+**Traducción de mensajes y publicaciones — ⏸️ APLAZADA HASTA NUEVO AVISO (30/07)**
+
+> **Esto NO se construye en la Fase 8.** Queda como idea a retomar mucho más adelante, y
+> solo cuando de verdad haga falta: cuando haya gente suficiente escribiendo en idiomas
+> distintos como para que el idioma sea un estorbo real, no una hipótesis. Mientras tanto
+> las publicaciones y los mensajes se leen **en su idioma original** y quien conversa lo
+> hace con lo que sabe, como en cualquier chat de juego.
+>
+> **Qué implica el aplazamiento:** no se contrata DeepL, no se añade `DEEPL_API_KEY`, no
+> se crea el modelo `Traduccion` ni el endpoint ni el botón «Ver traducción». Lo que sí
+> se hace igual es **el campo `idioma` en `Publicacion`, `Comentario` y `Mensaje`**, por
+> el motivo que ya estaba escrito abajo: añadir esa columna cuando la tabla ya tiene
+> filas obliga a adivinar el idioma de textos viejos, y eso no tiene arreglo después. Es
+> barato ahora y caro luego, así que se rellena desde el primer día aunque nadie lo lea
+> todavía.
+>
+> El resto de esta sección queda tal cual, como el diseño ya pensado para el día que se
+> retome. Nada de lo que sigue está implementado.
 
 Dos personas que hablan idiomas distintos escriben cada una en el suyo, y quien lee
 decide si quiere la traducción. El modelo es el de X: un botón «Ver traducción» debajo
@@ -965,6 +1054,8 @@ los eventos no cambia. No se añade Redis en la v1 por no complicar sin necesida
 │       │   ├── oauth.service.ts       # PKCE + state firmado (Discord/Google)
 │       │   ├── lanyard.service.ts     # presencia de Discord y Spotify
 │       │   ├── cache.service.ts       # get-or-fetch con TTL
+│       │   ├── social.service.ts      # bloqueo simétrico + notificaciones
+│       │   ├── texto.service.ts       # limpieza + detección de idioma
 │       │   └── sanitizar.service.ts   # CSS + HTML ← el más delicado
 │       ├── schemas/               # zod: bloques por tipo, tema, auth
 │       └── jobs/refrescarCaches.ts
@@ -1031,7 +1122,7 @@ DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
 GIPHY_API_KEY
-DEEPL_API_KEY                  # Fase 8. Plan gratuito → api-free.deepl.com
+                               # (DEEPL_API_KEY: no se usa — traducción aplazada, §8)
 TUNNEL_TOKEN
 PUBLIC_URL, PORT_FRONTEND
 ```
@@ -1082,8 +1173,8 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
 | 6 | ✅ **Cuentas vinculadas** | Discord y Google por OAuth 2.0 con PKCE, `/configuracion` con consentimiento granular, vincular/desvincular con borrado real, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
 | 6.5 | ✅ **i18n** | `react-i18next`, catálogos `es`/`en`, selector en navbar y `/configuracion`, detección por navegador con respaldo a español, `User.idioma` para que la preferencia siga al usuario entre dispositivos. Se hizo **antes** de la 7 porque la Fase 7 duplica el número de pantallas: cada una escrita sin i18n habría que reabrirla. Los errores de zod del backend quedan pendientes (ver §0). |
-| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` para la traducción de la Fase 8. |
-| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. Incluye la **traducción bajo demanda con DeepL** (§8). |
+| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` — **no** para traducir (eso está aplazado), sino porque esa columna solo se puede rellenar bien mientras no haya filas viejas. |
+| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. **Sin traducción**: aplazada hasta nuevo aviso (§8). |
 | 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
 | 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
 | 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
@@ -1093,6 +1184,24 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fase 7 desplegada: Wander deja de ser perfiles sueltos**
+
+- API completa en `/api/social`: seguir, bloquear, publicaciones, comentarios (en
+  publicaciones y en el muro de un perfil), reacciones, feed, `/explorar` y
+  notificaciones. Pantallas `/feed` y `/explorar`, y bloque social en el perfil público
+  con el tema del propio usuario.
+- **Traducción de contenido aplazada hasta nuevo aviso** (decisión de este día). No se
+  construye en la Fase 8 ni tiene fecha: la gente lee en el idioma original y conversa
+  con lo que sabe. El diseño con DeepL queda escrito en §8 por si se retoma. Lo único que
+  se adelantó es el campo `idioma` del contenido, porque es lo único que no se puede
+  añadir después.
+- **La migración destapó un bug que llevaba ahí desde la inicial:** los índices únicos de
+  `Reaccion` no eran parciales, así que no impedían nada sobre columnas NULL — se podía
+  dar «me gusta» al mismo perfil infinitas veces. Corregido y verificado contra la base
+  real.
+- Verificado E2E por HTTPS contra el sitio real: 45 comprobaciones, 0 fallos, incluidas
+  las cinco vías que el bloqueo tiene que cortar.
 
 **31/07/2026 — Fase 6.5 desplegada: la interfaz habla dos idiomas**
 
@@ -1458,6 +1567,36 @@ Ojo con dos cosas al correr la suite: las pausas tienen que ser generosas (con e
 cortas la SPA todavía no ha pintado y salen **falsos negativos** que parecen fallos de
 traducción), y una tanda seguida agota `limiteGeneral` y empieza a devolver 429 en HTML —
 que es un fallo de la prueba, no del código. `docker compose restart backend` lo limpia.
+
+### Social ✅ (31/07)
+
+45 comprobaciones por HTTPS con **dos cuentas distintas**, que es el punto: casi todo lo
+que puede salir mal aquí es una interacción entre dos personas, y con una sola sesión no
+se ve nada. Lo que hay que repetir si se toca `social.controller.ts`:
+
+- **Nadie escribe en nombre de otro.** Editar y borrar contenido ajeno → **404**, no 403:
+  un 403 confirmaría que ese id existe.
+- **El bloqueo corta las cinco vías**, no una: comentar, reaccionar, seguir, leer el muro,
+  y el seguimiento que ya existía (debe romperse **en ambos sentidos**). Comprobar también
+  que desbloquear **no** lo restaura.
+- **Idempotencia de seguir.** Pulsar dos veces → 200 las dos, un solo seguidor, y **una
+  sola notificación** — si no, seguir/dejar de seguir en bucle es una forma de llenarle
+  las notificaciones a alguien.
+- **Alternancia de reacciones**: poner, quitar, y que dos tipos distintos sumen 2.
+- **Duplicados a nivel de base**, no solo de API: un `INSERT` directo de dos reacciones
+  iguales al mismo perfil debe rebotar con `unique_violation`. Es la prueba que destapó
+  que los índices no eran parciales; sin ella, la API parecía correcta.
+- **Validación**: texto vacío, 1001 caracteres, campo extra en el body, tipo de reacción
+  inventado, `q` de 41 caracteres y parámetro de query desconocido → todos **400**.
+- **Sesión**: publicar, feed y notificaciones sin cookie → **401**. `/explorar` sí es
+  público (200).
+- **Idioma detectado**: publicar una frase en español y otra en inglés y confirmar en la
+  base que `Publicacion.idioma` guardó `es` y `en`. Un texto corto o ambiguo debe quedar
+  **`null`**, no adivinado.
+
+El script vive en el scratchpad de la sesión, no en el repo: depende de crear dos cuentas
+de prueba y **hay que borrarlas al terminar** (`DELETE FROM "User" WHERE handle LIKE
+'e2e%'`, que arrastra en cascada sus publicaciones).
 
 ---
 
