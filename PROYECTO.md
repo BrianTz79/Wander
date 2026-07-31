@@ -4,20 +4,25 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 31 de julio de 2026 (Fase 7 completa)
+> **Última actualización:** 31 de julio de 2026 (Fase 8 completa)
 
 ---
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4, 5, 6, 6.5 y 7 completas, y la 2 al 90 %. La plataforma cumple ya su
+**Fases 1, 3, 4, 5, 6, 6.5, 7 y 8 completas, y la 2 al 90 %. La plataforma cumple ya su
 promesa central por partida doble: quien entra con Steam ve sus juegos, sus horas y su
 actividad sin escribir nada, y quien vincula Discord tiene además su estado y su música
-en vivo. Desde la 6.5 hace las dos cosas en español o en inglés, y desde la 7 dejó de ser
-una colección de perfiles sueltos: se sigue gente, hay un feed, se comenta y se
-descubre.** Lo único que le falta a la Fase 2 es la verificación de correo, que **se
-aplazó a propósito** (30/07). Lo siguiente es la **Fase 8 (mensajería)** — sin la
-traducción de contenido, que queda **aplazada hasta nuevo aviso** (31/07, ver §8).
+en vivo. Desde la 6.5 hace las dos cosas en español o en inglés, desde la 7 dejó de ser
+una colección de perfiles sueltos —se sigue gente, hay un feed, se comenta y se
+descubre— y desde la 8 la gente además se habla: mensajes directos, grupos, imágenes,
+GIFs y emojis, con una campana que avisa de todo lo que pasa.** Lo único que le falta a
+la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). Lo
+siguiente es la **Fase 9 (CSS propio)**. La traducción de contenido sigue **aplazada
+hasta nuevo aviso** (ver §8).
+
+**Ya no queda ninguna pantalla "en construcción":** `/mensajes` era la última, y con ella
+todos los enlaces de la navbar y del pie llevan a algo real.
 
 ### Resumen por fases
 
@@ -31,8 +36,8 @@ traducción de contenido, que queda **aplazada hasta nuevo aviso** (31/07, ver �
 | 6 | Cuentas vinculadas | ✅ **Completa** |
 | 6.5 | i18n (español + inglés) | ✅ **Completa** |
 | 7 | Social | ✅ **Completa** |
-| 8 | Mensajería | ⬜ **Siguiente** (sin traducción: aplazada) |
-| 9 | CSS propio | ⬜ |
+| 8 | Mensajería + adjuntos + notificaciones | ✅ **Completa** (sin traducción: aplazada) |
+| 9 | CSS propio | ⬜ **Siguiente** |
 | 10 | Pulido | ⬜ |
 | 11 | Música de fondo | ⬜ |
 | 12 | SEO + GEO | 🟡 Landing hecha; falta el SSR de los perfiles |
@@ -355,14 +360,119 @@ traducción de contenido, que queda **aplazada hasta nuevo aviso** (31/07, ver �
   vías que el bloqueo tiene que cortar (comentar, reaccionar, seguir, ver el muro, y el
   seguimiento roto en ambos sentidos).
 
+**Mensajería, adjuntos y notificaciones (Fase 8)**
+- **La tabla ya estaba: esta fase no necesitó migración.** `Conversacion`, `Participante`,
+  `Mensaje` y `Archivo` se crearon en la migración inicial, y `Mensaje.idioma` lo añadió la
+  Fase 7 con la tabla vacía a propósito. Se estrenan aquí sin tocar el esquema.
+- **socket.io en `/chat`, autenticado con la MISMA cookie httpOnly del REST.** No se acepta
+  token por query ni por `auth`: si se admitiera, habría que ponerlo al alcance del
+  JavaScript de la página y se perdería justo la propiedad que hace la cookie resistente a
+  XSS. La autenticación va en un middleware del namespace, así que un cliente sin sesión se
+  rechaza **antes** de que el socket quede establecido.
+- **Persistencia primero, socket después, en todos los endpoints.** El REST es la fuente de
+  verdad y el socket solo acelera — el chat funciona entero detrás de un proxy que bloquee
+  websockets, y por eso el cliente arranca en polling y sube a websocket si puede, en vez
+  de forzar `transports: ['websocket']`.
+- **En el socket NO se escribe nada en la base.** El único evento entrante que se acepta es
+  `escribiendo`, que es efímero por naturaleza. Todo lo que persiste va por REST, donde ya
+  viven zod, el rate limit y los permisos: dos caminos de escritura con dos copias de las
+  reglas es la forma segura de que un día una de las dos se quede corta.
+- **`conv:entrar` verifica la pertenencia contra la base cada vez.** Sin eso, cualquiera con
+  sesión válida podría suscribirse a un id ajeno y escuchar en vivo una conversación que no
+  es suya. Es el `exigirParticipante` del socket, y es lo que sostiene la privacidad del
+  chat en tiempo real.
+- **No-participante devuelve 404, nunca 403.** Un 403 confirmaría que esa conversación
+  existe; el 404 no distingue "no existe" de "no es tuya".
+- **`privacidadDm` con tres modos**, y el bloqueo comprobado **por encima** de la
+  preferencia: aunque tengas los DMs abiertos a todos, quien bloqueaste no entra. Las reglas
+  se aplican al **abrir** el hilo; una vez existe, la conversación ya está consentida — pero
+  escribir vuelve a comprobar el bloqueo, porque te pueden bloquear después (verificado en
+  el E2E).
+- **Añadir a alguien a un grupo no es la vía para saltarse un bloqueo**: se comprueba al
+  crear el grupo y al añadir participantes.
+- **Al salir el último ADMIN se asciende al participante más antiguo.** Un grupo sin
+  administrador queda congelado para siempre: nadie puede renombrarlo ni moderar, y no hay
+  forma de arreglarlo desde dentro.
+- **Los mensajes de sistema guardan una CLAVE, no una frase.** `{"evento":
+  "participante-anadido", ...}` y `t()` lo traduce al pintarlo: el mismo evento lo leen
+  personas con la interfaz en español y en inglés, y una frase guardada quedaría congelada
+  en el idioma de quien la provocó.
+- **Un mensaje borrado no se sirve con su texto.** El borrado es suave para no romper los
+  hilos que responden a él, pero eso es almacenamiento: hacia fuera, borrado significa que
+  el contenido ya no está. Si se mandara con una marca y lo ocultara React, seguiría
+  viajando en el JSON — el mismo error que se evitó con el consentimiento de la Fase 6.
+- **Subidas: el filtro son los magic bytes, no el nombre ni el `Content-Type`.** Ambos los
+  escribe quien sube. Y ni eso basta: las imágenes se **reescriben** con sharp, así que lo
+  que se guarda es un archivo generado por nosotros a partir de los píxeles. Con eso se van
+  los EXIF (incluida la geolocalización de una foto), los perfiles de color raros y
+  cualquier payload embebido. **Verificado en el E2E:** un HTML con `<script>` subido como
+  `inofensiva.png` con `Content-Type: image/png` se rechaza.
+- **`memoryStorage` y no `diskStorage`**: guardar en disco antes de validar deja una ventana
+  en la que un archivo sin verificar existe en el servidor.
+- **`limitInputPixels` contra las bombas de descompresión.** Un PNG de 4 KB puede declarar
+  50000×50000 px: pasa el límite de tamaño sin problema porque comprimido es diminuto, y
+  revienta la memoria al expandirse. Lo que hay que limitar es el tamaño **descomprimido**.
+- **SVG no está en la lista blanca, y su ausencia es deliberada**: es XML que puede llevar
+  `<script>`, o sea un vector de XSS disfrazado de imagen.
+- **La subida va separada de enviar.** El archivo se registra sin dueño y se ata al mandar
+  el mensaje; así se ve la miniatura mientras se escribe y una foto de 6 MB no bloquea el
+  envío. Un job barre cada 6 h los que nunca se llegaron a usar.
+- **Los GIFs de Giphy pasan por un proxy nuestro**: la clave no viaja en el bundle y la CSP
+  sigue con `connect-src 'self'`. Solo se guarda la URL (`externo: true`), y **solo de hosts
+  del proveedor** — aceptar una URL arbitraria haría que cada persona que abre el chat
+  pidiera una imagen a un servidor cualquiera y le revelara su IP.
+- **Campana de notificaciones** con dos piezas separadas: un `contador` que solo hace un
+  `count` (se pide en cada carga) y la lista, que solo se pide al abrir el panel. Se
+  actualiza por socket, así que se enciende sola sin sondear. **Cada notificación lleva el
+  contexto para enlazar a la interacción exacta** — `comentarioId` incluido, para aterrizar
+  en el comentario y no arriba del hilo.
+- **`/publicacion/:id` nace en esta fase** porque las notificaciones necesitan un destino:
+  una que solo pudiera abrir el feed obligaría a buscar la publicación entre todas, y si ya
+  bajó del feed sería imposible encontrarla.
+- **emoji-mart montado con la API imperativa, no con `@emoji-mart/react`.** El wrapper crea
+  un web component y gestiona su ciclo de vida por su cuenta, lo que choca con el doble
+  montaje del modo estricto de React 19. Sus datos (~900 KB) se cargan con `import()`
+  dinámico: en el bundle principal los descargaría todo el mundo, incluido quien solo entra
+  a ver un perfil. **Comprobado en un navegador real** que monta y que monta *una sola vez*.
+- **`file-type` 22 es ESM puro y el servidor es CommonJS.** Se carga con `import()` dinámico
+  con el especificador en una variable (si no, `moduleResolution: node` intenta resolver sus
+  tipos y falla). TypeScript lo emite como `require()`, y eso funciona porque **Node 22
+  carga ESM desde `require`** — verificado dentro del contenedor, no solo en la máquina de
+  desarrollo. Si algún día se baja de Node 22, esto es lo primero que se rompe.
+- **Tres bugs reales cazados por las pruebas, no leyendo el código:**
+  1. **`/uploads/` devolvía 404 en archivos que SÍ existían.** El bloque de nginx tenía un
+     `alias` dentro de una `location ~*` anidada; en una location con regex, `alias` solo
+     funciona bien si la ruta usa las capturas de la propia regex. Reescrito con `root`, y
+     la lista negra de extensiones ejecutables movida delante (en nginx gana la primera
+     regex que casa). Sin la prueba que **pedía el archivo por HTTP** en vez de mirar el
+     disco, esto llegaba a producción y ninguna imagen se veía.
+  2. **Abrir un DM «consigo mismo» devolvía 200 con la conversación de otra persona.**
+     `buscarDm(yo, yo)` sí encuentra hilos, porque las dos condiciones `some` se satisfacen
+     con la MISMA fila de participante, y la validación vivía después. Ahora va antes.
+  3. **`uploads/` era de root y el backend corre como `node` (uid 1000):** toda subida
+     habría fallado con EACCES. Detectado probando la escritura dentro del contenedor antes
+     de desplegar.
+- **Fuga de filas encontrada al limpiar las pruebas:** `Conversacion` no tiene FK a `User`
+  (su `creadorId` es un campo suelto), así que al borrarse todas las cuentas de un hilo la
+  conversación sobrevive sin participantes — invisible e imborrable. Se añadió
+  `limpiarConversacionesVacias` al barrido de cada 6 h.
+- Probado E2E por HTTPS contra el stack vivo: **74 comprobaciones, todas en verde**
+  (`docs/pruebas/e2e-fase8.mjs`) — flujo feliz completo (DM, grupo, adjuntos, publicar con
+  imagen, notificaciones) más los casos de seguridad: leer/escribir en conversación ajena,
+  escribir sin sesión, campo `autorId` colado, mensaje vacío y de 4001 caracteres, editar el
+  mensaje de otro, HTML disfrazado de PNG, `uso` inventado, adjunto ajeno, adjunto
+  reutilizado, GIF de host arbitrario, GIF por http://, MIEMBRO renombrando un grupo, ajeno
+  leyendo un grupo, lectura tras salir, y el bloqueo cortando un DM que ya existía.
+  **Más 16 comprobaciones de interfaz con un navegador real** (Playwright): la campana abre,
+  el picker de emojis monta bajo React 19 sin duplicarse, Giphy devuelve resultados, el chat
+  se pinta, el socket conecta y la interfaz sale en inglés con `locale: en-US`.
+
 ### ⬜ Lo siguiente
 
-1. **Fase 8 — Mensajería**: socket.io en el namespace `/chat`, DMs primero, luego grupos,
-   luego adjuntos. Bloqueo y privacidad de DM (`privacidadDm` ya está en `User`), que
-   dependen del grafo social que acaba de construir la Fase 7. `Mensaje.idioma` ya existe
-   desde la migración de la 7, así que la tabla arranca con la columna puesta. **Sin la
-   traducción con DeepL: aplazada hasta nuevo aviso** (§8).
-   **Escribir cada pantalla nueva ya con `t()`**, como en la 7.
+1. **Fase 9 — CSS propio.** El diseño ya está escrito en §6: PostCSS para parsear, prefijo
+   `#perfil-<id>` en cada selector, lista negra (`position: fixed`, `@import`, `url()`
+   externo, `expression(`), tope de ~20 KB y botón de restaurar siempre visible. Se guarda
+   el CSS **sanitizado**, no el original.
 2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
 3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
@@ -374,6 +484,19 @@ traducción de contenido, que queda **aplazada hasta nuevo aviso** (31/07, ver �
 
 - **Regenerar la Steam API key** en `steamcommunity.com/dev/apikey` antes de abrir el
   registro: la actual se compartió por chat durante la planeación.
+- **Aviso de `npm audit` en `react-router` 7.18.2 (visto el 31/07).** Es
+  `GHSA-qwww-vcr4-c8h2`, un bypass de CSRF **del modo RSC**. **No aplica a Wander**: aquí
+  `react-router-dom` se usa como SPA, sin RSC ni Server Actions, así que el código
+  vulnerable ni se carga. No se bajó de versión porque `npm audit fix --force` instala
+  7.11.0, que es un cambio mayor hacia atrás. Conviene subir cuando publiquen el parche.
+- **Cuota de subidas: 500 MB por cuenta y 8 MB por archivo, sin panel para verlo.** El
+  backend los aplica, pero el usuario no tiene forma de saber cuánto lleva usado hasta que
+  algo se rechaza. Cuando haya usuarios reales, conviene un indicador en `/configuracion`.
+- **Los adjuntos no se borran del disco al borrar el mensaje.** El borrado de mensajes es
+  suave (`borradoEn`), y `limpiarHuerfanos` solo barre los que nunca se ataron a nada. Un
+  archivo de un mensaje borrado sigue ocupando disco y sigue siendo accesible por su URL
+  (que es un uuid impredecible, pero accesible). Decidir si se borran de verdad —y con qué
+  margen— es trabajo aparte, no un retoque.
 - **Logros e insignias de Steam: no implementados.** §1 y §5 los mencionan, y la Fase 5
   entregó juegos, horas, nivel y actividad, pero **no logros**. Se dejaron fuera porque
   `GetPlayerAchievements` es *una llamada por juego*: con 942 juegos, un solo perfil serían
@@ -903,6 +1026,11 @@ opción. Vuelven cuando haya de qué filtrar.
 
 ## 8. Mensajería
 
+> ✅ **Implementada el 31/07 (Fase 8).** Lo que sigue era el diseño previo y se cumplió
+> casi tal cual; lo aprendido al construirlo —y los tres bugs que cazaron las pruebas—
+> está en §0. La única parte que **no** se construyó es la traducción de contenido, que
+> sigue aplazada (ver el recuadro más abajo).
+
 **Transporte:** socket.io 4.8 en el mismo servidor Express, namespace `/chat`,
 autenticado con el JWT de la cookie en el handshake. Cada usuario entra a una room
 `user:<id>`; cada conversación a `conv:<id>`. Eventos: `mensaje:nuevo`,
@@ -1173,8 +1301,8 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 5 | ✅ **Steam** | `steam.service.ts` (Web API, sin tocar `vacBanned`), `cache.service.ts` con TTL y circuit breaker, bloques de Actividad / Estadísticas / Favoritos, job de refresco. |
 | 6 | ✅ **Cuentas vinculadas** | Discord y Google por OAuth 2.0 con PKCE, `/configuracion` con consentimiento granular, vincular/desvincular con borrado real, `PRIVACIDAD.md` y `/privacidad`. Bloques de Discord y Spotify vía Lanyard. |
 | 6.5 | ✅ **i18n** | `react-i18next`, catálogos `es`/`en`, selector en navbar y `/configuracion`, detección por navegador con respaldo a español, `User.idioma` para que la preferencia siga al usuario entre dispositivos. Se hizo **antes** de la 7 porque la Fase 7 duplica el número de pantallas: cada una escrita sin i18n habría que reabrirla. Los errores de zod del backend quedan pendientes (ver §0). |
-| 7 | **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` — **no** para traducir (eso está aplazado), sino porque esa columna solo se puede rellenar bien mientras no haya filas viejas. |
-| 8 | **Mensajería** | socket.io, DMs primero, luego grupos, luego adjuntos (imágenes → GIFs). Bloqueo y privacidad de DM. Va después de "seguir" porque las reglas de quién puede escribirte dependen del grafo social. **Sin traducción**: aplazada hasta nuevo aviso (§8). |
+| 7 | ✅ **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` — **no** para traducir (eso está aplazado), sino porque esa columna solo se puede rellenar bien mientras no haya filas viejas. |
+| 8 | ✅ **Mensajería + adjuntos + notificaciones** | socket.io en `/chat` autenticado con la cookie de sesión, DMs y grupos, `privacidadDm` y bandeja de solicitudes. Subidas validadas por magic bytes y reescritas con sharp, emojis, GIFs de Giphy por proxy. Campana de notificaciones que enlaza a la interacción exacta. **Sin traducción**: aplazada hasta nuevo aviso (§8). |
 | 9 | **CSS propio** | `sanitizar.service.ts` con PostCSS, prefijado de scope, lista negra, botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
 | 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
 | 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
@@ -1184,6 +1312,29 @@ Ordenadas para que haya algo desplegado y visible pronto.
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fase 8 desplegada: la gente ya se habla**
+
+- **Mensajería completa**: DMs y grupos (hasta 50), bandeja con solicitudes de
+  desconocidos, `privacidadDm`, silenciar, salir, roles de ADMIN y mensajes de sistema.
+  socket.io en `/chat` autenticado con la misma cookie httpOnly del REST.
+- **Adjuntos en el chat y en las publicaciones**: imágenes, GIFs, video y audio, validados
+  por **contenido real** (magic bytes) y reescritos con sharp para tirar los EXIF. Selector
+  de emojis y buscador de GIFs de Giphy vía proxy propio, los dos compartidos entre el feed
+  y el chat.
+- **Campana de notificaciones** en la navbar, con panel, contador en vivo por socket y
+  navegación al punto exacto de la interacción (incluido el comentario concreto dentro de
+  un hilo). Nace también `/publicacion/:id`, que es a donde llevan.
+- **Ya no queda ninguna pantalla "en construcción".**
+- **Tres bugs cazados por las pruebas y no leyendo código:** el bloque `/uploads/` de nginx
+  daba 404 en archivos que existían (`alias` dentro de una `location` con regex); abrir un
+  DM consigo mismo devolvía la conversación de otra persona; y `uploads/` era de root, con
+  lo que toda subida habría fallado con EACCES. Además se encontró una fuga de filas:
+  `Conversacion` no tiene FK a `User`, así que sobrevivía a la desaparición de todos sus
+  participantes — ahora la barre un job.
+- **74 comprobaciones E2E por HTTPS + 16 de interfaz con un navegador real**, todas en
+  verde. Estas últimas confirmaron lo que la suite HTTP no puede ver: que emoji-mart monta
+  bajo React 19 sin duplicarse por el modo estricto.
 
 **31/07/2026 — Fase 7 desplegada: Wander deja de ser perfiles sueltos**
 

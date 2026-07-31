@@ -49,6 +49,9 @@ router.get(
 // ── Notificaciones ───────────────────────────────────────────────────
 // Antes de /:id para que "leidas" no se lea como el id de nada.
 router.post('/notificaciones/leidas', requiereAuth, asyncHandler(ctrl.marcarLeidas));
+// Contador ligero para el punto de la campana: se pide en cada carga, así
+// que no puede costar lo que cuesta traer la lista entera.
+router.get('/notificaciones/contador', requiereAuth, asyncHandler(ctrl.contadorNotificaciones));
 router.get(
   '/notificaciones',
   requiereAuth,

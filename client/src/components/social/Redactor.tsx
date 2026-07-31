@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Send } from 'lucide-react';
 
 import { social, type Publicacion } from '../../lib/social';
+import type { Adjunto } from '../../lib/archivos';
 import { mensajeError } from '../../lib/api';
 import { useAuth } from '../../store/authStore';
 import { Avatar } from './Avatar';
+import { BarraCompositor } from './Compositor';
 
 /** Debe coincidir con MAX_TEXTO_PUBLICACION del backend. */
 const MAX = 1000;
@@ -27,24 +29,61 @@ export function Redactor({ alPublicar }: Props) {
   const { t } = useTranslation();
   const usuario = useAuth((e) => e.usuario);
   const [texto, setTexto] = useState('');
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
+  const areaTexto = useRef<HTMLTextAreaElement>(null);
+
+  /**
+   * Inserta un emoji donde esté el cursor, no al final.
+   *
+   * Añadirlo siempre al final es lo fácil, pero rompe la expectativa de
+   * quien vuelve a mitad de una frase para poner una cara: el emoji
+   * aparecería lejos de donde estaba mirando.
+   */
+  const insertarTexto = useCallback((fragmento: string) => {
+    const area = areaTexto.current;
+
+    setTexto((actual) => {
+      if (!area) return actual + fragmento;
+
+      const inicio = area.selectionStart ?? actual.length;
+      const fin = area.selectionEnd ?? actual.length;
+      const nuevo = actual.slice(0, inicio) + fragmento + actual.slice(fin);
+
+      // El cursor se recoloca tras el emoji en el siguiente fotograma:
+      // hacerlo ahora no serviría porque React todavía no ha repintado.
+      requestAnimationFrame(() => {
+        area.focus();
+        const pos = inicio + fragmento.length;
+        area.setSelectionRange(pos, pos);
+      });
+
+      return nuevo;
+    });
+  }, []);
 
   if (!usuario) return null;
 
   const restantes = MAX - texto.length;
   const cerca = restantes <= 100;
+  // Con adjuntos se puede publicar sin texto: una captura sin comentario es
+  // una publicación normal.
+  const puedeEnviar = Boolean(texto.trim()) || adjuntos.length > 0;
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
-    const limpio = texto.trim();
-    if (!limpio || enviando) return;
+    if (!puedeEnviar || enviando) return;
 
     setEnviando(true);
     setError('');
     try {
-      const publicacion = await social.publicar({ texto: limpio });
+      const publicacion = await social.publicar({
+        texto: texto.trim(),
+        adjuntos: adjuntos.map((a) => a.id),
+      });
       setTexto('');
+      setAdjuntos([]);
       alPublicar(publicacion);
     } catch (err) {
       setError(mensajeError(err));
@@ -72,6 +111,7 @@ export function Redactor({ alPublicar }: Props) {
           </label>
           <textarea
             id="redactor"
+            ref={areaTexto}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             maxLength={MAX}
@@ -81,7 +121,16 @@ export function Redactor({ alPublicar }: Props) {
                        placeholder:text-zinc-400 dark:text-white dark:placeholder:text-zinc-500"
           />
 
-          <div className="mt-2 flex items-center justify-end gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <BarraCompositor
+              adjuntos={adjuntos}
+              alCambiarAdjuntos={setAdjuntos}
+              alInsertarTexto={insertarTexto}
+              uso="publicacion"
+              deshabilitado={enviando}
+            />
+
+            <div className="ml-auto flex items-center gap-3">
             {cerca && (
               <span
                 className={`text-sm tabular-nums ${
@@ -96,20 +145,21 @@ export function Redactor({ alPublicar }: Props) {
               </span>
             )}
 
-            <button
-              type="submit"
-              disabled={!texto.trim() || enviando}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-900
-                         px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800
-                         disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {enviando ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send className="h-4 w-4" aria-hidden="true" />
-              )}
-              {t('social.publicar')}
-            </button>
+              <button
+                type="submit"
+                disabled={!puedeEnviar || enviando}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-900
+                           px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800
+                           disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                {enviando ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                )}
+                {t('social.publicar')}
+              </button>
+            </div>
           </div>
 
           {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}

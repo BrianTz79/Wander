@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
+import { MAX_ADJUNTOS } from '../services/archivos.service';
+
 /**
  * Validación de la capa social (Fase 7): seguir, publicar, comentar,
- * reaccionar, feed y explorar.
+ * reaccionar, feed y explorar. La Fase 8 le añade los adjuntos.
  *
  * Misma regla que el resto de schemas: `.strict()` en todo, para que un
  * campo inventado se descarte en el middleware y no llegue nunca a Prisma.
@@ -15,15 +17,37 @@ import { z } from 'zod';
 export const MAX_TEXTO_PUBLICACION = 1000;
 export const MAX_TEXTO_COMENTARIO = 500;
 
+/** Mismo tope que en el chat: el límite lo pone el servicio de archivos,
+ *  que es donde vive la cuota. */
+const MAX_ADJUNTOS_PUBLICACION = MAX_ADJUNTOS;
+
 const textoPublicacion = z
   .string()
   .trim()
   .min(1, 'La publicación no puede estar vacía.')
   .max(MAX_TEXTO_PUBLICACION, `Máximo ${MAX_TEXTO_PUBLICACION} caracteres.`);
 
+/**
+ * Texto de una publicación que además lleva imágenes. Puede ir vacío:
+ * publicar una captura sin comentario es normal. El `.refine` de abajo es
+ * el que impide que se queden vacíos texto y adjuntos a la vez.
+ */
+const textoOpcional = z
+  .string()
+  .trim()
+  .max(MAX_TEXTO_PUBLICACION, `Máximo ${MAX_TEXTO_PUBLICACION} caracteres.`)
+  .default('');
+
 export const crearPublicacionSchema = z
   .object({
-    texto: textoPublicacion,
+    texto: textoOpcional,
+    /**
+     * Ids de archivos ya subidos por `POST /api/archivos`. Se mandan ids y
+     * no los archivos en sí: la subida va aparte para que una foto de 6 MB
+     * no bloquee el envío y para poder enseñar la miniatura mientras se
+     * escribe. La propiedad de cada id se comprueba en el servidor.
+     */
+    adjuntos: z.array(z.string().min(1).max(40)).max(MAX_ADJUNTOS_PUBLICACION).default([]),
     /*
      * Juego al que se refiere la publicación. Se manda solo el appid: el
      * NOMBRE lo resuelve el servidor contra la caché de Steam, nunca se
@@ -33,7 +57,11 @@ export const crearPublicacionSchema = z
      */
     juegoAppid: z.number().int().positive().max(20_000_000).optional(),
   })
-  .strict();
+  .strict()
+  .refine((d) => d.texto.length > 0 || d.adjuntos.length > 0, {
+    message: 'La publicación no puede estar vacía.',
+    path: ['texto'],
+  });
 
 export const editarPublicacionSchema = z
   .object({

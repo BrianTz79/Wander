@@ -11,6 +11,7 @@ import {
   registrarActividad,
   SELECT_AUTOR,
 } from '../services/social.service';
+import { atarArchivos, SELECT_ADJUNTO, validarAdjuntos } from '../services/archivos.service';
 import type { JuegoSteam } from '../services/steam.service';
 import type {
   BuscarInput,
@@ -138,7 +139,11 @@ async function marcarMisReacciones(publicacionIds: string[], userId: string | un
 
 /** Forma en que viaja una publicación al cliente. */
 type PublicacionCruda = Prisma.PublicacionGetPayload<{
-  include: { autor: { select: typeof SELECT_AUTOR }; _count: { select: { comentarios: true; reacciones: true } } };
+  include: {
+    autor: { select: typeof SELECT_AUTOR };
+    adjuntos: { select: typeof SELECT_ADJUNTO };
+    _count: { select: { comentarios: true; reacciones: true } };
+  };
 }>;
 
 function serializarPublicacion(p: PublicacionCruda, misReacciones: string[]) {
@@ -151,6 +156,7 @@ function serializarPublicacion(p: PublicacionCruda, misReacciones: string[]) {
     createdAt: p.createdAt,
     editadoEn: p.editadoEn,
     autor: p.autor,
+    adjuntos: p.adjuntos,
     comentarios: p._count.comentarios,
     reacciones: p._count.reacciones,
     misReacciones,
@@ -159,6 +165,7 @@ function serializarPublicacion(p: PublicacionCruda, misReacciones: string[]) {
 
 const INCLUDE_PUBLICACION = {
   autor: { select: SELECT_AUTOR },
+  adjuntos: { select: SELECT_ADJUNTO },
   _count: { select: { comentarios: true, reacciones: true } },
 } as const;
 
@@ -372,10 +379,21 @@ export async function desbloquear(req: Request, res: Response): Promise<void> {
 // ── POST /api/social/publicaciones ───────────────────────────────────
 export async function crearPublicacion(req: Request, res: Response): Promise<void> {
   const yo = req.usuario!.id;
-  const { texto, juegoAppid } = req.body as CrearPublicacionInput;
+  const { texto, juegoAppid, adjuntos } = req.body as CrearPublicacionInput;
 
   const limpio = limpiarTexto(texto);
-  if (limpio.length === 0) throw errores.invalido('La publicación no puede estar vacía.');
+  /*
+   * Con adjuntos, el texto puede ir vacío: publicar una captura sin
+   * comentario es normal en una red social. Sin adjuntos sigue siendo
+   * obligatorio — una publicación totalmente vacía no es nada.
+   */
+  if (limpio.length === 0 && adjuntos.length === 0) {
+    throw errores.invalido('La publicación no puede estar vacía.');
+  }
+
+  // Antes de crear nada: si los adjuntos no valen, la petición se rechaza
+  // entera en vez de dejar una publicación a medias.
+  await validarAdjuntos(yo, adjuntos);
 
   const publicacion = await prisma.publicacion.create({
     data: {
@@ -383,7 +401,7 @@ export async function crearPublicacion(req: Request, res: Response): Promise<voi
       texto: limpio,
       // Detectado al escribir. Hoy no lo lee nadie —traducir está aplazado
       // (PROYECTO.md §8)—, pero es el único momento en que se puede saber.
-      idioma: detectarIdioma(limpio),
+      idioma: limpio ? detectarIdioma(limpio) : null,
       ...(juegoAppid !== undefined
         ? { juegoAppid, juegoNombre: await nombreDeJuego(yo, juegoAppid) }
         : {}),
@@ -391,9 +409,24 @@ export async function crearPublicacion(req: Request, res: Response): Promise<voi
     include: INCLUDE_PUBLICACION,
   });
 
+  /*
+   * Los adjuntos se atan DESPUÉS de crear la publicación (necesitan su id),
+   * así que la fila que se acaba de leer todavía no los trae. Se relee para
+   * responder: sin esto, quien publica una imagen ve su propia publicación
+   * sin imagen hasta que recarga, que parece que se perdió.
+   */
+  let completa = publicacion;
+  if (adjuntos.length > 0) {
+    await atarArchivos(yo, adjuntos, { publicacionId: publicacion.id });
+    completa = await prisma.publicacion.findUniqueOrThrow({
+      where: { id: publicacion.id },
+      include: INCLUDE_PUBLICACION,
+    });
+  }
+
   await registrarActividad(yo, 'publicacion', { publicacionId: publicacion.id });
 
-  res.status(201).json({ publicacion: serializarPublicacion(publicacion, []) });
+  res.status(201).json({ publicacion: serializarPublicacion(completa, []) });
 }
 
 // ── PATCH /api/social/publicaciones/:id ──────────────────────────────
@@ -598,11 +631,22 @@ export async function comentarPublicacion(req: Request, res: Response): Promise<
     include: { autor: { select: SELECT_AUTOR } },
   });
 
+  /*
+   * Los `datos` llevan lo justo para que la campana enlace a la
+   * interacción exacta y la pinte sin más consultas. `comentarioId` es lo
+   * que permite llevar al usuario AL comentario y no solo a la
+   * publicación: con un hilo largo, "alguien te comentó" y aterrizar
+   * arriba del todo obliga a buscar a mano de qué se trataba.
+   */
   await notificar({
     destinatarioId: publicacion.autorId,
     emisorId: yo,
     tipo: 'comentario',
-    datos: { publicacionId: publicacion.id, extracto: limpio.slice(0, 80) },
+    datos: {
+      publicacionId: publicacion.id,
+      comentarioId: comentario.id,
+      extracto: limpio.slice(0, 80),
+    },
   });
 
   res.status(201).json({ comentario });
@@ -671,7 +715,15 @@ export async function comentarPerfil(req: Request, res: Response): Promise<void>
     destinatarioId: objetivo.id,
     emisorId: yo,
     tipo: 'comentario',
-    datos: { handle: objetivo.handle, extracto: limpio.slice(0, 80) },
+    // `handle` es el del PERFIL donde se comentó (el del propio
+    // destinatario): es lo que permite enlazar a su muro. Quién lo escribió
+    // ya viaja en `emisor`.
+    datos: {
+      handle: objetivo.handle,
+      comentarioId: comentario.id,
+      enPerfil: true,
+      extracto: limpio.slice(0, 80),
+    },
   });
 
   res.status(201).json({ comentario });
@@ -944,4 +996,24 @@ export async function marcarLeidas(req: Request, res: Response): Promise<void> {
   });
 
   res.json({ marcadas: count });
+}
+
+// ── GET /api/social/notificaciones/contador ──────────────────────────
+/**
+ * Solo el número de notificaciones sin leer, para el punto de la campana.
+ *
+ * Existe aparte del listado porque es lo que se pide **al cargar cualquier
+ * página**, y traer veinte notificaciones con sus emisores para pintar un
+ * punto rojo sería pagar una consulta con JOIN por cada visita. Esto es un
+ * `count` sobre el índice `[destinatarioId, leidaEn, createdAt]`, que es lo
+ * más barato que se puede preguntar.
+ */
+export async function contadorNotificaciones(req: Request, res: Response): Promise<void> {
+  const yo = req.usuario!.id;
+
+  const sinLeer = await prisma.notificacion.count({
+    where: { destinatarioId: yo, leidaEn: null },
+  });
+
+  res.json({ sinLeer });
 }

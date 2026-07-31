@@ -20,9 +20,12 @@ export const es = {
     guardar: 'Guardar',
     cancelar: 'Cancelar',
     cerrar: 'Cerrar',
+    volver: 'Volver',
     volverInicio: 'Volver al inicio',
     saltarContenido: 'Saltar al contenido',
     algoSalioMal: 'Algo salió mal.',
+    reintentar: 'Reintentar',
+    cargarMas: 'Cargar más',
   },
 
   idioma: {
@@ -34,6 +37,8 @@ export const es = {
     explorar: 'Explorar',
     actividad: 'Actividad',
     mensajes: 'Mensajes',
+    mensajesSinLeer_one: '{{count}} conversación sin leer',
+    mensajesSinLeer_other: '{{count}} conversaciones sin leer',
     temaClaro: 'Activar tema claro',
     temaOscuro: 'Activar tema oscuro',
     menuCuenta: 'Menú de cuenta',
@@ -428,6 +433,8 @@ export const es = {
     borrar: 'Borrar',
     confirmarBorrarPublicacion: '¿Borrar esta publicación? No se puede deshacer.',
     juegoNumero: 'Juego #{{appid}}',
+    publicacion: 'Publicación',
+    publicacionNoExiste: 'Esta publicación no existe o se borró.',
 
     // ── Interacción ──
     meGusta: 'Me gusta',
@@ -520,6 +527,78 @@ export const es = {
     seccionIdioma: 'Idioma',
     idiomaAyuda:
       'En qué idioma ves Wander. Se recuerda en tu cuenta, así que te sigue a cualquier dispositivo.',
+  },
+
+  // ── Notificaciones (Fase 8) ────────────────────────────────────────
+  notificaciones: {
+    titulo: 'Notificaciones',
+    abrir: 'Abrir notificaciones',
+    // `count` activa las reglas de plural de i18next: es lo que distingue
+    // «1 sin leer» de «5 sin leer» sin escribirlo a mano por idioma.
+    abrirConPendientes_one: 'Abrir notificaciones ({{count}} sin leer)',
+    abrirConPendientes_other: 'Abrir notificaciones ({{count}} sin leer)',
+    vacio: 'Aquí aparecerán cuando alguien interactúe contigo.',
+    verTodas: 'Ver todas',
+    alguien: 'Alguien',
+    teSiguio: '{{quien}} te empezó a seguir',
+    comentoTuPublicacion: '{{quien}} comentó tu publicación',
+    comentoTuPerfil: '{{quien}} escribió en tu perfil',
+    reacciono: 'A {{quien}} le gustó tu publicación',
+    teEscribio: '{{quien}} te envió un mensaje',
+    teInvito: '{{quien}} te añadió a un grupo',
+    teMenciono: '{{quien}} te mencionó',
+    sistema: 'Aviso de Wander',
+  },
+
+  // ── Mensajería (Fase 8) ────────────────────────────────────────────
+  mensajes: {
+    titulo: 'Mensajes',
+    bandeja: 'Bandeja',
+    solicitudes: 'Solicitudes',
+    bandejaVacia: 'Todavía no tienes conversaciones.',
+    sinSolicitudes: 'No tienes solicitudes pendientes.',
+    eligeConversacion: 'Elige una conversación para empezar a leer.',
+    sinNombre: 'Conversación',
+    sinMensajes: 'Sin mensajes todavía',
+    hiloVacio: 'Escribe el primer mensaje.',
+    escribeUnMensaje: 'Escribe un mensaje…',
+    enviar: 'Enviar',
+    editado: 'editado',
+    borrado: 'Mensaje borrado',
+    estaEscribiendo: '{{quien}} está escribiendo…',
+    participantes_one: '{{count}} participante',
+    participantes_other: '{{count}} participantes',
+    silenciar: 'Silenciar conversación',
+    activarAvisos: 'Activar avisos',
+    salirGrupo: 'Salir del grupo',
+    confirmarSalir: '¿Seguro que quieres salir de este grupo?',
+    noSePudoCargar: 'No se pudo cargar la conversación.',
+    noExiste: 'Esta conversación no existe.',
+    esSolicitud:
+      'Esta persona te escribió por primera vez. Si aceptas, la conversación pasa a tu bandeja.',
+    aceptar: 'Aceptar',
+    enviarMensaje: 'Enviar mensaje',
+    // Los mensajes de sistema se guardan como una clave y se traducen aquí:
+    // el mismo evento lo leen personas con la interfaz en distintos idiomas.
+    'evento.participante-anadido': '{{quien}} añadió a {{objetivo}}',
+    'evento.participante-quitado': '{{quien}} quitó a {{objetivo}}',
+    'evento.participante-salio': '{{objetivo}} salió del grupo',
+  },
+
+  // ── Compositor: emojis, GIFs y adjuntos (Fase 8) ───────────────────
+  compositor: {
+    emojis: 'Emojis',
+    gifs: 'Buscar GIFs',
+    buscarGifs: 'Buscar GIFs…',
+    sinGifs: 'No se encontraron GIFs.',
+    viaGiphy: 'GIFs vía GIPHY',
+    adjuntar: 'Adjuntar archivo',
+    quitarAdjunto: 'Quitar archivo',
+    archivo: 'Archivo',
+    video: 'Video',
+    demasiadoGrande: 'El archivo supera el límite de {{max}} MB.',
+    maximoAlcanzado_one: 'Máximo {{count}} archivo',
+    maximoAlcanzado_other: 'Máximo {{count}} archivos',
   },
 } as const;
 

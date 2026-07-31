@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,6 +16,9 @@ import {
 import { useAuth } from '../../store/authStore';
 import { useTema } from '../../lib/tema';
 import { SelectorIdioma } from '../SelectorIdioma';
+import { Notificaciones } from '../social/Notificaciones';
+import { mensajes as apiMensajes } from '../../lib/mensajes';
+import { useEventoChat } from '../../lib/socket';
 
 /**
  * Navbar de la aplicación (§5.9 del sistema de diseño).
@@ -36,7 +39,25 @@ export function Navbar() {
   const navegar = useNavigate();
   const [abierto, setAbierto] = useState(false);
   const [menuCuenta, setMenuCuenta] = useState(false);
+  const [mensajesSinLeer, setMensajesSinLeer] = useState(0);
   const refCuenta = useRef<HTMLDivElement>(null);
+
+  /*
+   * Conversaciones con mensajes sin leer, para el punto junto a "Mensajes".
+   * Se pide al entrar y se refresca por socket: sin el aviso en vivo habría
+   * que sondear cada pocos segundos para que el punto apareciera solo.
+   */
+  const refrescarMensajes = useCallback(() => {
+    if (!usuario) return;
+    apiMensajes
+      .noLeidos()
+      .then((r) => setMensajesSinLeer(r.conversaciones))
+      .catch(() => undefined);
+  }, [usuario]);
+
+  useEffect(refrescarMensajes, [refrescarMensajes]);
+  useEventoChat('conv:actualizada', refrescarMensajes, Boolean(usuario));
+  useEventoChat('conv:nueva', refrescarMensajes, Boolean(usuario));
 
   async function cerrarSesion() {
     await logout();
@@ -99,6 +120,17 @@ export function Navbar() {
                 </NavLink>
                 <NavLink to="/mensajes" className={claseEnlace}>
                   {t('navbar.mensajes')}
+                  {mensajesSinLeer > 0 && (
+                    <span
+                      className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center
+                                 rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white"
+                      // El número va también en el texto accesible: el punto
+                      // de color no lo ve quien usa lector de pantalla.
+                      aria-label={t('navbar.mensajesSinLeer', { count: mensajesSinLeer })}
+                    >
+                      {mensajesSinLeer > 99 ? '99+' : mensajesSinLeer}
+                    </span>
+                  )}
                 </NavLink>
               </>
             )}
@@ -106,6 +138,11 @@ export function Navbar() {
 
           {/* Acciones */}
           <div className="flex items-center gap-2">
+            {/* La campana va fuera del menú de cuenta y visible también en
+                móvil: es un aviso que hay que poder ver de un vistazo, no
+                algo que se busque abriendo un desplegable. */}
+            {usuario && <Notificaciones />}
+
             <button
               type="button"
               onClick={alternar}
@@ -269,6 +306,22 @@ export function Navbar() {
                 </Link>
                 <Link to="/mensajes" onClick={() => setAbierto(false)} className="btn-fantasma justify-start">
                   {t('navbar.mensajes')}
+                  {mensajesSinLeer > 0 && (
+                    <span
+                      className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center
+                                 rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white"
+                      aria-label={t('navbar.mensajesSinLeer', { count: mensajesSinLeer })}
+                    >
+                      {mensajesSinLeer > 99 ? '99+' : mensajesSinLeer}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  to="/notificaciones"
+                  onClick={() => setAbierto(false)}
+                  className="btn-fantasma justify-start"
+                >
+                  {t('notificaciones.titulo')}
                 </Link>
                 {/* Separador: arriba está la navegación del sitio, aquí abajo
                     las acciones sobre tu propia cuenta. */}

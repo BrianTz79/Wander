@@ -14,21 +14,21 @@ import { RegistroPage } from './pages/RegistroPage';
 import { PerfilPublicoPage } from './pages/PerfilPublicoPage';
 import { EditorPerfilPage } from './pages/EditorPerfilPage';
 import { NoEncontradaPage } from './pages/NoEncontradaPage';
-import { EnConstruccionPage } from './pages/EnConstruccionPage';
 import { FeedPage } from './pages/FeedPage';
 import { ExplorarPage } from './pages/ExplorarPage';
 import { ConfiguracionPage } from './pages/ConfiguracionPage';
 import { PrivacidadPage } from './pages/PrivacidadPage';
 import { TerminosPage } from './pages/TerminosPage';
+import { MensajesPage } from './pages/MensajesPage';
+import { NotificacionesPage } from './pages/NotificacionesPage';
+import { PublicacionPage } from './pages/PublicacionPage';
 
 /**
  * Raíz de la aplicación: comprobación de sesión, layout y rutas.
  *
- * Las rutas que todavía no tienen pantalla propia apuntan a
- * `EnConstruccionPage` en vez de omitirse. Es deliberado: la Navbar y el
- * Footer ya enlazan a /explorar, /feed, /mensajes y /privacidad, y un
- * enlace a una ruta inexistente caería en el 404 y parecería un bug.
- * Tras la Fase 7 solo queda así /mensajes, que llega en la 8.
+ * Desde la Fase 8 **ya no queda ninguna ruta en construcción**: /mensajes
+ * era la última que apuntaba a `EnConstruccionPage`, y con ella todos los
+ * enlaces de la Navbar y del Footer llevan a una pantalla real.
  */
 export function App() {
   const { t } = useTranslation();
@@ -112,6 +112,9 @@ export function App() {
               quien llega sin cuenta y quiere ver qué hay aquí. */}
           <Route path="/explorar" element={<ExplorarPage />} />
           <Route path="/u/:handle" element={<PerfilPublicoPage />} />
+          {/* Pública como /explorar: si alguien comparte el enlace de una
+              publicación, quien lo abra sin cuenta debe poder leerla. */}
+          <Route path="/publicacion/:id" element={<PublicacionPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />
           <Route path="/terminos" element={<TerminosPage />} />
 
@@ -123,11 +126,30 @@ export function App() {
               </RutaProtegida>
             }
           />
+          {/* La conversación abierta vive en la URL y no en el estado: así
+              el enlace se puede compartir, el botón de atrás funciona, y una
+              notificación de mensaje lleva directa a su hilo. */}
           <Route
             path="/mensajes"
             element={
               <RutaProtegida>
-                <EnConstruccionPage claveTitulo="mensajes" claveFase="fase8" />
+                <MensajesPage />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mensajes/:id"
+            element={
+              <RutaProtegida>
+                <MensajesPage />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/notificaciones"
+            element={
+              <RutaProtegida>
+                <NotificacionesPage />
               </RutaProtegida>
             }
           />

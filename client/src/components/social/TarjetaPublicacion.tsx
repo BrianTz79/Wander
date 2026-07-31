@@ -13,6 +13,7 @@ import {
 import { mensajeError } from '../../lib/api';
 import { useAuth } from '../../store/authStore';
 import { Avatar } from './Avatar';
+import { Adjuntos } from './Adjuntos';
 
 interface Props {
   publicacion: Publicacion;
@@ -110,9 +111,15 @@ export function TarjetaPublicacion({
 
           {/* Texto. `whitespace-pre-wrap` respeta los saltos de línea que
               escribió el autor; el backend ya limitó cuántos seguidos. */}
-          <p className="mt-2 whitespace-pre-wrap break-words text-zinc-800 dark:text-zinc-200">
-            {publicacion.texto}
-          </p>
+          {publicacion.texto && (
+            <p className="mt-2 whitespace-pre-wrap break-words text-zinc-800 dark:text-zinc-200">
+              {publicacion.texto}
+            </p>
+          )}
+
+          {/* Imágenes, GIFs y archivos (Fase 8). Una publicación puede ser
+              solo esto, sin texto: una captura sin comentario. */}
+          <Adjuntos adjuntos={publicacion.adjuntos ?? []} />
 
           {/* Juego etiquetado */}
           {publicacion.juegoAppid !== null && (
@@ -254,8 +261,13 @@ function HiloComentarios({
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('comun.cargando')}</p>
       ) : (
         <ul className="space-y-3">
+          {/* El `id` de cada <li> es el ancla a la que apunta una
+              notificación de comentario (`#c-<id>`): sin él se aterrizaría
+              arriba de la publicación y habría que buscar a mano de qué se
+              trataba. `scroll-mt-20` deja hueco para la navbar sticky, que
+              si no taparía justo el comentario al que se saltó. */}
           {lista.items.map((c) => (
-            <li key={c.id} className="flex gap-2.5">
+            <li key={c.id} id={`c-${c.id}`} className="flex scroll-mt-20 gap-2.5">
               <Avatar usuario={c.autor} tamano={28} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 text-xs">

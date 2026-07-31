@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { logger } from '../config/logger';
+import { avisarNotificacion } from '../sockets/chat';
 
 /**
  * Reglas compartidas de la capa social (Fase 7).
@@ -62,7 +63,17 @@ export async function idsBloqueados(userId: string): Promise<string[]> {
 //  Notificaciones
 // ─────────────────────────────────────────────────────────────────────
 
-export type TipoNotificacion = 'seguimiento' | 'comentario' | 'reaccion' | 'mencion';
+/**
+ * Los tipos que contempla el schema (`Notificacion.tipo`). `mensaje` lo
+ * estrena la Fase 8: un DM nuevo, o una invitación a un grupo.
+ */
+export type TipoNotificacion =
+  | 'seguimiento'
+  | 'comentario'
+  | 'reaccion'
+  | 'mensaje'
+  | 'mencion'
+  | 'sistema';
 
 /**
  * Crea una notificación, si tiene sentido crearla.
@@ -100,6 +111,15 @@ export async function notificar(datos: {
         datos: (datos.datos ?? {}) as object,
       },
     });
+
+    /*
+     * Aviso en vivo para que la campana se encienda sola (Fase 8). Va
+     * DESPUÉS de guardar, como todo en la mensajería: si el socket está
+     * caído la notificación ya está en la base y aparece al recargar o en
+     * el siguiente sondeo. Se manda solo la señal, no el contenido —el
+     * cliente pide la lista por REST, donde ya vive el filtrado.
+     */
+    avisarNotificacion(destinatarioId);
   } catch (error) {
     logger.warn({ error, tipo, destinatarioId }, 'No se pudo crear la notificación');
   }

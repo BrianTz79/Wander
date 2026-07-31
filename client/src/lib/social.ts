@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from './api';
+import type { Adjunto } from './archivos';
 
 /**
  * Capa social del cliente (Fase 7): tipos que espejan al backend y el hook
@@ -30,6 +31,8 @@ export interface Publicacion {
   createdAt: string;
   editadoEn: string | null;
   autor: AutorResumen;
+  /** Imágenes, GIFs y archivos de la publicación (Fase 8). */
+  adjuntos: Adjunto[];
   comentarios: number;
   reacciones: number;
   misReacciones: TipoReaccion[];
@@ -64,13 +67,93 @@ export interface UsuarioExplorar {
   seguidores: number;
 }
 
+export type TipoNotificacion =
+  | 'seguimiento'
+  | 'comentario'
+  | 'reaccion'
+  | 'mensaje'
+  | 'mencion'
+  | 'sistema';
+
+/**
+ * Contexto que el servidor guarda con cada notificación para poder pintarla
+ * y enlazarla sin más consultas.
+ *
+ * Todo es opcional porque cada tipo rellena lo suyo: una de seguimiento no
+ * tiene `publicacionId`, y una de mensaje no tiene `reaccion`. Se lee con
+ * `destinoDeNotificacion`, que es quien decide a dónde lleva cada una.
+ */
+export interface DatosNotificacion {
+  publicacionId?: string;
+  comentarioId?: string;
+  conversacionId?: string;
+  /** Handle del perfil donde ocurrió (para los comentarios en muro). */
+  handle?: string;
+  enPerfil?: boolean;
+  reaccion?: TipoReaccion;
+  extracto?: string;
+  grupo?: string;
+  evento?: string;
+}
+
 export interface Notificacion {
   id: string;
-  tipo: 'seguimiento' | 'comentario' | 'reaccion' | 'mensaje' | 'mencion' | 'sistema';
-  datos: Record<string, unknown>;
+  tipo: TipoNotificacion;
+  datos: DatosNotificacion;
   leidaEn: string | null;
   createdAt: string;
   emisor: AutorResumen | null;
+}
+
+/**
+ * A dónde lleva pulsar una notificación.
+ *
+ * **Es la pieza que hace que la campana sirva de algo.** Una notificación
+ * que solo dice "alguien comentó" y no lleva a ninguna parte obliga a
+ * buscar la interacción a mano; el objetivo es aterrizar exactamente en lo
+ * que pasó.
+ *
+ * Devuelve `null` cuando no hay destino sensato (una notificación de
+ * sistema), y entonces se pinta como texto y no como enlace: un enlace que
+ * no va a ningún sitio es peor que la ausencia de enlace.
+ */
+export function destinoDeNotificacion(n: Notificacion): string | null {
+  const { publicacionId, comentarioId, conversacionId, handle, enPerfil } = n.datos;
+
+  switch (n.tipo) {
+    case 'seguimiento':
+      // Al perfil de quien te siguió: lo que se quiere al verlo es saber
+      // quién es.
+      return n.emisor ? `/u/${n.emisor.handle}` : null;
+
+    case 'comentario':
+      /*
+       * El ancla `#c-<id>` es lo que lleva AL comentario dentro del hilo, y
+       * no solo a la publicación. Con veinte comentarios, aterrizar arriba
+       * obliga a buscar cuál era.
+       */
+      if (enPerfil && handle) {
+        return comentarioId ? `/u/${handle}#c-${comentarioId}` : `/u/${handle}`;
+      }
+      if (publicacionId) {
+        return comentarioId
+          ? `/publicacion/${publicacionId}#c-${comentarioId}`
+          : `/publicacion/${publicacionId}`;
+      }
+      return null;
+
+    case 'reaccion':
+      return publicacionId ? `/publicacion/${publicacionId}` : null;
+
+    case 'mensaje':
+      return conversacionId ? `/mensajes/${conversacionId}` : '/mensajes';
+
+    case 'mencion':
+      return publicacionId ? `/publicacion/${publicacionId}` : null;
+
+    default:
+      return null;
+  }
 }
 
 /** Respuesta paginada por cursor. `cursor: null` = no hay más. */
@@ -98,8 +181,13 @@ export const social = {
       }>('/social/explorar', { params })
       .then((r) => r.data),
 
-  publicar: (datos: { texto: string; juegoAppid?: number }) =>
-    api.post<{ publicacion: Publicacion }>('/social/publicaciones', datos).then((r) => r.data.publicacion),
+  publicar: (datos: { texto: string; juegoAppid?: number; adjuntos?: string[] }) =>
+    api
+      .post<{ publicacion: Publicacion }>('/social/publicaciones', {
+        ...datos,
+        adjuntos: datos.adjuntos ?? [],
+      })
+      .then((r) => r.data.publicacion),
 
   editarPublicacion: (id: string, texto: string) =>
     api
@@ -200,6 +288,11 @@ export const social = {
 
   marcarLeidas: () =>
     api.post<{ marcadas: number }>('/social/notificaciones/leidas').then((r) => r.data.marcadas),
+
+  /** Solo el número, para el punto de la campana. Barato de pedir en cada
+   *  carga de página; la lista entera no lo sería. */
+  contadorNotificaciones: () =>
+    api.get<{ sinLeer: number }>('/social/notificaciones/contador').then((r) => r.data.sinLeer),
 };
 
 // ── Hook de listas paginadas ─────────────────────────────────────────

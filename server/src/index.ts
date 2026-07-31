@@ -13,7 +13,10 @@ import { esperarDb, prisma } from './config/prisma';
 import { manejadorErrores, noEncontrado } from './middlewares/errores.middleware';
 import { limiteGeneral } from './middlewares/rateLimit.middleware';
 import { limpiarSesionesViejas } from './services/sesion.service';
+import { limpiarHuerfanos } from './services/archivos.service';
+import { limpiarConversacionesVacias } from './services/mensajes.service';
 import { INTERVALO_REFRESCO_MS, refrescarCachesSteam } from './jobs/refrescarCaches';
+import { montarChat } from './sockets/chat';
 
 import authRoutes from './routes/auth.routes';
 import oauthRoutes from './routes/oauth.routes';
@@ -21,6 +24,8 @@ import cuentasRoutes from './routes/cuentas.routes';
 import seoRoutes from './routes/seo.routes';
 import perfilesRoutes from './routes/perfiles.routes';
 import socialRoutes from './routes/social.routes';
+import mensajesRoutes from './routes/mensajes.routes';
+import archivosRoutes from './routes/archivos.routes';
 import externoRoutes from './routes/externo.routes';
 
 const app = express();
@@ -167,6 +172,14 @@ app.use('/api/perfiles', perfilesRoutes);
 // explorar y notificaciones.
 app.use('/api/social', socialRoutes);
 
+// Mensajería (Fase 8): DMs, grupos y adjuntos. El REST es la fuente de
+// verdad; socket.io (montado más abajo, en /chat) solo lo acelera.
+app.use('/api/mensajes', mensajesRoutes);
+
+// Subida de archivos y buscador de GIFs, compartidos por el chat y las
+// publicaciones del feed.
+app.use('/api/archivos', archivosRoutes);
+
 // Datos de proveedores externos (Steam en la Fase 5). Sirve de la caché
 // de Postgres: el render de un perfil nunca sale a la red de Valve.
 app.use('/api/externo', externoRoutes);
@@ -183,6 +196,13 @@ app.use(manejadorErrores);
 //  Arranque
 // ─────────────────────────────────────────────────────────────────────
 const servidor = createServer(app);
+
+/*
+ * socket.io comparte el servidor HTTP con Express, no abre un puerto
+ * propio: así el túnel de Cloudflare y nginx solo tienen que proxear una
+ * cosa, y el socket llega con las mismas cookies de sesión que el REST.
+ */
+montarChat(servidor);
 
 async function arrancar(): Promise<void> {
   await esperarDb();
@@ -213,6 +233,35 @@ async function arrancar(): Promise<void> {
     6 * 60 * 60 * 1000
   );
   intervalo.unref();
+
+  /*
+   * Barrido de archivos huérfanos: los que se subieron y nunca se llegaron
+   * a enviar (alguien adjunta una foto y cierra la pestaña). Sin esto se
+   * quedan en disco para siempre ocupando la cuota de quien los subió.
+   * Cada 6 h basta — el barrido solo mira los de más de 24 h.
+   */
+  const limpiezaArchivos = setInterval(
+    () => {
+      limpiarHuerfanos()
+        .then((n) => {
+          if (n > 0) logger.info({ borrados: n }, 'Archivos huérfanos limpiados');
+        })
+        .catch((error) => logger.error({ error }, 'Fallo al limpiar archivos huérfanos'));
+
+      /*
+       * Conversaciones sin ningún participante. `Conversacion` no tiene FK
+       * a `User`, así que al borrarse todas las cuentas de un hilo la fila
+       * sobrevive sin que nadie pueda verla ni borrarla (ver el servicio).
+       */
+      limpiarConversacionesVacias()
+        .then((n) => {
+          if (n > 0) logger.info({ borradas: n }, 'Conversaciones vacías limpiadas');
+        })
+        .catch((error) => logger.error({ error }, 'Fallo al limpiar conversaciones vacías'));
+    },
+    6 * 60 * 60 * 1000
+  );
+  limpiezaArchivos.unref();
 
   // Refresco de las cachés de Steam. Va por delante del TTL para que el
   // visitante no pague nunca la espera de la llamada externa.
