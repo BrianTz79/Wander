@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Compass } from 'lucide-react';
+import { useAuth } from '../../store/authStore';
 
 /** Footer (§5.10 del sistema de diseño). */
 export function Footer() {
   const anio = new Date().getFullYear();
+  // Con sesión, el footer ofrece también las páginas de cuenta: es el otro
+  // sitio donde la gente busca "configuración" cuando no la encuentra arriba.
+  const usuario = useAuth((e) => e.usuario);
 
   return (
     <footer className="mt-auto w-full border-t border-zinc-200 bg-white py-8 md:py-12 dark:border-zinc-800 dark:bg-zinc-950">
@@ -34,16 +38,53 @@ export function Footer() {
                     Explorar perfiles
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    to="/registro"
-                    className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                  >
-                    Crear perfil
-                  </Link>
-                </li>
+                {!usuario && (
+                  <li>
+                    <Link
+                      to="/registro"
+                      className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      Crear perfil
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
+
+            {/* Columna de cuenta: solo tiene sentido con sesión iniciada. */}
+            {usuario && (
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
+                  Tu cuenta
+                </h3>
+                <ul className="space-y-2 text-sm">
+                  <li>
+                    <Link
+                      to={`/u/${usuario.handle}`}
+                      className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      Mi perfil
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/editor"
+                      className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      Editar perfil
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/configuracion"
+                      className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      Configuración
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
 
             <div>
               <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Legal</h3>
