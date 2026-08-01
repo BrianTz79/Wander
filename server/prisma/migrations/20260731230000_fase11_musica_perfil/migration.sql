@@ -1,0 +1,15 @@
+-- Fase 11: música de fondo del perfil.
+--
+-- Los campos del audio (`audioUrl`, `audioVolumen`, `audioLoop`…) ya
+-- existían en `Perfil` desde la migración inicial. Lo único que faltaba es
+-- el ajuste GLOBAL de quien visita: "no reproducir música en los
+-- perfiles".
+--
+-- Va en `User` y no en el navegador porque gana sobre lo que decida cada
+-- perfil visitado, y quien lo activa espera que le siga a todos sus
+-- dispositivos. El volumen concreto sí se guarda en el navegador: es una
+-- preferencia del momento, no una decisión sobre la propia experiencia.
+--
+-- `DEFAULT true` para no cambiar en silencio lo que ya hacía la
+-- plataforma para las cuentas existentes.
+ALTER TABLE "User" ADD COLUMN "reproducirMusica" BOOLEAN NOT NULL DEFAULT true;

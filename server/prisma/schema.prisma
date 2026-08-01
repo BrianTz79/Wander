@@ -68,6 +68,14 @@ model User {
   // sale con noindex y se excluye del sitemap.
   permitirIndexado Boolean @default(true)
 
+  // "No reproducir música en los perfiles" (Fase 11). Es un ajuste de
+  // CUENTA y no del navegador porque gana sobre lo que decida cada perfil
+  // que visite: quien lo activa lo hace una vez y le sigue a todos sus
+  // dispositivos. El volumen concreto sí vive en el navegador — ese es
+  // una preferencia del momento, no una decisión sobre la propia
+  // experiencia.
+  reproducirMusica Boolean @default(true)
+
   // Rastro de seguridad. `tokenVersion` invalida todos los refresh tokens
   // de golpe: se incrementa al cambiar contraseña o al "cerrar sesión en
   // todos los dispositivos".

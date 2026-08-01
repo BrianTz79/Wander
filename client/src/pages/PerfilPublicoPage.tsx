@@ -6,6 +6,7 @@ import { Check, Eye, EyeOff, Pencil, Share2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { idDeScope, type RespuestaPerfilPublico } from '../lib/perfil';
 import { CssDePerfil } from '../components/CssDePerfil';
+import { ReproductorPerfil } from '../components/ReproductorPerfil';
 import {
   columnaDe,
   necesitaDiscord,
@@ -128,6 +129,12 @@ export function PerfilPublicoPage() {
           al salir del perfil, sin dejar reglas sueltas afectando al resto
           de la app. */}
       <CssDePerfil perfilId={perfil.id} tema={perfil.tema} css={perfil.cssPropio} />
+
+      {/* Música de fondo (Fase 11). Va DENTRO del contenedor del perfil
+          para heredar sus variables `--p-*` y verse con el tema de quien
+          lo hizo; que se desmonte al salir es justo lo que se quiere: la
+          música no debe seguir sonando en otra pantalla. */}
+      <ReproductorPerfil audio={perfil} />
 
       {/* Aviso solo para el dueño de un perfil sin publicar. */}
       {esPropio && !perfil.publicado && (

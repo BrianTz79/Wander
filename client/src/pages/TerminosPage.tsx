@@ -100,9 +100,39 @@ export function TerminosPage() {
             cuando borras el contenido o tu cuenta.
           </p>
           <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-            Al subir algo confirmas que tienes derecho a hacerlo. Con la música de fondo hay que
-            tener cuidado especial: subir una canción ajena puede acarrear una reclamación de
-            derechos de autor, y en ese caso la retiraremos.
+            Al subir algo confirmas que tienes derecho a hacerlo.
+          </p>
+        </Seccion>
+
+        <Seccion titulo="Derechos de autor y música de fondo">
+          <p className="text-zinc-600 dark:text-zinc-400">
+            Wander deja poner una canción de fondo en tu perfil. Es la función que más fácil
+            lleva a un problema de derechos, así que conviene ser claros:
+          </p>
+          <ul className="mt-4 space-y-2">
+            <Punto texto="Solo puedes subir música que hayas hecho tú, que tenga una licencia que lo permita (Creative Commons, libre de regalías) o para la que tengas permiso de quien la hizo." />
+            <Punto texto="Que una canción esté en internet, o que la hayas comprado, no significa que puedas publicarla aquí. Comprar una canción da derecho a escucharla, no a distribuirla." />
+            <Punto texto="Al subir un archivo declaras que tienes ese derecho. Wander no lo comprueba antes: no hay forma técnica de hacerlo, y por eso la responsabilidad es de quien sube." />
+          </ul>
+
+          <h3 className="mt-6 mb-2 font-semibold text-zinc-900 dark:text-white">
+            Si crees que algo aquí infringe tus derechos
+          </h3>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            Escríbenos indicando qué contenido es (el enlace al perfil), qué obra tuya se está
+            usando, y una forma de contactarte. Retiramos primero y preguntamos después: si el
+            aviso es razonable, el archivo deja de estar accesible mientras se revisa.
+          </p>
+          <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+            A quien se le retire contenido se le avisa y puede responder. Si sostiene que sí
+            tenía derecho, se revisa a mano. Las cuentas a las que se les retira contenido de
+            forma <strong>repetida</strong> se suspenden: no es un castigo por equivocarse una
+            vez, es lo que hay que hacer cuando el patrón es deliberado.
+          </p>
+          <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+            Wander se reserva retirar cualquier archivo de audio sin aviso previo si hay una
+            reclamación creíble o una orden legal. También puede quitarse la función de música
+            entera si resulta insostenible de moderar.
           </p>
         </Seccion>
 
@@ -164,7 +194,7 @@ export function TerminosPage() {
           <p className="text-zinc-600 dark:text-zinc-400">
             Si estas reglas cambian de forma relevante, se avisará en el sitio antes de que
             apliquen. Seguir usando Wander después de un cambio significa aceptarlo; si no estás de
-            acuerdo, puedes borrar tu cuenta. Última actualización: 30 de julio de 2026.
+            acuerdo, puedes borrar tu cuenta. Última actualización: 31 de julio de 2026.
           </p>
         </Seccion>
       </div>
