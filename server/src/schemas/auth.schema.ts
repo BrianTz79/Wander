@@ -119,9 +119,34 @@ export const completarPerfilSchema = z.object({
  * garantía de que ahí nunca llega nada que no sea un idioma que existe.
  * Los catálogos del cliente viven en `client/src/i18n/locales/`.
  */
-export const preferenciasSchema = z.object({
-  idioma: z.enum(['es', 'en'], { error: 'Ese idioma no está disponible.' }),
-});
+export const preferenciasSchema = z
+  .object({
+    idioma: z.enum(['es', 'en'], { error: 'Ese idioma no está disponible.' }).optional(),
+    /**
+     * "Reproducir música en los perfiles" (Fase 11).
+     *
+     * Es de CUENTA y no del navegador porque gana sobre lo que decida cada
+     * perfil visitado: quien lo apaga lo hace una vez y le sigue a todos
+     * sus dispositivos. El volumen concreto sí vive en el navegador, que
+     * es una preferencia del momento.
+     */
+    reproducirMusica: z.boolean().optional(),
+    /**
+     * "Aparecer en buscadores" (§13).
+     *
+     * El campo existía en el schema desde la migración inicial pero no lo
+     * aplicaba nadie ni había forma de cambiarlo. Desde la Fase 10 se
+     * respeta: apagarlo saca el perfil del `sitemap.xml` y le pone
+     * `noindex` a su tarjeta. La tarjeta se sigue generando a propósito —
+     * pegar tu enlace en un chat y que se vea bien no es lo mismo que
+     * salir en Google.
+     */
+    permitirIndexado: z.boolean().optional(),
+  })
+  .strict()
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: 'No hay nada que actualizar.',
+  });
 
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

@@ -136,9 +136,12 @@ export function RegistroPage() {
               {t('registro.handle')}
             </label>
             <div className="relative">
+              {/* `aria-hidden` porque el lector ya lee la etiqueta del
+                  campo, pero SÍ tiene que cumplir contraste: sigue siendo
+                  texto que se ve, y quien tiene baja visión lo lee. */}
               <span
                 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base
-                           text-zinc-400 dark:text-zinc-500"
+                           text-zinc-500 dark:text-zinc-400"
                 aria-hidden="true"
               >
                 /u/

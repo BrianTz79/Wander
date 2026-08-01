@@ -11,6 +11,18 @@ export interface Usuario {
   emailVerified: boolean;
   /** Idioma de la interfaz guardado en la cuenta: 'es' | 'en' (Fase 6.5). */
   idioma?: string;
+  /**
+   * "Reproducir música en los perfiles" (Fase 11). Gana sobre lo que traiga
+   * cada perfil visitado, así que el reproductor lo consulta antes de
+   * montar el `<audio>` siquiera.
+   */
+  reproducirMusica?: boolean;
+  /**
+   * "Aparecer en buscadores" (§13). Existía en el schema desde el primer
+   * día pero nadie lo aplicaba; desde la Fase 10 saca el perfil del
+   * sitemap y le pone `noindex` a su tarjeta.
+   */
+  permitirIndexado?: boolean;
 }
 
 interface EstadoAuth {

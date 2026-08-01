@@ -90,6 +90,15 @@ function detectorDeTipo(): Promise<DetectorTipo> {
  */
 export const MAX_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Tope del audio de fondo del perfil (Fase 11), más bajo que el general.
+ *
+ * Lo descarga todo el que abre el perfil, no solo quien decide verlo, así
+ * que cada MB lo paga el visitante sin haberlo pedido. Ver la nota larga
+ * en `guardarArchivo`.
+ */
+export const MAX_BYTES_AUDIO = 4 * 1024 * 1024;
+
 /** Cuántos adjuntos caben en un mensaje o publicación. */
 export const MAX_ADJUNTOS = 4;
 
@@ -402,6 +411,33 @@ export async function guardarArchivo(opciones: {
   }
   if (uso === 'audio-perfil' && !AUDIOS.has(mime)) {
     throw errores.invalido('El audio de perfil tiene que ser un archivo de audio.');
+  }
+
+  /*
+   * Tope propio del audio de fondo (Fase 11).
+   *
+   * Es más bajo que el general de 8 MB porque este archivo lo descarga
+   * TODO el que abre el perfil, no solo quien decide verlo: 8 MB por
+   * visita, en datos móviles, es un coste que paga el visitante sin
+   * haberlo pedido. A 128 kbps, 4 MB son unos cuatro minutos, de sobra
+   * para una música de fondo.
+   *
+   * Sobre la duración y los metadatos: §7 pedía además limitar la duración
+   * y recodificar para tirar los tags. **No se hace, a propósito**: leer
+   * la duración real y recodificar exige ffmpeg, que hoy no está en la
+   * imagen del backend, y añadirlo por esto es un binario grande y una
+   * superficie de ataque conocida (ffmpeg procesa formatos de contenedor
+   * complejos). El límite de bytes acota el problema práctico —una
+   * canción larga no cabe— y los tags ID3 de un mp3 son texto que nadie
+   * ejecuta: se sirven con `Content-Type` de audio, `nosniff` y la CSP de
+   * `/uploads`, que ya impide interpretarlos como cualquier otra cosa.
+   * Si algún día se quiere recorte o normalización de volumen, ahí sí
+   * entra ffmpeg y esta decisión se revisa entera.
+   */
+  if (uso === 'audio-perfil' && datos.length > MAX_BYTES_AUDIO) {
+    throw errores.invalido(
+      `La música de fondo no puede pasar de ${Math.floor(MAX_BYTES_AUDIO / 1024 / 1024)} MB.`
+    );
   }
 
   const carpeta = path.join(env.UPLOAD_DIR, carpetaDelMes());

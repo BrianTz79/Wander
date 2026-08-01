@@ -122,6 +122,8 @@ function usuarioPublico(u: {
   rol: string;
   emailVerified: boolean;
   idioma?: string;
+  reproducirMusica?: boolean;
+  permitirIndexado?: boolean;
 }) {
   return {
     id: u.id,
@@ -134,6 +136,12 @@ function usuarioPublico(u: {
     // Fase 6.5: el cliente lo aplica al arrancar, para que el idioma siga
     // al usuario entre dispositivos y no solo entre pestañas.
     idioma: u.idioma ?? 'es',
+    // Fase 11: gana sobre la música que traiga cada perfil visitado, así
+    // que el cliente lo necesita antes de reproducir nada.
+    reproducirMusica: u.reproducirMusica ?? true,
+    // Fase 10: "aparecer en buscadores". El cliente lo pinta en
+    // /configuracion; el sitemap y las tarjetas OG ya lo respetan.
+    permitirIndexado: u.permitirIndexado ?? true,
   };
 }
 
@@ -185,6 +193,8 @@ export async function registro(req: Request, res: Response): Promise<void> {
         rol: true,
         emailVerified: true,
         idioma: true,
+        reproducirMusica: true,
+        permitirIndexado: true,
         tokenVersion: true,
       },
     })
@@ -220,6 +230,8 @@ export async function login(req: Request, res: Response): Promise<void> {
       rol: true,
       emailVerified: true,
       idioma: true,
+      reproducirMusica: true,
+      permitirIndexado: true,
       passwordHash: true,
       tokenVersion: true,
       intentosFallidos: true,
@@ -315,6 +327,8 @@ export async function refresh(req: Request, res: Response): Promise<void> {
       rol: true,
       emailVerified: true,
       idioma: true,
+      reproducirMusica: true,
+      permitirIndexado: true,
     },
   });
   if (!completo) throw errores.noAutenticado();
@@ -362,6 +376,8 @@ export async function yo(req: Request, res: Response): Promise<void> {
       rol: true,
       emailVerified: true,
       idioma: true,
+      reproducirMusica: true,
+      permitirIndexado: true,
     },
   });
   res.json({ usuario: usuario ? usuarioPublico(usuario) : null });
@@ -420,14 +436,22 @@ export async function cambiarPassword(req: Request, res: Response): Promise<void
  */
 export async function preferencias(req: Request, res: Response): Promise<void> {
   if (!req.usuario) throw errores.noAutenticado();
-  const { idioma } = req.body as PreferenciasInput;
+  const { idioma, reproducirMusica, permitirIndexado } = req.body as PreferenciasInput;
 
-  await prisma.user.update({
+  // Todos los campos son opcionales desde la Fase 11 (antes solo existía
+  // el idioma y era obligatorio), así que solo se escribe lo que vino: un
+  // `undefined` colado en el `data` pondría el campo a null.
+  const usuario = await prisma.user.update({
     where: { id: req.usuario.id },
-    data: { idioma },
+    data: {
+      ...(idioma !== undefined ? { idioma } : {}),
+      ...(reproducirMusica !== undefined ? { reproducirMusica } : {}),
+      ...(permitirIndexado !== undefined ? { permitirIndexado } : {}),
+    },
+    select: { idioma: true, reproducirMusica: true, permitirIndexado: true },
   });
 
-  res.json({ idioma });
+  res.json(usuario);
 }
 
 // ─────────────────────────────────────────────────────────────────────

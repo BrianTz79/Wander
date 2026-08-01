@@ -91,6 +91,26 @@ export const limiteOAuth = rateLimit({
   },
 });
 
+/**
+ * Renovación de sesión. NO reutiliza `limiteAuth` por el mismo motivo que
+ * Steam: aquí no hay contraseña que adivinar.
+ *
+ * Un refresh es lo que hace la aplicación sola cuando caduca el token de
+ * acceso, no algo que el usuario pida. Con el límite de contraseñas (8 por
+ * 15 min), una sesión larga en varias pestañas agotaba la cuota y la
+ * persona acababa en el login sin haber hecho nada raro. Lo que sí hay que
+ * frenar es el bucle de refresh FALLIDO —un token inválido reintentado sin
+ * parar—, y para eso `skipSuccessfulRequests` deja pasar los buenos y
+ * cuenta solo los que fallan.
+ */
+export const limiteRefresh = rateLimit({
+  ...comun,
+  windowMs: 15 * 60_000,
+  limit: 30,
+  skipSuccessfulRequests: true,
+  message: { error: 'Demasiados intentos de renovar la sesión. Vuelve a iniciar sesión.' },
+});
+
 /** Registro de cuentas: evita creación masiva. */
 export const limiteRegistro = rateLimit({
   ...comun,

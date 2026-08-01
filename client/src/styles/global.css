@@ -333,6 +333,21 @@
       linear-gradient(to right, #ffffff0a 1px, transparent 1px),
       linear-gradient(to bottom, #ffffff0a 1px, transparent 1px);
   }
+
+  /* ── Rejilla del bloque de galería (Fase 10) ──
+     En móvil siempre 2 columnas; a partir de `sm` manda `--galeria-cols`,
+     que el bloque emite desde su config. Vive aquí y no en el componente
+     porque una media query no cabe en un `style` en línea, y el número de
+     columnas no puede ser una clase de Tailwind: `grid-cols-${n}` no se
+     genera nunca, el compilador solo ve las clases escritas literales. */
+  .galeria-rejilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 40rem) {
+    .galeria-rejilla {
+      grid-template-columns: repeat(var(--galeria-cols, 3), minmax(0, 1fr));
+    }
+  }
 }
 
 @layer utilities {

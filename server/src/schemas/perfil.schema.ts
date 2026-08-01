@@ -146,6 +146,78 @@ const spotifyConfigSchema = z
   })
   .strict();
 
+// ── Bloques manuales (Fase 10) ───────────────────────────────────────
+
+/**
+ * Ruta de un archivo subido a Wander.
+ *
+ * Misma regla que `avatarUrlSchema` de más abajo y por los mismos dos
+ * motivos: una URL externa convertiría el bloque en un contador de
+ * visitantes con su IP, y se saltaría la validación por magic bytes y el
+ * reescrito con sharp que aplica `archivos.service.ts`. Aquí importa más
+ * todavía que en el avatar, porque la galería admite doce imágenes: doce
+ * oportunidades de apuntar a un servidor propio.
+ */
+const rutaSubida = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(
+    (u) => /^\/uploads\/[\w./-]+$/.test(u) && !u.includes('..'),
+    'La imagen tiene que ser una que hayas subido a Wander.'
+  );
+
+/**
+ * Una pieza del setup. `etiqueta` es el componente ("Tarjeta gráfica") y
+ * `valor` el modelo ("RX 7900 XTX").
+ *
+ * Es deliberadamente un par libre y no un enum de componentes: los setups
+ * no se parecen entre sí —hay quien lista su silla y quien lista su
+ * micrófono— y un catálogo cerrado obligaría a mantener una lista que
+ * nunca estaría completa. El precio es que no se puede agrupar ni comparar
+ * por componente, y eso hoy no lo pide nadie.
+ */
+const piezaSetupSchema = z
+  .object({
+    etiqueta: z.string().trim().min(1, 'El componente no puede estar vacío.').max(40),
+    valor: z.string().trim().min(1, 'El modelo no puede estar vacío.').max(80),
+  })
+  .strict();
+
+const setupConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    piezas: z.array(piezaSetupSchema).max(20, 'Máximo 20 componentes.').default([]),
+  })
+  .strict();
+
+/**
+ * Galería: capturas y fotos del setup.
+ *
+ * Solo se guarda la ruta y un texto alternativo. El `alt` no es opcional
+ * por accesibilidad-de-adorno: una galería de capturas sin alt es
+ * exactamente el caso que deja a un lector de pantalla sin nada que leer.
+ * Se permite vacío (una captura decorativa no siempre tiene qué decir),
+ * pero el campo existe y el editor lo pide.
+ */
+const imagenGaleriaSchema = z
+  .object({
+    url: rutaSubida,
+    alt: z.string().trim().max(200, 'Máximo 200 caracteres.').default(''),
+  })
+  .strict();
+
+const galeriaConfigSchema = z
+  .object({
+    titulo: z.string().trim().max(80).optional(),
+    // 12 como los favoritos: es una galería destacada, no un álbum. El
+    // tope también acota lo que puede pesar un perfil al cargarlo.
+    imagenes: z.array(imagenGaleriaSchema).max(12, 'Máximo 12 imágenes.').default([]),
+    /** Cuántas columnas en escritorio. En móvil siempre son 2. */
+    columnas: z.number().int().min(2).max(4).default(3),
+  })
+  .strict();
+
 /**
  * Registro de tipos de bloque de la v1. Añadir un tipo = añadir su schema
  * aquí; cualquier otro string se rechaza con la lista de válidos.
@@ -159,6 +231,8 @@ export const SCHEMAS_BLOQUE = {
   favoritos: favoritosConfigSchema,
   'discord-estado': discordEstadoConfigSchema,
   spotify: spotifyConfigSchema,
+  setup: setupConfigSchema,
+  galeria: galeriaConfigSchema,
 } as const;
 
 export type TipoBloque = keyof typeof SCHEMAS_BLOQUE;
@@ -250,11 +324,44 @@ const avatarUrlSchema = z
   )
   .nullable();
 
+/**
+ * Música de fondo del perfil (Fase 11).
+ *
+ * Misma regla que el avatar y la galería: **solo rutas de `/uploads/`**.
+ * Aquí el motivo pesa aún más que en una imagen — un `<audio>` apuntando
+ * a un servidor propio recibe una petición de cada visitante del perfil,
+ * con su IP, y además se salta la validación por magic bytes y el tope de
+ * tamaño propio del audio.
+ *
+ * `null` es "quítala".
+ */
+const audioUrlSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .refine(
+    (u) => /^\/uploads\/[\w./-]+$/.test(u) && !u.includes('..'),
+    'La música tiene que ser un archivo que hayas subido a Wander.'
+  )
+  .nullable();
+
 export const actualizarPerfilSchema = z
   .object({
     tema: temaSchema.optional(),
     cssPropio: cssPropioSchema.optional(),
     avatarUrl: avatarUrlSchema.optional(),
+    // ── Audio de fondo (Fase 11) ──
+    audioUrl: audioUrlSchema.optional(),
+    // Título y artista los escribe el dueño del perfil: es lo que se
+    // enseña en el reproductor. Se piden a propósito —ver el aviso de
+    // derechos de autor en /terminos—: quien tiene que escribir de quién
+    // es la canción piensa un segundo en si puede subirla.
+    audioTitulo: z.string().trim().max(80, 'Máximo 80 caracteres.').nullable().optional(),
+    audioArtista: z.string().trim().max(80, 'Máximo 80 caracteres.').nullable().optional(),
+    // Volumen INICIAL. El visitante lo cambia y su preferencia manda (§7).
+    audioVolumen: z.number().int().min(0).max(100).optional(),
+    audioAutoplay: z.boolean().optional(),
+    audioLoop: z.boolean().optional(),
     // Aplicar una plantilla: el servidor resuelve el id contra el catálogo
     // y escribe SU tema. Nunca se guarda un id que no exista.
     plantilla: z.enum(IDS_PLANTILLA, { error: 'Esa plantilla no existe.' }).optional(),

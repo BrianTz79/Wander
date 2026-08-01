@@ -47,6 +47,7 @@ export const en: Catalogo = {
     temaClaro: 'Switch to light theme',
     temaOscuro: 'Switch to dark theme',
     menuCuenta: 'Account menu',
+    moderacion: 'Moderation',
     abrirMenu: 'Open menu',
     cerrarMenu: 'Close menu',
     verMiPerfil: 'View my profile',
@@ -309,6 +310,41 @@ export const en: Catalogo = {
     anadirEnlace: 'Add link',
     soloHttp: 'Only http(s) links are accepted.',
 
+    // Background music (Phase 11).
+    musica: 'Background music',
+    musicaAyuda: 'A file that plays when your profile opens. Visitors control the volume.',
+    musicaSubir: 'Upload music',
+    musicaCambiar: 'Change music',
+    musicaQuitar: 'Remove',
+    musicaSubiendo: 'Uploading…',
+    musicaPrevia: "Listen to your profile's music",
+    musicaTitulo: 'Title',
+    musicaArtista: 'Artist',
+    musicaVolumen: 'Starting volume ({{valor}}%)',
+    musicaVolumenAyuda: "It's a suggestion: whoever visits your profile can turn it up or down.",
+    musicaAutoplay: 'Try to play when the profile opens',
+    musicaAutoplayAyuda:
+      'Many browsers block this until the person interacts with the page. When that happens, they get a play button instead.',
+    musicaLoop: 'Loop',
+    musicaGuardar: 'Save music',
+    musicaDerechos:
+      'Only upload music you made or have permission to use. Uploading someone else’s music can get your file taken down and, if it happens again, your account closed.',
+
+    // Manual blocks (Phase 10).
+    setupTituloPlaceholder: 'My setup',
+    componentePieza: 'Component {{numero}}',
+    modeloPieza: 'Model of component {{numero}}',
+    quitarPieza: 'Remove component {{numero}}',
+    anadirPieza: 'Add component',
+    galeriaTituloPlaceholder: 'Screenshots',
+    anadirImagenes: 'Add images',
+    altImagen: 'Alt text for image {{numero}}',
+    altPlaceholder: 'Describe the image (optional)',
+    quitarImagen: 'Remove image {{numero}}',
+    columnas: 'Columns',
+    columnasAyuda: 'On phone screens it is always two.',
+    galeriaTope: 'Up to {{max}} images.',
+
     sinSteam:
       'You have no Steam account linked, so this block will not show on your profile. <config>Link it in settings</config>.',
     sinDiscord:
@@ -481,6 +517,15 @@ export const en: Catalogo = {
     discordEstadoDescripcion: 'Whether you are online and what you are playing, live.',
     spotifyNombre: 'Spotify',
     spotifyDescripcion: 'The song playing right now. Hides itself when you are not listening.',
+    setupNombre: 'Setup',
+    setupDescripcion: 'The parts of your rig, written by you.',
+    galeriaNombre: 'Gallery',
+    galeriaDescripcion: 'Screenshots and photos of your setup, in a grid.',
+
+    // Full-screen gallery viewer.
+    galeriaVisor: 'Full-screen image',
+    galeriaAnterior: 'Previous image',
+    galeriaSiguiente: 'Next image',
 
     tituloEnNumeros: 'By the numbers',
     tituloJugandoUltimamente: 'Playing lately',
@@ -603,6 +648,18 @@ export const en: Catalogo = {
     subtitulo:
       'Connect your platforms so your profile keeps itself current. You decide what shows, and you can disconnect whenever you want.',
     comoTratamosDatos: 'How we handle your data',
+
+    // Profile music (Phase 11).
+    musica: 'Music on profiles',
+    musicaAyuda:
+      'Some profiles have background music. If you would rather none of them play, turn it off here and no profile will.',
+    musicaActivar: 'Let profiles play music',
+
+    // Search engine indexing (§13).
+    indexado: 'Showing up in search engines',
+    indexadoAyuda:
+      'Turn this off and your profile stops appearing on Google and in the sitemap. It will still look right when you paste your link in a chat: that is not the same as showing up in a search engine.',
+    indexadoActivar: 'Let search engines index my profile',
     cargando: 'Loading your accounts…',
     cerrarAviso: 'Dismiss notice',
     conectado: 'Connected',
@@ -723,5 +780,93 @@ export const en: Catalogo = {
     demasiadoGrande: 'That file is over the {{max}} MB limit.',
     maximoAlcanzado_one: '{{count}} file max',
     maximoAlcanzado_other: '{{count}} files max',
+  },
+
+  // ── Profile music player (Phase 11) ────────────────────────────────
+  musica: {
+    reproductor: "This profile's music",
+    reproducir: 'Play the music',
+    pausar: 'Pause the music',
+    silenciar: 'Mute',
+    activarSonido: 'Unmute',
+    volumen: 'Volume',
+    sinTitulo: 'Background music',
+    pulsaParaSonar: 'Tap to hear it',
+  },
+
+  // ── Reporting (Phase 10) ───────────────────────────────────────────
+  reportar: {
+    abrir: 'Report',
+    accion: 'Report',
+    titulo: 'Report content',
+    motivo: "What's wrong with this?",
+    detalle: 'Tell us more (optional)',
+    detallePlaceholder: 'Anything you think helps to understand the case.',
+    aviso: 'A person on the team will review it. Nobody is told who reported it.',
+    enviar: 'Send report',
+    gracias: 'Thanks. The team will review it.',
+  },
+
+  // ── Moderation panel (Phase 10) ────────────────────────────────────
+  admin: {
+    titulo: 'Moderation',
+    subtitulo: 'The report queue and actions on accounts.',
+    filtrar: 'Filter reports by status',
+    estadoPENDIENTE: 'Pending',
+    estadoREVISADO: 'Reviewed',
+    estadoDESCARTADO: 'Dismissed',
+    pendientes: 'Pending',
+    revisados: 'Reviewed',
+    suspendidos: 'Suspended',
+    usuarios: 'Accounts',
+    colaVacia: 'Nothing pending. Good time.',
+    sinReportes: 'No reports in this state.',
+
+    motivo_spam: 'Spam',
+    motivo_acoso: 'Harassment',
+    motivo_contenido_ilegal: 'Illegal content',
+    motivo_suplantacion: 'Impersonation',
+    motivo_otro: 'Other',
+
+    tipo_usuario: 'Account',
+    tipo_perfil: 'Profile',
+    tipo_publicacion: 'Post',
+    tipo_comentario: 'Comment',
+    tipo_mensaje: 'Message',
+
+    yaOculto: 'already hidden',
+    yaSuspendido: 'already suspended',
+    sinTexto: 'No text',
+    objetoBorrado: 'What was reported no longer exists.',
+    resolucion: 'Resolution',
+
+    accion: 'Action',
+    accionNinguna: 'No action',
+    accionOcultar: 'Hide the content',
+    accionSuspender: 'Suspend the account',
+    dias: 'Days',
+    diasPlaceholder: 'Empty = permanent',
+    nota: 'Resolution note',
+    notaPlaceholder: 'What was decided and why (goes on the record).',
+    marcarRevisado: 'Resolve',
+    descartar: 'Dismiss',
+    avisoAccion: 'Dismissing closes the report without taking any action.',
+
+    accionesDirectas: 'Actions on an account',
+    accionesDirectasAyuda:
+      'For acting without a report involved. Everything is logged under your name.',
+    handle: 'Handle',
+    motivo: 'Reason',
+    motivoPlaceholder: 'Goes into the audit log.',
+    suspender: 'Suspend',
+    levantar: 'Lift suspension',
+    hechoSuspender: '@{{handle}} was suspended.',
+    hechoLevantar: "@{{handle}}'s suspension was lifted.",
+
+    roles: 'Roles',
+    rolesAyuda: 'Only an administrator can hand out permissions.',
+    rol: 'Role',
+    cambiarRol: 'Change role',
+    hechoRol: '@{{handle}} is now {{rol}}.',
   },
 };

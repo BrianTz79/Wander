@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ImagePlus,
   Loader2,
+  Music,
   Plus,
   RefreshCw,
   Trash2,
@@ -123,6 +124,7 @@ export function EditorPerfilPage() {
           <PanelPlantillas />
           <PanelTema />
           <PanelBloques />
+          <PanelMusica />
           <PanelCssPropio />
         </div>
 
@@ -309,6 +311,11 @@ function CampoAvatar() {
         )}
 
         <div className="flex min-w-0 flex-col gap-2">
+          {/* El input está oculto y lo dispara el botón de al lado, pero
+              sigue siendo un control de formulario: sin `aria-label` un
+              lector de pantalla que llegue a él por tabulación anuncia
+              "botón examinar" sin decir de qué. Lo cazó la auditoría con
+              axe de la Fase 10. */}
           <input
             ref={entradaRef}
             type="file"
@@ -316,6 +323,7 @@ function CampoAvatar() {
             onChange={(e) => void alElegir(e)}
             className="sr-only"
             id="ed-avatar"
+            aria-label={t('editor.fotoPerfil')}
           />
           <div className="flex flex-wrap gap-2">
             <button
@@ -416,7 +424,7 @@ function PanelIdentidad() {
         className="campo mb-1 h-auto resize-y py-3"
         placeholder={t('editor.bioPlaceholder')}
       />
-      <p className="mb-4 text-right text-xs text-zinc-400">{bio.length}/500</p>
+      <p className="mb-4 text-right text-xs text-zinc-500 dark:text-zinc-400">{bio.length}/500</p>
 
       <button type="submit" disabled={sinCambios || !nombre.trim()} className="btn-primario h-10 w-full">
         {t('editor.guardarIdentidad')}
@@ -657,6 +665,239 @@ function PanelCssPropio() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+//  Panel: música de fondo (Fase 11)
+// ─────────────────────────────────────────────────────────────────────
+
+function PanelMusica() {
+  const { t } = useTranslation();
+  const { perfil, guardarPerfil } = useEditor();
+  const entradaRef = useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState('');
+
+  const [titulo, setTitulo] = useState(perfil?.audioTitulo ?? '');
+  const [artista, setArtista] = useState(perfil?.audioArtista ?? '');
+  const [volumen, setVolumen] = useState(perfil?.audioVolumen ?? 30);
+  const [autoplay, setAutoplay] = useState(perfil?.audioAutoplay ?? true);
+  const [loop, setLoop] = useState(perfil?.audioLoop ?? true);
+
+  if (!perfil) return null;
+  const tieneAudio = Boolean(perfil.audioUrl);
+
+  async function alElegir(e: ChangeEvent<HTMLInputElement>) {
+    const fichero = e.target.files?.[0];
+    e.target.value = '';
+    if (!fichero) return;
+
+    setSubiendo(true);
+    setError('');
+    try {
+      const [subido] = await archivos.subir([fichero], 'audio-perfil');
+      if (subido) {
+        // Se guarda junto con la ficha que haya escrita, para que subir el
+        // archivo no borre el título que la persona ya puso.
+        await guardarPerfil({
+          audioUrl: subido.url,
+          audioTitulo: titulo.trim() || null,
+          audioArtista: artista.trim() || null,
+          audioVolumen: volumen,
+          audioAutoplay: autoplay,
+          audioLoop: loop,
+        });
+      }
+    } catch (err) {
+      setError(mensajeError(err));
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  async function guardarAjustes(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await guardarPerfil({
+        audioTitulo: titulo.trim() || null,
+        audioArtista: artista.trim() || null,
+        audioVolumen: volumen,
+        audioAutoplay: autoplay,
+        audioLoop: loop,
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  async function quitar() {
+    setError('');
+    try {
+      await guardarPerfil({ audioUrl: null });
+      setTitulo('');
+      setArtista('');
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <section className="tarjeta">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+        <Music className="h-4 w-4" aria-hidden="true" />
+        {t('editor.musica')}
+      </h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">{t('editor.musicaAyuda')}</p>
+
+      {error && <p className="texto-error mb-3">{error}</p>}
+
+      {tieneAudio && (
+        <audio
+          src={perfil.audioUrl ?? undefined}
+          controls
+          preload="none"
+          className="mb-3 w-full"
+          aria-label={t('editor.musicaPrevia')}
+        />
+      )}
+
+      <input
+        ref={entradaRef}
+        type="file"
+        accept="audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/x-m4a"
+        onChange={(e) => void alElegir(e)}
+        className="sr-only"
+        id="ed-audio"
+        aria-label={t('editor.musicaSubir')}
+      />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => entradaRef.current?.click()}
+          disabled={subiendo}
+          className="btn-secundario h-10 px-4 text-sm"
+        >
+          {subiendo ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t('editor.musicaSubiendo')}
+            </>
+          ) : (
+            <>
+              <Music className="h-4 w-4" aria-hidden="true" />
+              {tieneAudio ? t('editor.musicaCambiar') : t('editor.musicaSubir')}
+            </>
+          )}
+        </button>
+
+        {tieneAudio && (
+          <button
+            type="button"
+            onClick={() => void quitar()}
+            disabled={subiendo}
+            className="btn-fantasma h-10 px-3 text-sm"
+          >
+            {t('editor.musicaQuitar')}
+          </button>
+        )}
+      </div>
+
+      {/*
+        Aviso de derechos de autor. Va aquí, justo donde se sube, y no
+        escondido en /terminos: subir música ajena es la vía directa a una
+        queja de DMCA, y quien lo lee en el momento de elegir el archivo es
+        quien todavía puede cambiar de idea. Ver §7 y la cláusula de
+        /terminos.
+      */}
+      <p className="mb-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span>{t('editor.musicaDerechos')}</span>
+      </p>
+
+      {tieneAudio && (
+        <form onSubmit={(e) => void guardarAjustes(e)} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="audio-titulo" className="etiqueta">
+                {t('editor.musicaTitulo')}
+              </label>
+              <input
+                id="audio-titulo"
+                type="text"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                maxLength={80}
+                className="campo h-10"
+              />
+            </div>
+            <div>
+              <label htmlFor="audio-artista" className="etiqueta">
+                {t('editor.musicaArtista')}
+              </label>
+              <input
+                id="audio-artista"
+                type="text"
+                value={artista}
+                onChange={(e) => setArtista(e.target.value)}
+                maxLength={80}
+                className="campo h-10"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="audio-volumen" className="etiqueta">
+              {t('editor.musicaVolumen', { valor: volumen })}
+            </label>
+            <input
+              id="audio-volumen"
+              type="range"
+              min={0}
+              max={100}
+              value={volumen}
+              onChange={(e) => setVolumen(Number(e.target.value))}
+              className="w-full accent-zinc-900 dark:accent-white"
+            />
+            {/* Que el volumen es una PROPUESTA conviene decirlo: si no,
+                quien lo sube al 100 espera que suene así y no entiende
+                por qué a otra persona le suena bajito. */}
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              {t('editor.musicaVolumenAyuda')}
+            </p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={autoplay}
+              onChange={(e) => setAutoplay(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
+            />
+            {t('editor.musicaAutoplay')}
+          </label>
+          <p className="-mt-1 ml-6 text-xs text-zinc-500 dark:text-zinc-400">
+            {t('editor.musicaAutoplayAyuda')}
+          </p>
+
+          <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={loop}
+              onChange={(e) => setLoop(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
+            />
+            {t('editor.musicaLoop')}
+          </label>
+
+          <button type="submit" className="btn-primario h-10 w-full text-sm">
+            {t('editor.musicaGuardar')}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 //  Panel: bloques (lista + añadir)
 // ─────────────────────────────────────────────────────────────────────
 
@@ -829,6 +1070,8 @@ function TarjetaBloque({
           {bloque.tipo === 'favoritos' && <FormFavoritos bloque={bloque} />}
           {bloque.tipo === 'discord-estado' && <FormDiscordEstado bloque={bloque} />}
           {bloque.tipo === 'spotify' && <FormSpotify bloque={bloque} />}
+          {bloque.tipo === 'setup' && <FormSetup bloque={bloque} />}
+          {bloque.tipo === 'galeria' && <FormGaleria bloque={bloque} />}
         </div>
       )}
     </li>
@@ -1044,6 +1287,326 @@ function FormEnlaces({ bloque }: { bloque: Bloque }) {
       <p className="flex items-center gap-1 text-xs text-zinc-400">
         <ExternalLink className="h-3 w-3" aria-hidden="true" />
         {t('editor.soloHttp')}
+      </p>
+    </form>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Formularios de los bloques manuales (Fase 10)
+// ─────────────────────────────────────────────────────────────────────
+
+/** Sugerencias de componente para el setup. Son solo `placeholder`: el
+ *  campo es libre a propósito (ver el schema), así que esto orienta sin
+ *  limitar a quien quiera listar su silla o su micrófono. */
+const EJEMPLOS_SETUP: Array<[string, string]> = [
+  ['CPU', 'Ryzen 9 7900X'],
+  ['GPU', 'RX 7900 XTX'],
+  ['RAM', '64 GB DDR5'],
+  ['Monitor', '27" 1440p 165 Hz'],
+];
+
+function FormSetup({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
+  const { actualizarBloque } = useEditor();
+
+  const iniciales = Array.isArray(bloque.config['piezas'])
+    ? (bloque.config['piezas'] as Array<{ etiqueta: string; valor: string }>)
+    : [];
+
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [piezas, setPiezas] = useState(iniciales.map((p) => ({ ...p })));
+  const [error, setError] = useState('');
+
+  function cambiar(indice: number, campo: 'etiqueta' | 'valor', valor: string) {
+    setPiezas((lista) => lista.map((p, i) => (i === indice ? { ...p, [campo]: valor } : p)));
+  }
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await actualizarBloque(bloque.id, {
+        config: {
+          titulo: titulo.trim(),
+          // Las filas a medio escribir se descartan: el schema exige que
+          // ambos campos tengan contenido, así que mandarlas sería un
+          // error de validación por una fila que el usuario dejó vacía sin
+          // querer. Filtrar aquí es más amable que explicárselo.
+          piezas: piezas
+            .map((p) => ({ etiqueta: p.etiqueta.trim(), valor: p.valor.trim() }))
+            .filter((p) => p.etiqueta && p.valor),
+        },
+      });
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+
+      <div>
+        <label htmlFor={`set-${bloque.id}`} className="etiqueta">
+          {t('editor.tituloSeccion')}
+        </label>
+        <input
+          id={`set-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder={t('editor.setupTituloPlaceholder')}
+        />
+      </div>
+
+      {piezas.map((pieza, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 space-y-2">
+            <input
+              type="text"
+              value={pieza.etiqueta}
+              onChange={(e) => cambiar(i, 'etiqueta', e.target.value)}
+              maxLength={40}
+              className="campo h-9 text-sm"
+              placeholder={EJEMPLOS_SETUP[i % EJEMPLOS_SETUP.length]?.[0]}
+              aria-label={t('editor.componentePieza', { numero: i + 1 })}
+            />
+            <input
+              type="text"
+              value={pieza.valor}
+              onChange={(e) => cambiar(i, 'valor', e.target.value)}
+              maxLength={80}
+              className="campo h-9 text-sm"
+              placeholder={EJEMPLOS_SETUP[i % EJEMPLOS_SETUP.length]?.[1]}
+              aria-label={t('editor.modeloPieza', { numero: i + 1 })}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setPiezas((lista) => lista.filter((_, j) => j !== i))}
+            className="btn-fantasma mt-1 h-8 w-8 shrink-0 px-0 text-red-500"
+            aria-label={t('editor.quitarPieza', { numero: i + 1 })}
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+      ))}
+
+      {piezas.length < 20 && (
+        <button
+          type="button"
+          onClick={() => setPiezas((lista) => [...lista, { etiqueta: '', valor: '' }])}
+          className="btn-fantasma h-9 w-full border border-dashed border-zinc-300 text-xs dark:border-zinc-700"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> {t('editor.anadirPieza')}
+        </button>
+      )}
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        {t('editor.guardarBloque')}
+      </button>
+    </form>
+  );
+}
+
+/** Tope de imágenes de la galería. Espeja el `.max(12)` del schema. */
+const MAX_GALERIA = 12;
+
+function FormGaleria({ bloque }: { bloque: Bloque }) {
+  const { t } = useTranslation();
+  const { actualizarBloque } = useEditor();
+  const entradaRef = useRef<HTMLInputElement>(null);
+
+  const iniciales = Array.isArray(bloque.config['imagenes'])
+    ? (bloque.config['imagenes'] as Array<{ url: string; alt: string }>)
+    : [];
+
+  const [titulo, setTitulo] = useState(String(bloque.config['titulo'] ?? ''));
+  const [columnas, setColumnas] = useState(Number(bloque.config['columnas'] ?? 3));
+  const [imagenes, setImagenes] = useState(iniciales.map((im) => ({ ...im })));
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState('');
+
+  /**
+   * Guarda una lista concreta en vez de leer el estado.
+   *
+   * Es lo que permite que subir una imagen la persista sola, sin que haya
+   * que acordarse de pulsar "guardar": tras subir, el estado de React
+   * todavía no se ha actualizado, así que pasarle la lista ya calculada es
+   * la única forma de guardar lo correcto en el mismo gesto.
+   */
+  async function guardar(lista: Array<{ url: string; alt: string }>, cols = columnas) {
+    await actualizarBloque(bloque.id, {
+      config: {
+        titulo: titulo.trim(),
+        columnas: cols,
+        imagenes: lista.map((im) => ({ url: im.url, alt: im.alt.trim() })),
+      },
+    });
+  }
+
+  async function alElegir(e: ChangeEvent<HTMLInputElement>) {
+    const ficheros = Array.from(e.target.files ?? []);
+    // Igual que en el avatar: sin limpiar el input, elegir el mismo archivo
+    // dos veces seguidas no vuelve a disparar `change`.
+    e.target.value = '';
+    if (ficheros.length === 0) return;
+
+    const hueco = MAX_GALERIA - imagenes.length;
+    if (hueco <= 0) return;
+
+    setSubiendo(true);
+    setError('');
+    try {
+      const subidos = await archivos.subir(ficheros.slice(0, hueco), 'galeria');
+      const lista = [...imagenes, ...subidos.map((s) => ({ url: s.url, alt: '' }))];
+      setImagenes(lista);
+      await guardar(lista);
+    } catch (err) {
+      setError(mensajeError(err));
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  async function alGuardar(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    try {
+      await guardar(imagenes);
+    } catch (err) {
+      setError(mensajeError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={alGuardar} className="space-y-3">
+      {error && <p className="texto-error">{error}</p>}
+
+      <div>
+        <label htmlFor={`gal-${bloque.id}`} className="etiqueta">
+          {t('editor.tituloSeccion')}
+        </label>
+        <input
+          id={`gal-${bloque.id}`}
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          maxLength={80}
+          className="campo h-10"
+          placeholder={t('editor.galeriaTituloPlaceholder')}
+        />
+      </div>
+
+      {imagenes.length > 0 && (
+        <ul className="space-y-2">
+          {imagenes.map((imagen, i) => (
+            <li key={`${imagen.url}-${i}`} className="flex items-start gap-2">
+              <img
+                src={imagen.url}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-md border border-zinc-200 object-cover dark:border-zinc-700"
+              />
+              <div className="min-w-0 flex-1">
+                {/* El texto alternativo se edita aquí y no en un diálogo
+                    aparte para que se vea que existe: escondido, nadie lo
+                    rellena y la galería queda muda para un lector de
+                    pantalla. */}
+                <input
+                  type="text"
+                  value={imagen.alt}
+                  onChange={(e) =>
+                    setImagenes((lista) =>
+                      lista.map((im, j) => (j === i ? { ...im, alt: e.target.value } : im))
+                    )
+                  }
+                  maxLength={200}
+                  className="campo h-9 text-sm"
+                  placeholder={t('editor.altPlaceholder')}
+                  aria-label={t('editor.altImagen', { numero: i + 1 })}
+                />
+              </div>
+              <div className="flex shrink-0 flex-col">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lista = imagenes.filter((_, j) => j !== i);
+                    setImagenes(lista);
+                    void guardar(lista).catch((err) => setError(mensajeError(err)));
+                  }}
+                  className="btn-fantasma h-8 w-8 px-0 text-red-500"
+                  aria-label={t('editor.quitarImagen', { numero: i + 1 })}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Oculto y disparado por el botón de abajo; `aria-label` por el
+          mismo motivo que el del avatar. */}
+      <input
+        ref={entradaRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+        multiple
+        onChange={(e) => void alElegir(e)}
+        className="sr-only"
+        id={`gal-file-${bloque.id}`}
+        aria-label={t('editor.anadirImagenes')}
+      />
+
+      {imagenes.length < MAX_GALERIA && (
+        <button
+          type="button"
+          onClick={() => entradaRef.current?.click()}
+          disabled={subiendo}
+          className="btn-fantasma h-9 w-full border border-dashed border-zinc-300 text-xs dark:border-zinc-700"
+        >
+          {subiendo ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              {t('editor.subiendoFoto')}
+            </>
+          ) : (
+            <>
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('editor.anadirImagenes')}
+            </>
+          )}
+        </button>
+      )}
+
+      <div>
+        <label htmlFor={`cols-${bloque.id}`} className="etiqueta">
+          {t('editor.columnas')}
+        </label>
+        <select
+          id={`cols-${bloque.id}`}
+          value={columnas}
+          onChange={(e) => setColumnas(Number(e.target.value))}
+          className="campo h-9 text-sm"
+        >
+          {[2, 3, 4].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t('editor.columnasAyuda')}</p>
+      </div>
+
+      <button type="submit" className="btn-primario h-9 w-full text-xs">
+        {t('editor.guardarBloque')}
+      </button>
+
+      <p className="text-xs text-zinc-400">
+        {t('editor.galeriaTope', { max: MAX_GALERIA })}
       </p>
     </form>
   );

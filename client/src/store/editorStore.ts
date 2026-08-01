@@ -38,6 +38,14 @@ interface EstadoEditor {
     bio?: string;
     /** Ruta de `/uploads/…` de una foto propia, o `null` para quitarla. */
     avatarUrl?: string | null;
+    // ── Música de fondo (Fase 11) ──
+    /** Ruta de `/uploads/…` de un audio propio, o `null` para quitarla. */
+    audioUrl?: string | null;
+    audioTitulo?: string | null;
+    audioArtista?: string | null;
+    audioVolumen?: number;
+    audioAutoplay?: boolean;
+    audioLoop?: boolean;
   }) => Promise<void>;
   /**
    * Guarda el CSS propio. Devuelve los avisos del sanitizador para que el

@@ -116,7 +116,12 @@ export function SeparadorO() {
   return (
     <div className="my-5 flex items-center gap-3" aria-hidden="true">
       <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-      <span className="text-xs uppercase tracking-wide text-zinc-400">{t('proveedores.o')}</span>
+      {/* zinc-500/400 y no zinc-400: en claro, `text-zinc-400` sobre blanco
+          se queda en 2.8:1 y no llega al 4.5:1 que pide la WCAG AA. Lo cazó
+          la auditoría con axe de la Fase 10. */}
+      <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        {t('proveedores.o')}
+      </span>
       <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
     </div>
   );

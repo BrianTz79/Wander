@@ -7,11 +7,14 @@ import {
   ExternalLink,
   Link2,
   Loader2,
+  Music,
+  Search,
   ShieldCheck,
   Unlink,
   X,
 } from 'lucide-react';
 import { api, mensajeError } from '../lib/api';
+import { useAuth } from '../store/authStore';
 import { SelectorIdioma } from '../components/SelectorIdioma';
 import {
   CLAVE_RESUMEN,
@@ -162,7 +165,152 @@ export function ConfiguracionPage() {
       <div className="mt-8">
         <SelectorIdioma />
       </div>
+
+      <div className="mt-8">
+        <AjusteMusica />
+      </div>
+
+      <div className="mt-8">
+        <AjusteIndexado />
+      </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Aparecer en buscadores (§13)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * `permitirIndexado` existía en el schema desde la migración inicial y
+ * **nadie lo aplicaba ni había forma de cambiarlo**. Desde la Fase 10 se
+ * respeta de verdad: apagarlo saca el perfil del `sitemap.xml` y le añade
+ * `noindex` a su tarjeta.
+ *
+ * La tarjeta al compartir se sigue generando a propósito: pegar tu propio
+ * enlace en un chat y que se vea bien no es lo mismo que salir en Google,
+ * y la gente quiere esas dos cosas por separado.
+ */
+function AjusteIndexado() {
+  const { t } = useTranslation();
+  const usuario = useAuth((e) => e.usuario);
+  const setUsuario = useAuth((e) => e.setUsuario);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!usuario) return null;
+  const activo = usuario.permitirIndexado !== false;
+
+  async function alternar() {
+    if (!usuario) return;
+    const nuevo = !activo;
+    setGuardando(true);
+    setError('');
+    setUsuario({ ...usuario, permitirIndexado: nuevo });
+    try {
+      await api.patch('/auth/preferencias', { permitirIndexado: nuevo });
+    } catch (e) {
+      setUsuario({ ...usuario, permitirIndexado: activo });
+      setError(mensajeError(e));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="tarjeta">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+        <Search className="h-4 w-4" aria-hidden="true" />
+        {t('configuracion.indexado')}
+      </h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+        {t('configuracion.indexadoAyuda')}
+      </p>
+
+      {error && <p className="texto-error mb-3">{error}</p>}
+
+      <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+        <input
+          type="checkbox"
+          checked={activo}
+          disabled={guardando}
+          onChange={() => void alternar()}
+          className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
+        />
+        {t('configuracion.indexadoActivar')}
+      </label>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Música de los perfiles (Fase 11)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * "No reproducir música en los perfiles".
+ *
+ * Es un ajuste de CUENTA y no del navegador porque gana sobre lo que
+ * decida cada perfil visitado: quien lo apaga lo hace una vez y le sigue a
+ * todos sus dispositivos. El volumen concreto sí vive en el navegador —esa
+ * es una preferencia del momento, no una decisión sobre la propia
+ * experiencia—, y lo lleva el propio reproductor.
+ *
+ * `prefers-reduced-motion` no cubre audio (§7), así que este interruptor
+ * es lo único que tiene quien no quiere que una web le suene sin avisar.
+ */
+function AjusteMusica() {
+  const { t } = useTranslation();
+  const usuario = useAuth((e) => e.usuario);
+  const setUsuario = useAuth((e) => e.setUsuario);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!usuario) return null;
+  const activo = usuario.reproducirMusica !== false;
+
+  async function alternar() {
+    if (!usuario) return;
+    const nuevo = !activo;
+    setGuardando(true);
+    setError('');
+    // Optimista: el interruptor responde al instante y se revierte si el
+    // servidor lo rechaza. Es un ajuste de comodidad, no una operación
+    // que convenga hacer esperar.
+    setUsuario({ ...usuario, reproducirMusica: nuevo });
+    try {
+      await api.patch('/auth/preferencias', { reproducirMusica: nuevo });
+    } catch (e) {
+      setUsuario({ ...usuario, reproducirMusica: activo });
+      setError(mensajeError(e));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="tarjeta">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">
+        <Music className="h-4 w-4" aria-hidden="true" />
+        {t('configuracion.musica')}
+      </h2>
+      <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+        {t('configuracion.musicaAyuda')}
+      </p>
+
+      {error && <p className="texto-error mb-3">{error}</p>}
+
+      <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+        <input
+          type="checkbox"
+          checked={activo}
+          disabled={guardando}
+          onChange={() => void alternar()}
+          className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:border-zinc-700 dark:accent-white"
+        />
+        {t('configuracion.musicaActivar')}
+      </label>
+    </section>
   );
 }
 

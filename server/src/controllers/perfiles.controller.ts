@@ -44,6 +44,13 @@ const SELECT_PERFIL_PROPIO = {
   // previa, y es lo único que ve el público.
   cssPropio: true,
   cssOriginal: true,
+  // Audio de fondo (Fase 11).
+  audioUrl: true,
+  audioTitulo: true,
+  audioArtista: true,
+  audioVolumen: true,
+  audioAutoplay: true,
+  audioLoop: true,
   bloques: { select: SELECT_BLOQUE, orderBy: { orden: 'asc' as const } },
 } as const;
 
@@ -106,8 +113,21 @@ export async function miPerfil(req: Request, res: Response): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────
 export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
   const userId = req.usuario!.id;
-  const { tema, plantilla, publicado, displayName, bio, cssPropio, avatarUrl } =
-    req.body as ActualizarPerfilInput;
+  const {
+    tema,
+    plantilla,
+    publicado,
+    displayName,
+    bio,
+    cssPropio,
+    avatarUrl,
+    audioUrl,
+    audioTitulo,
+    audioArtista,
+    audioVolumen,
+    audioAutoplay,
+    audioLoop,
+  } = req.body as ActualizarPerfilInput;
 
   // Asegura que el perfil exista antes del update.
   const perfilActual = await perfilDe(userId);
@@ -177,6 +197,22 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     if (!archivo) throw errores.invalido('Esa foto no existe o no es tuya.');
   }
 
+  /*
+   * Música de fondo (Fase 11). Misma comprobación de propiedad que el
+   * avatar y por el mismo motivo: que la ruta sea de `/uploads/` dice que
+   * el archivo es de Wander, no que sea TUYO. Se exige además que se
+   * subiera como audio — un `.png` renombrado no pasa, porque el mime que
+   * se compara es el que detectaron los magic bytes al subir, no la
+   * extensión de la URL.
+   */
+  if (audioUrl !== undefined && audioUrl !== null) {
+    const archivo = await prisma.archivo.findFirst({
+      where: { url: audioUrl, userId, mime: { startsWith: 'audio/' } },
+      select: { id: true },
+    });
+    if (!archivo) throw errores.invalido('Esa música no existe o no es tuya.');
+  }
+
   const [perfil, usuario] = await prisma.$transaction([
     prisma.perfil.update({
       where: { userId },
@@ -184,6 +220,19 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
         ...cambioDeTema,
         ...cambioDeCss,
         ...(publicado !== undefined ? { publicado } : {}),
+        // Audio de fondo (Fase 11). Quitar la música (`audioUrl: null`)
+        // limpia también su ficha: dejar el título de una canción que ya
+        // no suena es un resto que confunde en el editor.
+        ...(audioUrl !== undefined
+          ? audioUrl === null
+            ? { audioUrl: null, audioTitulo: null, audioArtista: null }
+            : { audioUrl }
+          : {}),
+        ...(audioTitulo !== undefined ? { audioTitulo } : {}),
+        ...(audioArtista !== undefined ? { audioArtista } : {}),
+        ...(audioVolumen !== undefined ? { audioVolumen } : {}),
+        ...(audioAutoplay !== undefined ? { audioAutoplay } : {}),
+        ...(audioLoop !== undefined ? { audioLoop } : {}),
       },
       select: SELECT_PERFIL_PROPIO,
     }),
@@ -342,6 +391,14 @@ export async function perfilPublico(req: Request, res: Response): Promise<void> 
           // Solo el SANITIZADO. `cssOriginal` no sale de aquí ni para el
           // dueño: para editarlo ya está GET /perfiles/mio.
           cssPropio: true,
+          // Audio de fondo (Fase 11): lo necesita quien visita para
+          // poder reproducirlo.
+          audioUrl: true,
+          audioTitulo: true,
+          audioArtista: true,
+          audioVolumen: true,
+          audioAutoplay: true,
+          audioLoop: true,
           bloques: {
             where: { visible: true },
             select: SELECT_BLOQUE,
@@ -390,6 +447,12 @@ export async function perfilPublico(req: Request, res: Response): Promise<void> 
       publicado: usuario.perfil.publicado,
       vistas: usuario.perfil.vistas,
       cssPropio: usuario.perfil.cssPropio,
+      audioUrl: usuario.perfil.audioUrl,
+      audioTitulo: usuario.perfil.audioTitulo,
+      audioArtista: usuario.perfil.audioArtista,
+      audioVolumen: usuario.perfil.audioVolumen,
+      audioAutoplay: usuario.perfil.audioAutoplay,
+      audioLoop: usuario.perfil.audioLoop,
     },
     bloques: usuario.perfil.bloques,
     esPropio,

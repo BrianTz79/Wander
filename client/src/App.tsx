@@ -23,6 +23,7 @@ import { TerminosPage } from './pages/TerminosPage';
 import { MensajesPage } from './pages/MensajesPage';
 import { NotificacionesPage } from './pages/NotificacionesPage';
 import { PublicacionPage } from './pages/PublicacionPage';
+import { AdminPage } from './pages/AdminPage';
 
 /**
  * Raíz de la aplicación: comprobación de sesión, layout y rutas.
@@ -178,6 +179,17 @@ export function App() {
             element={
               <RutaProtegida>
                 <ConfiguracionPage />
+              </RutaProtegida>
+            }
+          />
+
+          {/* Panel de moderación (Fase 10). `roles` pinta el 404 a quien no
+              modera; la autorización real la hace el backend por endpoint. */}
+          <Route
+            path="/admin"
+            element={
+              <RutaProtegida roles={['MOD', 'ADMIN']}>
+                <AdminPage />
               </RutaProtegida>
             }
           />

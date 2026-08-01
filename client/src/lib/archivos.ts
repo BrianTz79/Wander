@@ -38,8 +38,17 @@ export interface LimitesSubida {
   gifs: boolean;
 }
 
-/** Uso del archivo. Espeja el enum cerrado del backend. */
-export type UsoArchivo = 'adjunto' | 'publicacion' | 'icono-grupo' | 'avatar' | 'banner';
+/** Uso del archivo. Espeja el enum cerrado del backend (`USOS` en
+ *  `services/archivos.service.ts`); si los dos dejan de coincidir, el
+ *  servidor rechaza la subida con un error de validación. */
+export type UsoArchivo =
+  | 'adjunto'
+  | 'publicacion'
+  | 'icono-grupo'
+  | 'avatar'
+  | 'banner'
+  | 'galeria'
+  | 'audio-perfil';
 
 // ── Llamadas ─────────────────────────────────────────────────────────
 

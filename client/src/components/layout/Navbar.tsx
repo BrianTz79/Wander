@@ -9,11 +9,13 @@ import {
   Moon,
   Pencil,
   Settings,
+  Shield,
   Sun,
   User,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../store/authStore';
+import { puedeModerar } from '../../lib/moderacion';
 import { useTema } from '../../lib/tema';
 import { SelectorIdioma } from '../SelectorIdioma';
 import { Notificaciones } from '../social/Notificaciones';
@@ -228,6 +230,16 @@ export function Navbar() {
                         etiqueta={t('navbar.configuracion')}
                         alElegir={() => setMenuCuenta(false)}
                       />
+                      {/* Solo para quien modera. Es comodidad, no
+                          seguridad: la ruta y el backend lo comprueban. */}
+                      {puedeModerar(usuario.rol) && (
+                        <OpcionMenu
+                          to="/admin"
+                          Icono={Shield}
+                          etiqueta={t('navbar.moderacion')}
+                          alElegir={() => setMenuCuenta(false)}
+                        />
+                      )}
                     </div>
 
                     {/* El idioma también vive en /configuracion; aquí está

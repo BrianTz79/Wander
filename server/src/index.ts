@@ -22,6 +22,7 @@ import authRoutes from './routes/auth.routes';
 import oauthRoutes from './routes/oauth.routes';
 import cuentasRoutes from './routes/cuentas.routes';
 import seoRoutes from './routes/seo.routes';
+import moderacionRoutes from './routes/moderacion.routes';
 import perfilesRoutes from './routes/perfiles.routes';
 import socialRoutes from './routes/social.routes';
 import mensajesRoutes from './routes/mensajes.routes';
@@ -184,8 +185,12 @@ app.use('/api/archivos', archivosRoutes);
 // de Postgres: el render de un perfil nunca sale a la red de Valve.
 app.use('/api/externo', externoRoutes);
 
-// SEO: nginx proxea /sitemap.xml aquí. Se genera al vuelo porque crece
-// con cada perfil publicado.
+// Moderación (Fase 10): reportar es de cualquier usuario; revisar,
+// suspender y ocultar exigen rol MOD o ADMIN (se comprueba por ruta).
+app.use('/api/moderacion', moderacionRoutes);
+
+// SEO: nginx proxea /sitemap.xml y las tarjetas de perfil aquí. Se generan
+// al vuelo porque crecen con cada perfil publicado.
 app.use('/api/seo', seoRoutes);
 
 // 404 y manejador de errores: siempre al final.

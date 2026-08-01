@@ -42,6 +42,7 @@ export const es = {
     temaClaro: 'Activar tema claro',
     temaOscuro: 'Activar tema oscuro',
     menuCuenta: 'Menú de cuenta',
+    moderacion: 'Moderación',
     abrirMenu: 'Abrir menú',
     cerrarMenu: 'Cerrar menú',
     verMiPerfil: 'Ver mi perfil',
@@ -314,6 +315,41 @@ export const es = {
     anadirEnlace: 'Añadir enlace',
     soloHttp: 'Solo se aceptan enlaces http(s).',
 
+    // Música de fondo (Fase 11).
+    musica: 'Música de fondo',
+    musicaAyuda: 'Un archivo que suena al abrir tu perfil. Quien te visita decide el volumen.',
+    musicaSubir: 'Subir música',
+    musicaCambiar: 'Cambiar música',
+    musicaQuitar: 'Quitar',
+    musicaSubiendo: 'Subiendo…',
+    musicaPrevia: 'Escuchar la música de tu perfil',
+    musicaTitulo: 'Título',
+    musicaArtista: 'Artista',
+    musicaVolumen: 'Volumen inicial ({{valor}} %)',
+    musicaVolumenAyuda: 'Es una propuesta: quien visita tu perfil puede subirlo o bajarlo.',
+    musicaAutoplay: 'Intentar reproducir al abrir el perfil',
+    musicaAutoplayAyuda:
+      'Muchos navegadores lo bloquean hasta que la persona interactúa con la página. Si pasa, se le muestra un botón de reproducir.',
+    musicaLoop: 'Repetir en bucle',
+    musicaGuardar: 'Guardar música',
+    musicaDerechos:
+      'Sube solo música tuya o que tengas permiso para usar. Subir música ajena puede hacer que se retire tu archivo y, si se repite, que se cierre tu cuenta.',
+
+    // Bloques manuales (Fase 10).
+    setupTituloPlaceholder: 'Mi setup',
+    componentePieza: 'Componente {{numero}}',
+    modeloPieza: 'Modelo del componente {{numero}}',
+    quitarPieza: 'Quitar componente {{numero}}',
+    anadirPieza: 'Añadir componente',
+    galeriaTituloPlaceholder: 'Capturas',
+    anadirImagenes: 'Añadir imágenes',
+    altImagen: 'Texto alternativo de la imagen {{numero}}',
+    altPlaceholder: 'Describe la imagen (opcional)',
+    quitarImagen: 'Quitar imagen {{numero}}',
+    columnas: 'Columnas',
+    columnasAyuda: 'En pantallas de teléfono siempre son dos.',
+    galeriaTope: 'Hasta {{max}} imágenes.',
+
     // El <config> es el <Link> a /configuracion.
     sinSteam:
       'No tienes Steam vinculado, así que este bloque no se mostrará en tu perfil. <config>Vincúlalo en configuración</config>.',
@@ -495,6 +531,15 @@ export const es = {
     discordEstadoDescripcion: 'Si estás en línea y a qué juegas, en vivo.',
     spotifyNombre: 'Spotify',
     spotifyDescripcion: 'La canción que suena ahora mismo. Se oculta si no escuchas nada.',
+    setupNombre: 'Setup',
+    setupDescripcion: 'Los componentes de tu equipo, escritos por ti.',
+    galeriaNombre: 'Galería',
+    galeriaDescripcion: 'Capturas y fotos de tu setup, en una rejilla.',
+
+    // Visor de la galería a pantalla completa.
+    galeriaVisor: 'Imagen a pantalla completa',
+    galeriaAnterior: 'Imagen anterior',
+    galeriaSiguiente: 'Imagen siguiente',
 
     // Títulos por defecto de cada bloque en el perfil público.
     tituloEnNumeros: 'En números',
@@ -620,6 +665,18 @@ export const es = {
       'Conecta tus plataformas para que tu perfil se mantenga solo. Tú decides qué se muestra, y puedes desconectar cuando quieras.',
     comoTratamosDatos: 'Cómo tratamos tus datos',
     cargando: 'Cargando tus cuentas…',
+
+    // Música de los perfiles (Fase 11).
+    musica: 'Música en los perfiles',
+    musicaAyuda:
+      'Algunos perfiles tienen música de fondo. Si prefieres que ninguno suene, apágalo aquí y no se reproducirá en ninguno.',
+    musicaActivar: 'Permitir que los perfiles reproduzcan música',
+
+    // Aparecer en buscadores (§13).
+    indexado: 'Aparecer en buscadores',
+    indexadoAyuda:
+      'Si lo apagas, tu perfil deja de salir en Google y en el mapa del sitio. Seguirá viéndose bien cuando pegues tu enlace en un chat: eso no es lo mismo que salir en un buscador.',
+    indexadoActivar: 'Dejar que los buscadores indexen mi perfil',
     cerrarAviso: 'Cerrar aviso',
     conectado: 'Conectado',
     sirveParaEntrar: 'Sirve para entrar',
@@ -744,6 +801,94 @@ export const es = {
     demasiadoGrande: 'El archivo supera el límite de {{max}} MB.',
     maximoAlcanzado_one: 'Máximo {{count}} archivo',
     maximoAlcanzado_other: 'Máximo {{count}} archivos',
+  },
+
+  // ── Reproductor de música del perfil (Fase 11) ─────────────────────
+  musica: {
+    reproductor: 'Música de este perfil',
+    reproducir: 'Reproducir la música',
+    pausar: 'Pausar la música',
+    silenciar: 'Silenciar',
+    activarSonido: 'Activar el sonido',
+    volumen: 'Volumen',
+    sinTitulo: 'Música de fondo',
+    pulsaParaSonar: 'Pulsa para escucharla',
+  },
+
+  // ── Reportar (Fase 10) ─────────────────────────────────────────────
+  reportar: {
+    abrir: 'Reportar',
+    accion: 'Reportar',
+    titulo: 'Reportar contenido',
+    motivo: '¿Qué pasa con esto?',
+    detalle: 'Cuéntanos más (opcional)',
+    detallePlaceholder: 'Lo que creas que ayuda a entender el caso.',
+    aviso: 'Lo revisará una persona del equipo. No se le dice a nadie quién reportó.',
+    enviar: 'Enviar reporte',
+    gracias: 'Gracias. El equipo lo revisará.',
+  },
+
+  // ── Panel de moderación (Fase 10) ──────────────────────────────────
+  admin: {
+    titulo: 'Moderación',
+    subtitulo: 'La cola de reportes y las acciones sobre cuentas.',
+    filtrar: 'Filtrar reportes por estado',
+    estadoPENDIENTE: 'Pendientes',
+    estadoREVISADO: 'Revisados',
+    estadoDESCARTADO: 'Descartados',
+    pendientes: 'Pendientes',
+    revisados: 'Revisados',
+    suspendidos: 'Suspendidos',
+    usuarios: 'Cuentas',
+    colaVacia: 'No hay nada pendiente. Buen momento.',
+    sinReportes: 'No hay reportes en este estado.',
+
+    motivo_spam: 'Spam',
+    motivo_acoso: 'Acoso',
+    motivo_contenido_ilegal: 'Contenido ilegal',
+    motivo_suplantacion: 'Suplantación',
+    motivo_otro: 'Otro',
+
+    tipo_usuario: 'Cuenta',
+    tipo_perfil: 'Perfil',
+    tipo_publicacion: 'Publicación',
+    tipo_comentario: 'Comentario',
+    tipo_mensaje: 'Mensaje',
+
+    yaOculto: 'ya oculto',
+    yaSuspendido: 'ya suspendida',
+    sinTexto: 'Sin texto',
+    objetoBorrado: 'Lo reportado ya no existe.',
+    resolucion: 'Resolución',
+
+    accion: 'Acción',
+    accionNinguna: 'Sin acción',
+    accionOcultar: 'Ocultar el contenido',
+    accionSuspender: 'Suspender la cuenta',
+    dias: 'Días',
+    diasPlaceholder: 'Vacío = permanente',
+    nota: 'Nota de resolución',
+    notaPlaceholder: 'Qué se decidió y por qué (queda en el registro).',
+    marcarRevisado: 'Resolver',
+    descartar: 'Descartar',
+    avisoAccion: 'Descartar cierra el reporte sin aplicar ninguna acción.',
+
+    accionesDirectas: 'Acciones sobre una cuenta',
+    accionesDirectasAyuda:
+      'Para actuar sin que haya un reporte de por medio. Todo queda registrado con tu nombre.',
+    handle: 'Handle',
+    motivo: 'Motivo',
+    motivoPlaceholder: 'Queda en el registro de auditoría.',
+    suspender: 'Suspender',
+    levantar: 'Levantar suspensión',
+    hechoSuspender: 'Se suspendió a @{{handle}}.',
+    hechoLevantar: 'Se levantó la suspensión de @{{handle}}.',
+
+    roles: 'Roles',
+    rolesAyuda: 'Solo un administrador puede repartir permisos.',
+    rol: 'Rol',
+    cambiarRol: 'Cambiar rol',
+    hechoRol: '@{{handle}} ahora es {{rol}}.',
   },
 } as const;
 

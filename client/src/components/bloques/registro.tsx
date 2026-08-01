@@ -1,5 +1,16 @@
 import type { ComponentType } from 'react';
-import { BarChart3, Gamepad2, Link2, MessageCircle, Music, Star, Type, User } from 'lucide-react';
+import {
+  BarChart3,
+  Cpu,
+  Gamepad2,
+  Images,
+  Link2,
+  MessageCircle,
+  Music,
+  Star,
+  Type,
+  User,
+} from 'lucide-react';
 import type { Bloque, TipoBloque, UsuarioPerfil } from '../../lib/perfil';
 import { BloqueHero } from './BloqueHero';
 import { BloqueTexto } from './BloqueTexto';
@@ -9,6 +20,8 @@ import { BloqueEstadisticas } from './BloqueEstadisticas';
 import { BloqueFavoritos } from './BloqueFavoritos';
 import { BloqueDiscordEstado } from './BloqueDiscordEstado';
 import { BloqueSpotify } from './BloqueSpotify';
+import { BloqueSetup } from './BloqueSetup';
+import { BloqueGaleria } from './BloqueGaleria';
 
 /**
  * Registro de tipos de bloque. Un solo lugar que conocen el editor (para
@@ -121,6 +134,22 @@ export const REGISTRO_BLOQUES: Record<TipoBloque, DefinicionBloque> = {
     Componente: BloqueSpotify,
     requiereDiscord: true,
     columna: 'lateral',
+  },
+  setup: {
+    clave: 'setup',
+    Icono: Cpu,
+    configInicial: { titulo: '', piezas: [] },
+    Componente: BloqueSetup,
+    // Lateral: es una ficha de datos que se lee de un vistazo, del mismo
+    // tamaño que los enlaces, no una rejilla con volumen.
+    columna: 'lateral',
+  },
+  galeria: {
+    clave: 'galeria',
+    Icono: Images,
+    configInicial: { titulo: '', imagenes: [], columnas: 3 },
+    Componente: BloqueGaleria,
+    columna: 'principal',
   },
 };
 

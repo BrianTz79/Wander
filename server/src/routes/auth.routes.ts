@@ -9,6 +9,7 @@ import {
   limiteBusqueda,
   limiteEscritura,
   limiteOAuth,
+  limiteRefresh,
   limiteRegistro,
 } from '../middlewares/rateLimit.middleware';
 import {
@@ -30,8 +31,11 @@ router.post(
 router.post('/login', limiteAuth, validarBody(loginSchema), asyncHandler(ctrl.login));
 
 // El refresh lleva su propio límite: sin él, un bucle de refresh es un DoS
-// barato (cada llamada hace escrituras en la DB).
-router.post('/refresh', limiteAuth, asyncHandler(ctrl.refresh));
+// barato (cada llamada hace escrituras en la DB). `limiteRefresh` y no
+// `limiteAuth` porque aquí no hay contraseña que adivinar y la aplicación
+// lo llama sola — con el límite de contraseñas, una sesión larga en varias
+// pestañas agotaba la cuota y expulsaba al usuario (Fase 10).
+router.post('/refresh', limiteRefresh, asyncHandler(ctrl.refresh));
 
 router.post('/logout', authOpcional, asyncHandler(ctrl.logout));
 router.post('/logout-todo', requiereAuth, asyncHandler(ctrl.logoutTodo));

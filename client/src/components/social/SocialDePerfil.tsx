@@ -17,6 +17,7 @@ import { useAuth } from '../../store/authStore';
 import { TEXTO_SUAVE } from '../../lib/perfil';
 import { Avatar } from './Avatar';
 import { BotonSeguir } from './BotonSeguir';
+import { BotonReportar } from './BotonReportar';
 
 interface Props {
   handle: string;
@@ -152,6 +153,12 @@ function CabeceraSocial({
             <Ban className="h-4 w-4" aria-hidden="true" />
             {relacion.bloqueado ? t('social.desbloquear') : t('social.bloquear')}
           </button>
+        )}
+
+        {/* Reportar el perfil (Fase 10). Va por handle: el perfil público
+            no expone el id del usuario, y el backend lo resuelve. */}
+        {usuario && !relacion.esPropio && (
+          <BotonReportar tipoObjeto="perfil" objetoId={relacion.handle} compacto />
         )}
       </div>
 
@@ -368,8 +375,23 @@ function MuroDeComentarios({ handle, bloqueado }: { handle: string; bloqueado: b
       )}
 
       {!usuario && (
-        <p className="mb-5 text-sm" style={TEXTO_SUAVE}>
-          <Link to="/login" className="underline" style={{ color: 'var(--p-acento)' }}>
+        /*
+         * Este enlace lo colorea `--p-acento`, que elige el DUEÑO del
+         * perfil, así que Wander no puede garantizarle un contraste
+         * concreto —un acento claro sobre un fondo claro es una
+         * combinación que el editor permite y que aquí no se puede
+         * corregir sin pisarle el tema—. Lo que sí está en nuestra mano
+         * es que no dependa solo del color: hereda el color del texto del
+         * perfil y usa el acento en el subrayado, de modo que el enlace se
+         * lee siempre y se distingue igual. Salió de la auditoría con axe
+         * de la Fase 10.
+         */
+        <p className="mb-5 text-sm">
+          <Link
+            to="/login"
+            className="underline underline-offset-2"
+            style={{ color: 'var(--p-texto)', textDecorationColor: 'var(--p-acento)' }}
+          >
             {t('social.inicioParaComentar')}
           </Link>
         </p>

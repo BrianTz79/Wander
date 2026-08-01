@@ -14,6 +14,7 @@ import { mensajeError } from '../../lib/api';
 import { useAuth } from '../../store/authStore';
 import { Avatar } from './Avatar';
 import { Adjuntos } from './Adjuntos';
+import { BotonReportar } from './BotonReportar';
 
 interface Props {
   publicacion: Publicacion;
@@ -181,6 +182,14 @@ export function TarjetaPublicacion({
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only">{t('social.borrar')}</span>
               </button>
+            )}
+
+            {/* Reportar (Fase 10). Solo sobre lo ajeno: la publicación
+                propia se borra, no se reporta. */}
+            {!esMio && usuario && (
+              <span className="ml-auto">
+                <BotonReportar tipoObjeto="publicacion" objetoId={publicacion.id} compacto />
+              </span>
             )}
           </div>
 

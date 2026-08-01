@@ -31,7 +31,9 @@ export type TipoBloque =
   | 'estadisticas'
   | 'favoritos'
   | 'discord-estado'
-  | 'spotify';
+  | 'spotify'
+  | 'setup'
+  | 'galeria';
 
 export interface Bloque {
   id: string;
@@ -51,7 +53,24 @@ export interface UsuarioPerfil {
   miembroDesde?: string;
 }
 
-export interface PerfilPropio {
+/**
+ * Música de fondo del perfil (Fase 11).
+ *
+ * `audioVolumen` es el volumen INICIAL que propone el dueño; el visitante
+ * lo cambia y su preferencia manda (§7). `audioAutoplay` es solo una
+ * intención: si el navegador bloquea la reproducción automática, se enseña
+ * un botón en vez de pelearse con él.
+ */
+export interface AudioPerfil {
+  audioUrl: string | null;
+  audioTitulo: string | null;
+  audioArtista: string | null;
+  audioVolumen: number;
+  audioAutoplay: boolean;
+  audioLoop: boolean;
+}
+
+export interface PerfilPropio extends AudioPerfil {
   id: string;
   plantilla: string;
   tema: TemaPerfil;
@@ -66,7 +85,7 @@ export interface PerfilPropio {
 
 export interface RespuestaPerfilPublico {
   usuario: UsuarioPerfil;
-  perfil: {
+  perfil: AudioPerfil & {
     id: string;
     plantilla: string;
     tema: TemaPerfil;
