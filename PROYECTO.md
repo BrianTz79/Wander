@@ -4,26 +4,26 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 31 de julio de 2026 (Fase 10 en curso: emojis, GIFs y el
-> arranque de conversaciones)
+> **Última actualización:** 31 de julio de 2026 (Fases 10 y 11 completas: bloques que
+> faltaban, tarjetas OG, moderación, accesibilidad y música de fondo)
 
 ---
 
 ## 0. Estado del proyecto
 
-**Fases 1, 3, 4, 5, 6, 6.5, 7, 8 y 9 completas, y la 2 al 90 %. La plataforma cumple ya su
-promesa central por partida doble: quien entra con Steam ve sus juegos, sus horas y su
-actividad sin escribir nada, y quien vincula Discord tiene además su estado y su música
-en vivo. Desde la 6.5 hace las dos cosas en español o en inglés, desde la 7 dejó de ser
-una colección de perfiles sueltos —se sigue gente, hay un feed, se comenta y se
-descubre—, desde la 8 la gente además se habla: mensajes directos, grupos, imágenes,
-GIFs y emojis, con una campana que avisa de todo lo que pasa, y desde la 9 quien sepa CSS
-puede escribir el suyo y que solo afecte a su perfil.** Lo único que le falta a
-la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). La
-**Fase 10 (pulido) está en curso**: ya se arreglaron los tres fallos que dejó la 8 —el
-selector de emojis, que no pintaba nada; el de GIFs, que se salía de la pantalla; y la
-mensajería, que no tenía ninguna forma de *empezar* una conversación—. La traducción de
-contenido sigue **aplazada hasta nuevo aviso** (ver §8).
+**Todas las fases completas menos la 2 (al 90 %) y la 12 (SEO), que va a medias. La
+plataforma cumple ya su promesa central por partida doble: quien entra con Steam ve sus
+juegos, sus horas y su actividad sin escribir nada, y quien vincula Discord tiene además
+su estado y su música en vivo. Desde la 6.5 hace las dos cosas en español o en inglés,
+desde la 7 dejó de ser una colección de perfiles sueltos —se sigue gente, hay un feed, se
+comenta y se descubre—, desde la 8 la gente además se habla: mensajes directos, grupos,
+imágenes, GIFs y emojis, con una campana que avisa de todo lo que pasa, desde la 9 quien
+sepa CSS puede escribir el suyo y que solo afecte a su perfil, desde la 10 el catálogo de
+bloques está completo (Setup y Galería), los perfiles se previsualizan bien al compartir
+el enlace y hay una cola de moderación de verdad, y desde la 11 cada perfil puede tener su
+música de fondo — con el control siempre del lado de quien la escucha.** Lo único que le
+falta a la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). La
+traducción de contenido sigue **aplazada hasta nuevo aviso** (ver §8).
 
 **Ya no queda ninguna pantalla "en construcción":** `/mensajes` era la última, y con ella
 todos los enlaces de la navbar y del pie llevan a algo real.
@@ -42,9 +42,9 @@ todos los enlaces de la navbar y del pie llevan a algo real.
 | 7 | Social | ✅ **Completa** |
 | 8 | Mensajería + adjuntos + notificaciones | ✅ **Completa** (sin traducción: aplazada) |
 | 9 | CSS propio | ✅ **Completa** |
-| 10 | Pulido | 🟡 **En curso** — arreglados los tres fallos de la 8 (emojis, GIFs y el chat sin puerta de entrada) |
-| 11 | Música de fondo | ⬜ |
-| 12 | SEO + GEO | 🟡 Landing hecha; falta el SSR de los perfiles |
+| 10 | Pulido | ✅ **Completa** |
+| 11 | Música de fondo | ✅ **Completa** |
+| 12 | SEO + GEO | 🟡 Landing, sitemap y tarjetas OG por perfil hechos; el SSR completo queda descartado (SPA en la v1) |
 
 ### ✅ Hecho
 
@@ -552,17 +552,104 @@ pruebas comprobaban que la pieza *existía*, no que *sirviera*.
   «falla» por algo que no está midiendo. Las suites ya inician sesión una sola vez por
   cuenta.
 
+**Lo que faltaba de la Fase 10 (31/07) ✅**
+
+- **Los dos bloques que faltaban del catálogo v1: Setup y Galería.** El de setup es una
+  `<dl>` de pares componente/modelo, deliberadamente de texto libre y no un enum de
+  piezas: los setups no se parecen entre sí —hay quien lista su silla y quien su
+  micrófono— y un catálogo cerrado nunca estaría completo. La galería son hasta 12
+  imágenes con visor a pantalla completa, y su `alt` **se edita a la vista** y no en un
+  diálogo aparte: escondido no lo rellena nadie, y una galería de capturas sin `alt` es
+  exactamente el caso que deja mudo a un lector de pantalla.
+  · Dos detalles: el visor va en un **portal al `<body>`** y no dentro del contenedor del
+  perfil, porque ese contenedor lleva el scope del CSS propio (Fase 9) y un `overflow` o
+  un `z-index` del usuario podría dejar el visor irrecuperable; y el número de columnas
+  viaja como **variable CSS**, porque `grid-cols-${n}` no existe hasta que alguien lo
+  escribe literal y el compilador de Tailwind solo ve lo literal.
+- **Tarjetas OG por perfil.** Los perfiles son SPA (decisión de §0) y las metas de
+  `index.html` son fijas, así que **todos los perfiles se previsualizaban igual** al
+  pegar el enlace en Discord o X. Un scraper no ejecuta JavaScript, así que cambiar las
+  metas desde React no arregla nada de lo que importa. Ahora nginx detecta al scraper por
+  `User-Agent` y le sirve el HTML de `/api/seo/perfil/:handle`, con el nombre, la bio, la
+  imagen y un JSON-LD `ProfilePage`. **No es cloaking**: dice lo mismo que la página real.
+  · Un perfil oculto o inexistente devuelve las metas genéricas **con 200, no 404**: una
+  respuesta distinta convertiría las tarjetas en un oráculo de qué handles son privados.
+  · `summary` y no `summary_large_image` cuando la imagen es el avatar: es cuadrado, y
+  estirado a 1200×630 sale recortado por la cara.
+- **Moderación en `/admin`.** `Reporte` existía en el schema desde la migración inicial y
+  **ninguna ruta lo tocaba**: no había forma de reportar ni de revisar. Mismo patrón que
+  dejó la 8 con la mensajería, así que se cerraron las dos mitades: botón de reportar en
+  perfiles y publicaciones, y un panel con la cola, el contenido reportado ya resuelto, y
+  las acciones de ocultar/suspender/cambiar rol.
+  · **Nadie modera hacia arriba ni hacia sí mismo**, y el intento responde 404 y no 403:
+  un 403 confirmaría quién es admin. Todo lo que hace un moderador va a `AuditLog`.
+  · Suspender **cierra todas las sesiones** de esa persona: sin eso la suspensión no
+  empieza hasta que le caduque el token y sigue publicando mientras tanto.
+  · Ocultar reutiliza `borradoEn`, el mismo campo del borrado del autor, para que no
+  existan dos caminos de invisibilidad que cada consulta tenga que recordar filtrar.
+- **Accesibilidad y responsive, auditados con axe-core (WCAG 2.1 AA)** en 13 pantallas y
+  tres anchos: `docs/pruebas/a11y-publicas.mjs` y `a11y-privadas.mjs`. Quedó en **cero
+  violaciones y cero desbordes horizontales**. Se corrigieron cuatro cosas: tres textos
+  por debajo del 4.5:1 de contraste y un input de archivo sin nombre accesible.
+  · El enlace de "inicia sesión para comentar" es el caso interesante: lo colorea
+  `--p-acento`, que **elige el dueño del perfil**, así que Wander no puede garantizarle
+  contraste sin pisarle el tema. Se resolvió haciendo que no dependa solo del color —
+  hereda el color del texto y el acento va en el subrayado.
+- **Y un fallo del producto que encontró esa auditoría sin buscarlo:** las pantallas con
+  sesión rebotaban al login. La causa era el límite de tasa de nginx —`/api/auth/yo` caía
+  bajo la zona de contraseñas (5 r/m) y la SPA la llama en **cada carga de página**, así
+  que la tercera navegación de un minuto daba 429 y la guarda de rutas expulsaba al
+  usuario. Se manifestaba como "la sesión se cae sola". Las lecturas de sesión salen de
+  esa zona (el fuerza-bruta lo sigue frenando el bloque del login, verificado), y
+  `/auth/refresh` estrena `limiteRefresh` en el backend por el mismo motivo.
+- Probado: **28 comprobaciones de moderación** (`e2e-fase10-moderacion.mjs`), casi todas
+  de límites de poder, y las dos auditorías de accesibilidad.
+
+**Música de fondo (Fase 11) ✅ (31/07)**
+
+- Cada perfil puede tener una canción que suena al abrirlo. Los campos ya existían en
+  `Perfil` desde la migración inicial; lo que faltaba era todo lo demás.
+- **El control es del visitante, no del dueño.** El dueño *propone* un volumen inicial;
+  el volumen y el silencio que elige quien visita se guardan en el navegador y valen para
+  **todos** los perfiles — nadie quiere volver a silenciar en cada uno que abre.
+- **No se pelea con el autoplay del navegador.** Chrome y Safari lo bloquean hasta que hay
+  interacción real, y ese bloqueo es correcto: sonido inesperado es de las cosas más
+  hostiles que puede hacer una web. Si `play()` es rechazado se enseña un botón y ya está.
+- **Ajuste global de cuenta** ("no reproducir música en los perfiles"), que gana sobre lo
+  que decida cualquier perfil. Va en `User` y no en el navegador porque quien lo apaga
+  espera que le siga a todos sus dispositivos. Con él activo **ni se monta el `<audio>`**,
+  así que el archivo tampoco se descarga.
+- Tope propio de **4 MB**, más bajo que el general de 8: este archivo lo descarga *todo*
+  el que abre el perfil, no solo quien decide verlo.
+  · **La duración y el recodificado de §7 no se hacen, a propósito**: exigen ffmpeg, que
+  no está en la imagen y es un binario grande con superficie de ataque conocida. El tope
+  de bytes acota el problema práctico y los tags son texto que nadie ejecuta. Si algún día
+  se quiere recorte o normalización, ahí entra ffmpeg y la decisión se revisa entera.
+- **Y otro fallo que cazó la prueba mirando la cabecera real**: nginx no conoce `wav` ni
+  `weba` en su `mime.types`, así que los servía como `application/octet-stream` — y con
+  `nosniff` el navegador **se niega a reproducirlos**. El `<audio>` fallaba en silencio.
+  Arreglado con `default_type` en su propia `location`; un bloque `types` no valía, porque
+  a ese nivel reemplaza el mapa heredado entero y dejaría todo lo demás sin tipo.
+- **Política de derechos de autor escrita** en `/terminos`: qué se puede subir, que
+  comprar una canción no da derecho a publicarla, el procedimiento de retirada (se retira
+  primero y se revisa después) y la suspensión por reincidencia. Además, el aviso se pinta
+  **junto al botón de subir**, no solo enterrado en los términos: quien lo lee al elegir
+  el archivo es quien todavía puede cambiar de idea.
+- Probado: **21 comprobaciones por API** (`e2e-fase11-musica.mjs`) —incluido que el audio
+  de otra cuenta no se puede robar conociendo su URL— y **14 en un navegador real**
+  (`e2e-fase11-reproductor.mjs`), que es donde se comprueba lo que la API no ve: el
+  autoplay bloqueado, el volumen que sobrevive a la recarga y el ajuste global mandando.
+
 ### ⬜ Lo siguiente
 
-1. **Fase 10 — Pulido (en curso).** Hecho: los tres fallos de arriba. Falta: landing
-   completa, tarjetas OG, moderación en `/admin`, el resto de los bloques (Setup PC,
-   Galería), accesibilidad y responsive.
-2. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
+1. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
    30/07 — ver la nota en los pendientes.
-3. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
+2. Opcional de la Fase 4, si se quiere más adelante: que una plantilla pueda traer
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
    y "solo cambia los colores" es una promesa mucho más fácil de cumplir.
+3. Lo que queda de la Fase 12 (§13): `llms.txt` y `hreflang`. El SSR de perfiles quedó
+   **descartado** para la v1 y las tarjetas OG ya cubren el caso que de verdad importaba.
 
 ### ⚠️ Pendientes que conviene no olvidar
 
@@ -595,7 +682,13 @@ pruebas comprobaban que la pieza *existía*, no que *sirviera*.
   prioritario es la landing, cuyo contenido ya viaja en el HTML. Si más adelante se
   quieren perfiles indexables/citables por IA, se añade prerender + tarjetas OG del lado
   del servidor (encaja con la Fase 10).
-- **Política de derechos de autor** para la música de fondo, antes de abrir el registro.
+- ~~**Política de derechos de autor** para la música de fondo.~~ ✅ **Hecha (31/07)** con
+  la Fase 11: sección propia en `/terminos` con qué se puede subir, el procedimiento de
+  retirada y la suspensión por reincidencia, más el aviso junto al botón de subir.
+  · **Queda un detalle antes de abrir el registro:** el contacto para reclamaciones es la
+  dirección personal de Mizllet (`lucio.tellez@gmail.com`). Funciona, pero publicarla en
+  unos términos la expone al spam y ata el trámite legal a una cuenta personal. Conviene
+  un buzón del dominio (`abuso@ourocore.net` o similar) antes de que haya usuarios.
 - **Repositorio git creado** (30/07), pero **solo local**: sigue sin remoto, así que un
   disco dañado se lo lleva igual. Falta un `git remote add` a algo fuera de esta máquina.
 - ~~**Términos y privacidad mínimos antes de abrir el registro.**~~ ✅ **Hecho (30/07).**
@@ -1087,15 +1180,19 @@ likes, comentarios.
 | Estadísticas ✅ | Contadores (juegos, horas, nivel) | Steam |
 | Actividad Steam ✅ | Jugado recientemente + horas | Steam |
 | Juegos favoritos ✅ | Curados, con arte del CDN de Steam | Manual (appid) |
-| Setup PC | Componentes con especificaciones | Manual |
-| Enlaces / redes | Iconos a todos tus perfiles | Manual |
-| Texto libre | Bio extendida, lo que quieras | Manual |
-| Galería | Capturas, fotos del setup | Subidas |
+| Setup PC ✅ | Componentes con especificaciones | Manual |
+| Enlaces / redes ✅ | Iconos a todos tus perfiles | Manual |
+| Texto libre ✅ | Bio extendida, lo que quieras | Manual |
+| Galería ✅ | Capturas, fotos del setup | Subidas |
 | Estado de Discord ✅ | En línea, qué juega — **en vivo** | Lanyard |
 | Spotify ✅ | Canción sonando — **en vivo** | Lanyard |
-| Música de fondo | Pista propia que suena al entrar al perfil | Subida |
+| Música de fondo ✅ | Pista propia que suena al entrar al perfil | Subida |
 
-### Música de fondo del perfil
+El catálogo de la v1 está **completo** desde la Fase 10. La música de fondo no es un
+bloque: no se coloca en la columna ni se reordena, vive en el perfil entero y se
+configura desde su propio panel del editor.
+
+### Música de fondo del perfil ✅ (Fase 11)
 
 Cada usuario puede subir un archivo de audio que se reproduce al abrir su perfil.
 
@@ -1112,9 +1209,19 @@ Cada usuario puede subir un archivo de audio que se reproduce al abrir su perfil
 - Formatos: `mp3`, `ogg`, `m4a`, `wav` — ya contemplados en el `location` de `/uploads`
   de `nginx.conf`, y `media-src 'self' blob:` ya está en la CSP.
 
-**Ojo con los derechos de autor:** subir música ajena es una vía directa a una queja de
-DMCA. Hace falta al menos un aviso al subir y un botón de reporte; conviene decidir la
-política antes de abrir el registro.
+**Derechos de autor ✅ (31/07):** hay sección propia en `/terminos` —qué se puede subir,
+que comprar una canción no da derecho a publicarla, el procedimiento de retirada y la
+suspensión por reincidencia—, aviso **junto al botón de subir** (quien lo lee al elegir
+el archivo es quien todavía puede cambiar de idea) y botón de reporte desde la Fase 10.
+Falta un buzón del dominio para las reclamaciones: ver los pendientes de §0.
+
+**Lo que se hizo distinto de lo escrito arriba:** la duración y el recodificado no se
+implementaron. Exigen ffmpeg, que no está en la imagen del backend y es un binario grande
+con superficie de ataque conocida. En su lugar hay un **tope propio de 4 MB** (más bajo
+que el general de 8, porque este archivo lo descarga todo el que abre el perfil) y los
+tags se dejan estar: son texto que nadie ejecuta, servido con `nosniff` y la CSP de
+`/uploads`. Si algún día se quiere recorte o normalización de volumen, ahí sí entra
+ffmpeg y la decisión se revisa entera.
 
 ### Social ✅ (Fase 7)
 
@@ -1408,14 +1515,35 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 7 | ✅ **Social** | Seguir, feed, comentarios, likes, `/explorar` con búsqueda. Añade `idioma` a `Publicacion` y `Comentario` — **no** para traducir (eso está aplazado), sino porque esa columna solo se puede rellenar bien mientras no haya filas viejas. |
 | 8 | ✅ **Mensajería + adjuntos + notificaciones** | socket.io en `/chat` autenticado con la cookie de sesión, DMs y grupos, `privacidadDm` y bandeja de solicitudes. Subidas validadas por magic bytes y reescritas con sharp, emojis, GIFs de Giphy por proxy. Campana de notificaciones que enlaza a la interacción exacta. **Sin traducción**: aplazada hasta nuevo aviso (§8). |
 | 9 | ✅ **CSS propio** | `sanitizar.service.ts` con PostCSS (parser estricto), prefijado de scope, lista negra, renombrado de `@keyframes`, avisos de lo que se quitó y botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
-| 10 | **Pulido** | Landing completa, tarjetas OG, moderación en `/admin`, resto de bloques, accesibilidad, responsive. |
-| 11 | **Música de fondo** | Subida de audio validada por contenido, reproductor al 30 % con control del visitante, ajuste global para silenciar todo (§7). |
+| 10 | ✅ **Pulido** | Bloques Setup y Galería, tarjetas OG por perfil servidas a los scrapers, moderación real en `/admin` (reportar + cola + suspender/ocultar/roles), y accesibilidad auditada con axe a cero violaciones. De regalo, el fallo de rate limit que tiraba la sesión al navegar. |
+| 11 | ✅ **Música de fondo** | Subida validada por magic bytes con tope propio de 4 MB, reproductor con el control del lado del visitante (volumen y silencio persistentes entre perfiles), autoplay respetado y ajuste global de cuenta que gana sobre todo. Política de derechos de autor escrita. |
 | 12 | **SEO + GEO** | JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`, `hreflang` (§13). Landing ✅; el SSR de perfiles quedó decidido: SPA en la v1 (ver §0). |
 
 ### Registro de cambios
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fases 10 y 11 completas**
+
+El detalle de lo entregado está en §0. Aquí solo lo que conviene recordar en seis meses:
+
+- **Dos fallos del producto salieron de las pruebas, no de usarlo.** El del rate limit
+  (`/api/auth/yo` bajo la zona de contraseñas, que tiraba la sesión a la tercera
+  navegación de un minuto) lo cazó la auditoría de accesibilidad, que no lo buscaba; y el
+  del `Content-Type` del `.wav` lo cazó el E2E de la Fase 11 por comprobar **la cabecera
+  real** en vez de dar por bueno que el archivo se descargaba. Los dos se manifestaban
+  como "no funciona y no hay error en ninguna parte".
+- Es la tercera vez que pasa lo mismo (fases 5, 9, 10): **una prueba que comprueba que la
+  pieza existe no comprueba que sirva.** Las suites nuevas miran el efecto, no la
+  presencia.
+- **`Reporte` llevaba desde la migración inicial sin que ninguna ruta lo tocara**, igual
+  que `abrirDm` en la Fase 8 y que los campos de audio hasta la 11. Merece la pena
+  revisar el schema buscando más tablas construidas y nunca conectadas.
+- Decisiones que se tomaron y conviene no re-litigar: los perfiles siguen siendo **SPA**
+  y las tarjetas OG cubren lo que el SSR habría cubierto; el **texto libre** en el bloque
+  de setup en vez de un catálogo de componentes; y **no meter ffmpeg** para la duración
+  del audio (ver §0).
 
 **31/07/2026 — Vincular Steam creaba una segunda cuenta (corregido)**
 
@@ -1782,8 +1910,24 @@ perfiles. Se solapa con el SEO pero no es lo mismo:
 - Tarjetas OG bien hechas: son lo que se ve al pegar el enlace en Discord o X, que es
   por donde va a llegar la mayoría del tráfico real.
 
-> Va en la Fase 10 (Pulido), salvo el SSR/prerender: esa decisión conviene tomarla
-> **antes** de la Fase 3, porque condiciona cómo se renderiza `/u/:handle`.
+**Hecho en la Fase 10 ✅ (31/07):** las tarjetas OG por perfil (§0) resuelven a la vez el
+problema de compartir y el de GEO — el HTML que reciben los rastreadores lleva el nombre,
+la bio y un JSON-LD `ProfilePage` **sin ejecutar JavaScript**, que era el motivo real por
+el que se pedía SSR. Los rastreadores de IA están en la lista de `nginx.conf`, así que
+citan el perfil de verdad y no la landing repetida.
+
+**Y `permitirIndexado` por fin hace algo.** El campo estaba en el schema desde la
+migración inicial, **no lo aplicaba nadie y no había forma de cambiarlo**: apagarlo no
+hacía absolutamente nada y el perfil salía en el sitemap igual. Una casilla de privacidad
+que no se respeta es peor que no tenerla. Ahora saca el perfil del `sitemap.xml`, le pone
+`noindex` a su tarjeta, y se cambia desde `/configuracion`.
+· **La tarjeta se sigue generando a propósito**: pegar tu propio enlace en un chat y que
+se vea bien no es lo mismo que salir en Google, y la gente quiere las dos cosas por
+separado. `noindex` cubre justo esa diferencia — el scraper de Discord lo ignora y pinta
+la tarjeta; Googlebot lo obedece.
+
+> **SSR/prerender: descartado para la v1** (decisión del 30/07, confirmada al cerrar la
+> Fase 10). Los perfiles siguen siendo SPA. Queda pendiente `llms.txt` y `hreflang`.
 
 ---
 
@@ -1941,6 +2085,66 @@ se ve nada. Lo que hay que repetir si se toca `social.controller.ts`:
 El script vive en el scratchpad de la sesión, no en el repo: depende de crear dos cuentas
 de prueba y **hay que borrarlas al terminar** (`DELETE FROM "User" WHERE handle LIKE
 'e2e%'`, que arrastra en cascada sus publicaciones).
+
+### Moderación ✅ (31/07)
+
+28 comprobaciones (`docs/pruebas/e2e-fase10-moderacion.mjs`), casi todas de **límites de
+poder** más que de funcionalidad. Lo que hay que repetir si se toca
+`moderacion.controller.ts`:
+
+- **Nadie modera hacia arriba ni hacia sí mismo.** Un MOD contra un ADMIN → **404**, no
+  403: un 403 confirmaría quién tiene permisos. Suspenderse o cambiarse el rol a uno
+  mismo → 400.
+- **Un MOD no reparte roles** (403); eso es solo de ADMIN. Y **no se puede quitar el
+  último ADMIN**, o la instancia queda sin quien administre y hay que entrar a la base a
+  mano.
+- **Reportar es de cualquier usuario con sesión**, pero el duplicado del mismo objeto por
+  la misma persona **no crea una segunda fila** — y aun así responde 201, porque un 409
+  delataría que alguien más ya lo reportó.
+- **Suspender cierra todas las sesiones** de esa cuenta (comprobar en la tabla `Sesion`,
+  no solo la respuesta) y su perfil pasa a responder **404 al público**, igual que uno
+  inexistente.
+- **Todo queda en `AuditLog`.** La comprobación mira la fila, no el log de la aplicación.
+- La suite crea sus cuentas y **se asciende a ADMIN por SQL**: el primer administrador no
+  puede salir de la aplicación, porque el endpoint de roles ya exige serlo.
+
+### Accesibilidad ✅ (31/07)
+
+`docs/pruebas/a11y-publicas.mjs` y `a11y-privadas.mjs` pasan **axe-core (WCAG 2.1 AA)**
+por 13 pantallas en tres anchos, y además comprueban que el documento **no desborde
+horizontalmente** — el fallo de responsive que más se nota en un teléfono y que axe no
+mira. Estado actual: **cero violaciones, cero desbordes**.
+
+Piden `playwright` y `@axe-core/playwright`, que **no son dependencias del proyecto**: se
+instalan en el arnés cuando toca auditar.
+
+> Lo importante de esta suite no fue lo que buscaba. Encontró que **la sesión se caía sola
+> al navegar**: `/api/auth/yo` estaba bajo la zona de rate limit de las contraseñas
+> (5 r/m) y la SPA la llama en cada carga, así que la tercera navegación de un minuto
+> devolvía 429 y la guarda de rutas mandaba al login. Si alguien vuelve a tocar las zonas
+> de `nginx.conf`, esta es la comprobación que lo caza: pedir `/api/auth/yo` doce veces
+> seguidas y ver que las doce dan 200.
+
+### Música de fondo ✅ (31/07)
+
+21 comprobaciones por API (`e2e-fase11-musica.mjs`) y **14 en un navegador real**
+(`e2e-fase11-reproductor.mjs`). Están separadas porque miden cosas distintas:
+
+- Por API, lo que se puede colar: **una imagen renombrada a `.mp3`** (los magic bytes
+  mandan), una URL externa, un path traversal, un volumen de 150, y sobre todo **el audio
+  de otra cuenta** — su URL es pública, así que lo único que lo impide es la comprobación
+  de propiedad del controlador.
+- En navegador, lo que la API no ve: que el **autoplay bloqueado** deje un botón en vez de
+  romper nada, que el **volumen del visitante sobreviva a la recarga** y gane sobre el que
+  propuso el dueño, y que con el ajuste global apagado **ni se monte el `<audio>`**.
+- La suite genera un **WAV válido en memoria** (cabecera RIFF a mano), no un archivo de
+  ceros: el backend detecta el tipo por contenido y un buffer vacío se rechazaría — que es
+  justo una de las comprobaciones.
+
+> Aquí también apareció un fallo que solo se ve mirando **la cabecera real**: nginx no
+> conoce `wav` ni `weba`, los servía como `application/octet-stream`, y con `nosniff` el
+> navegador se niega a reproducirlos. Comprobar que el archivo se descarga (200) no
+> bastaba: hay que mirar el `Content-Type`.
 
 ---
 
