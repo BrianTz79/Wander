@@ -40,13 +40,42 @@ function esIdiomaValido(valor: string | null | undefined): valor is Idioma {
   return valor === 'es' || valor === 'en';
 }
 
+export const PARAM_IDIOMA = 'lang';
+
+/**
+ * El idioma pedido en la URL (`?lang=en`), si lo hay.
+ *
+ * Es la pieza de cliente del `hreflang` de la Fase 12 (§13). El idioma de
+ * Wander vive en el navegador y no en la ruta, así que sin esto no habría
+ * **ninguna** dirección que enlazar como «esta misma página en inglés»:
+ * un `hreflang` que apunte a una URL que no cambia el idioma al abrirla
+ * es exactamente la clase de etiqueta que los buscadores ignoran, y con
+ * razón.
+ *
+ * Se lee con `URLSearchParams` sobre `location.search` en vez de con una
+ * regex: el valor viene de fuera y `esIdiomaValido` lo filtra contra la
+ * lista de idiomas reales, así que un `?lang=` inventado no cambia nada.
+ */
+function idiomaDeLaUrl(): Idioma | null {
+  try {
+    const pedido = new URLSearchParams(window.location.search).get(PARAM_IDIOMA);
+    return esIdiomaValido(pedido) ? pedido : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Qué idioma usar en el primer render.
  *
- * 1. Lo que el usuario eligió a mano (localStorage) — siempre gana.
- * 2. El idioma del navegador/sistema, que es lo que pide la Fase 6.5:
+ * 1. El `?lang=` de la URL — quien llega por un enlace explícito a la
+ *    versión en inglés tiene que verla en inglés, aunque este navegador
+ *    tenga otra cosa guardada. Es un enlace que alguien siguió ahora, no
+ *    una preferencia de hace semanas.
+ * 2. Lo que el usuario eligió a mano (localStorage).
+ * 3. El idioma del navegador/sistema, que es lo que pide la Fase 6.5:
  *    quien entra por primera vez ya lo ve en su idioma sin tocar nada.
- * 3. Español.
+ * 4. Español.
  *
  * `navigator.languages` llega como `['es-MX', 'es', 'en-US']`: se corta
  * por el guion para que `es-MX`, `es-419` y `es-ES` caigan todos en `es`.
@@ -58,6 +87,9 @@ function esIdiomaValido(valor: string | null | undefined): valor is Idioma {
  * después de `/auth/yo` y la aplica `SincronizadorIdioma`.
  */
 export function detectarIdioma(): Idioma {
+  const deLaUrl = idiomaDeLaUrl();
+  if (deLaUrl) return deLaUrl;
+
   try {
     const guardado = localStorage.getItem(CLAVE_IDIOMA);
     if (esIdiomaValido(guardado)) return guardado;

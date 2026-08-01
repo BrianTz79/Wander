@@ -27,6 +27,19 @@
          Las rutas internas la reescriben desde React. -->
     <link rel="canonical" href="https://wander.ourocore.net/" />
 
+    <!-- hreflang (Fase 12). El idioma se elige en el cliente y no cambia
+         la ruta, así que la pareja de URLs es la limpia y la misma con
+         `?lang=`, que `detectarIdioma()` respeta al arrancar.
+
+         La canónica sigue siendo la URL sin parámetro: entre las dos
+         versiones cambia el idioma de la interfaz, no el contenido, y
+         declararlas como páginas separadas sería pedirle a Google que
+         indexe lo mismo dos veces. `x-default` va a la limpia porque es
+         la que negocia el idioma sola con `navigator.languages`. -->
+    <link rel="alternate" hreflang="es" href="https://wander.ourocore.net/?lang=es" />
+    <link rel="alternate" hreflang="en" href="https://wander.ourocore.net/?lang=en" />
+    <link rel="alternate" hreflang="x-default" href="https://wander.ourocore.net/" />
+
     <!-- Tarjetas al compartir. Es por donde llega la mayoría del tráfico
          real: un enlace pegado en Discord o X. -->
     <meta property="og:type" content="website" />

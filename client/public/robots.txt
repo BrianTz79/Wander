@@ -20,9 +20,10 @@ Disallow: /api/
 # de dejarlo al comodín para que la decisión quede documentada y sea fácil
 # de revertir por proveedor.
 #
-# Nota: esto cubre el SITIO. Cuando existan los perfiles públicos, cada
-# usuario podrá excluir el suyo, y esos irán con `noindex` por cabecera —
-# robots.txt no sirve para eso porque no distingue por perfil.
+# Nota: esto cubre el SITIO. La exclusión POR PERFIL es cosa aparte y ya
+# funciona: quien apaga "aparecer en buscadores" sale del sitemap y su
+# página se sirve con `noindex`. robots.txt no sirve para eso porque no
+# distingue por perfil.
 
 User-agent: GPTBot
 Allow: /

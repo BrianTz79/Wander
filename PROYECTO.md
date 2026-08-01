@@ -4,14 +4,14 @@
 > datos, la arquitectura, las fases y lo que queda pendiente.
 >
 > **Nombre:** **Wander** — https://wander.ourocore.net (en vivo)
-> **Última actualización:** 31 de julio de 2026 (Fases 10 y 11 completas: bloques que
-> faltaban, tarjetas OG, moderación, accesibilidad y música de fondo)
+> **Última actualización:** 31 de julio de 2026 (Fase 12 completa: `hreflang` por
+> `?lang=`, sitemap con alternativas de idioma y `llms.txt` reescrito)
 
 ---
 
 ## 0. Estado del proyecto
 
-**Todas las fases completas menos la 2 (al 90 %) y la 12 (SEO), que va a medias. La
+**Todas las fases completas menos la 2 (al 90 %). La
 plataforma cumple ya su promesa central por partida doble: quien entra con Steam ve sus
 juegos, sus horas y su actividad sin escribir nada, y quien vincula Discord tiene además
 su estado y su música en vivo. Desde la 6.5 hace las dos cosas en español o en inglés,
@@ -20,10 +20,12 @@ comenta y se descubre—, desde la 8 la gente además se habla: mensajes directo
 imágenes, GIFs y emojis, con una campana que avisa de todo lo que pasa, desde la 9 quien
 sepa CSS puede escribir el suyo y que solo afecte a su perfil, desde la 10 el catálogo de
 bloques está completo (Setup y Galería), los perfiles se previsualizan bien al compartir
-el enlace y hay una cola de moderación de verdad, y desde la 11 cada perfil puede tener su
-música de fondo — con el control siempre del lado de quien la escucha.** Lo único que le
-falta a la Fase 2 es la verificación de correo, que **se aplazó a propósito** (30/07). La
-traducción de contenido sigue **aplazada hasta nuevo aviso** (ver §8).
+el enlace y hay una cola de moderación de verdad, desde la 11 cada perfil puede tener su
+música de fondo —con el control siempre del lado de quien la escucha— y con la 12 el sitio
+está listo para que lo encuentren y lo citen: `hreflang` real apoyado en `?lang=`, sitemap
+con alternativas de idioma y un `llms.txt` que por fin describe lo que Wander es hoy.** Lo
+único que le falta a la Fase 2 es la verificación de correo, que **se aplazó a propósito**
+(30/07). La traducción de contenido sigue **aplazada hasta nuevo aviso** (ver §8).
 
 **Ya no queda ninguna pantalla "en construcción":** `/mensajes` era la última, y con ella
 todos los enlaces de la navbar y del pie llevan a algo real.
@@ -44,7 +46,7 @@ todos los enlaces de la navbar y del pie llevan a algo real.
 | 9 | CSS propio | ✅ **Completa** |
 | 10 | Pulido | ✅ **Completa** |
 | 11 | Música de fondo | ✅ **Completa** |
-| 12 | SEO + GEO | 🟡 Landing, sitemap y tarjetas OG por perfil hechos; el SSR completo queda descartado (SPA en la v1) |
+| 12 | SEO + GEO | ✅ **Completa** (el SSR completo queda descartado: SPA en la v1) |
 
 ### ✅ Hecho
 
@@ -640,6 +642,26 @@ pruebas comprobaban que la pieza *existía*, no que *sirviera*.
   (`e2e-fase11-reproductor.mjs`), que es donde se comprueba lo que la API no ve: el
   autoplay bloqueado, el volumen que sobrevive a la recarga y el ajuste global mandando.
 
+**SEO + GEO (Fase 12) ✅ (31/07)**
+
+- **`hreflang` de verdad, apoyado en `?lang=`.** El idioma vivía solo en el navegador, así
+  que no había dos direcciones que enlazar entre sí — el motivo por el que la etiqueta
+  llevaba pendiente desde la Fase 6.5. Ahora `?lang=es` / `?lang=en` fijan el idioma en
+  cualquier página, y las tarjetas, el sitemap y la landing declaran las tres variantes
+  (`es`, `en`, `x-default`). **La canónica sigue sin parámetro**: entre las dos versiones
+  cambia la interfaz, no el contenido. El razonamiento completo, en §13.
+- **El `?lang=` gana al idioma guardado y al de la cuenta**, o el enlace en inglés del
+  buscador abriría la página en español. Al elegir idioma a mano el parámetro se limpia de
+  la barra.
+- **El `lang` del documento de las tarjetas ya no está fijo en `es`**: sale del `?lang=` o,
+  si no viene, del idioma de la cuenta.
+- **`llms.txt` reescrito entero.** El que había era de las Fases 1-3 y describía un
+  producto que ya no existe: la mensajería «en construcción», los logros de Steam como si
+  estuvieran hechos. Ahora dice lo que Wander es hoy, con los bloques reales, y avisa
+  explícitamente de que los logros **no** están implementados.
+- Probado: **34 comprobaciones** (`e2e-fase12-seo.mjs`). La mitad de navegador es la que
+  vale, porque por HTTP el HTML de la SPA es idéntico en ambos idiomas.
+
 ### ⬜ Lo siguiente
 
 1. **Verificación de correo (lo que falta de la Fase 2), cuando haga falta.** Aplazada el
@@ -648,8 +670,10 @@ pruebas comprobaban que la pieza *existía*, no que *sirviera*.
    también un **set inicial de bloques** (hoy solo trae tema). Se dejó fuera a propósito
    — aplicarla a un perfil ya escrito tendría que decidir qué hacer con lo que ya hay,
    y "solo cambia los colores" es una promesa mucho más fácil de cumplir.
-3. Lo que queda de la Fase 12 (§13): `llms.txt` y `hreflang`. El SSR de perfiles quedó
-   **descartado** para la v1 y las tarjetas OG ya cubren el caso que de verdad importaba.
+3. Un **buzón del dominio** para las reclamaciones de derechos de autor antes de abrir el
+   registro (hoy los términos apuntan a la dirección personal). Ver los pendientes.
+4. Backups de Postgres y un remoto para el repositorio: las dos cosas que hoy dependen de
+   que este disco no falle.
 
 ### ⚠️ Pendientes que conviene no olvidar
 
@@ -1517,12 +1541,34 @@ Ordenadas para que haya algo desplegado y visible pronto.
 | 9 | ✅ **CSS propio** | `sanitizar.service.ts` con PostCSS (parser estricto), prefijado de scope, lista negra, renombrado de `@keyframes`, avisos de lo que se quitó y botón de restaurar. Al final a propósito: es lo más riesgoso y no bloquea nada. |
 | 10 | ✅ **Pulido** | Bloques Setup y Galería, tarjetas OG por perfil servidas a los scrapers, moderación real en `/admin` (reportar + cola + suspender/ocultar/roles), y accesibilidad auditada con axe a cero violaciones. De regalo, el fallo de rate limit que tiraba la sesión al navegar. |
 | 11 | ✅ **Música de fondo** | Subida validada por magic bytes con tope propio de 4 MB, reproductor con el control del lado del visitante (volumen y silencio persistentes entre perfiles), autoplay respetado y ajuste global de cuenta que gana sobre todo. Política de derechos de autor escrita. |
-| 12 | **SEO + GEO** | JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt`, `hreflang` (§13). Landing ✅; el SSR de perfiles quedó decidido: SPA en la v1 (ver §0). |
+| 12 | ✅ **SEO + GEO** | JSON-LD, `sitemap.xml`, `robots.txt`, `llms.txt` y `hreflang` (§13). El idioma se puede fijar por URL con `?lang=`, que es lo que hacía falta para que el `hreflang` apunte a algo real. El SSR de perfiles quedó descartado: SPA en la v1, con las tarjetas OG cubriendo el caso que importaba (ver §0). |
 
 ### Registro de cambios
 
 El estado actual está en **§0** al inicio del documento. Aquí solo queda el histórico de
 qué se hizo y cuándo.
+
+**31/07/2026 — Fase 12 completa (SEO + GEO)**
+
+Cierra la última fase que quedaba abierta. El detalle está en §13; lo que conviene
+recordar:
+
+- **La decisión que llevaba bloqueando el `hreflang` desde la Fase 6.5 se resolvió mirando
+  el contenido, no el SEO.** El libro dice `/en/...`; pero como el contenido de usuario no
+  se traduce, las dos rutas servirían texto idéntico. El parámetro `?lang=` da las dos
+  direcciones que la etiqueta necesita sin reescribir el router entero ni fabricar
+  contenido duplicado. Cuando una recomendación general choca con la forma real del
+  producto, conviene escribir por qué antes de seguirla.
+- **El fallo de esta fase volvió a ser silencioso**, como los de las tres anteriores: la
+  query duplicada por nginx (`?lang=en&lang=en`) hacía que el idioma cayera al respaldo
+  con los `hreflang` perfectamente puestos y sin un solo error en ninguna parte. Se vio
+  porque la suite comprueba **el `lang` del documento resultante**, no que la etiqueta
+  esté escrita.
+- **Un archivo de texto también caduca.** El `llms.txt` llevaba desde la Fase 1-3
+  describiendo un Wander donde la mensajería estaba «en construcción» y los logros de
+  Steam existían. Nada lo señalaba porque no rompe ningún build. Al cerrar una fase que
+  añade funciones, toca revisar los textos que describen el producto —`llms.txt`,
+  `robots.txt`, la landing— igual que se revisa el código.
 
 **31/07/2026 — Fases 10 y 11 completas**
 
@@ -1885,10 +1931,8 @@ Wander vive de que la gente encuentre los perfiles. Dos frentes distintos:
   `WebSite` con `SearchAction` en la landing.
 - `sitemap.xml` dinámico (ya proxyeado en `nginx.conf` a `/api/seo/sitemap.xml`) y
   `robots.txt`. Falta implementar el endpoint en el backend.
-- Etiquetas `hreflang` para español e inglés. **Sigue pendiente tras la Fase 6.5**: el
-  idioma se elige en el cliente y no cambia la URL, así que hoy no hay dos direcciones que
-  enlazar entre sí. Hacerlo de verdad exige decidir antes si el idioma pasa a la ruta
-  (`/en/...`) o a un parámetro — y eso solo tiene sentido junto con el prerender.
+- Etiquetas `hreflang` para español e inglés. ✅ **Hecho (31/07, Fase 12)** — ver más
+  abajo la decisión de `?lang=` frente a `/en/...`.
 - Perfiles privados o marcados como no indexables → `noindex` y fuera del sitemap.
 - Rendimiento como factor de posicionamiento: Core Web Vitals, imágenes en `webp`/`avif`
   con `width`/`height` para no provocar saltos de layout.
@@ -1927,7 +1971,55 @@ separado. `noindex` cubre justo esa diferencia — el scraper de Discord lo igno
 la tarjeta; Googlebot lo obedece.
 
 > **SSR/prerender: descartado para la v1** (decisión del 30/07, confirmada al cerrar la
-> Fase 10). Los perfiles siguen siendo SPA. Queda pendiente `llms.txt` y `hreflang`.
+> Fase 10). Los perfiles siguen siendo SPA.
+
+**Hecho en la Fase 12 ✅ (31/07): `hreflang` y `llms.txt`, con lo que la fase queda
+cerrada.**
+
+**El idioma pasa a la URL como parámetro (`?lang=es` / `?lang=en`), no como prefijo de
+ruta (`/en/...`).** Era la decisión que §13 daba por bloqueada, y el motivo para elegir el
+parámetro no es la comodidad: **el contenido de usuario no se traduce** (§8, aplazado). Lo
+que cambia entre las dos versiones es el chrome de la interfaz; la bio, los bloques y las
+publicaciones son los mismos bytes. Dos rutas sirviendo texto idéntico es contenido
+duplicado, y habría costado reescribir el router entero, todos los `<Link>`, la regex de
+`/u/` en nginx, el sitemap y el endpoint OG para conseguirlo. Con el parámetro hay dos
+direcciones reales que enlazar —que es lo único que `hreflang` necesita— por mucho menos.
+
+· **La canónica sigue siendo la URL sin parámetro**, y `x-default` apunta a ella. Esa
+  combinación es la que dice «es la misma página en dos idiomas» en vez de «indexa esto
+  dos veces». La URL limpia es además la que negocia el idioma sola con
+  `navigator.languages`.
+· **El `?lang=` gana al `localStorage` y a la preferencia de la cuenta.** Es lo que hace
+  que la etiqueta no sea decorativa: quien ya visitó Wander tiene un idioma guardado, y si
+  ese ganara, el enlace en inglés del buscador le abriría la página en español. Al elegir
+  idioma a mano el parámetro se borra de la barra con `replaceState`, o al recargar
+  volvería a mandar el viejo.
+· **El `lang` del documento de las tarjetas ya no está fijo en `es`.** Sale del `?lang=`
+  si viene y, si no, del idioma de la cuenta —la mejor pista disponible sobre en qué
+  idioma está escrita la bio—. Es lo que leen el buscador y los lectores de pantalla.
+· **Dos trampas de nginx, y son simétricas.** El `?lang=` viaja por un `rewrite` y por un
+  `proxy_pass` cuya URI lleva una variable. Ahí nginx **no** añade la query por su cuenta
+  (sí lo haría con una URI fija), así que hace falta `$is_args$args`. Pero ponerlo
+  **además** de un `?$args` en el `rewrite` la manda **dos veces** (`?lang=en&lang=en`),
+  Express la parsea como array y el idioma cae al respaldo **sin ningún error**: la página
+  sale en español con los `hreflang` correctamente puestos. Una de las dos, nunca las dos.
+  El backend además toma el primer valor de un parámetro repetido, para no depender de que
+  nginx se porte bien.
+· **El `llms.txt` existía desde la Fase 1-3 y se había vuelto falso**: decía que los
+  perfiles públicos, la personalización y la mensajería estaban «en construcción» y
+  prometía los logros de Steam, que siguen sin implementarse. Reescrito entero. Un
+  `llms.txt` desactualizado es peor que no tenerlo — es literalmente el texto que un motor
+  generativo va a citar.
+· El sitemap lleva ahora `<xhtml:link>` por idioma. **Declarar el espacio de nombres
+  `xhtml` no es opcional**: sin él el XML es inválido y Google descarta el sitemap entero,
+  no solo las alternativas.
+· Suite: `docs/pruebas/e2e-fase12-seo.mjs` (34 comprobaciones). La mitad de HTTP corre
+  siempre; la de navegador pide `playwright` y se salta sola si no está. **Esa mitad es la
+  que importa**: por curl, el HTML de la SPA es idéntico en los dos idiomas —el texto lo
+  pinta React—, así que un `?lang=` que no hiciera nada pasaría todas las comprobaciones
+  de HTTP. Ojo al escribirla: las URLs canónicas salen de `PUBLIC_URL` y no del `Host` de
+  la petición (y así debe ser), así que lo esperado se construye sobre el dominio público
+  aunque se apunte la suite a `127.0.0.1`.
 
 ---
 

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from './api';
 import { useAuth } from '../store/authStore';
-import { CLAVE_IDIOMA, IDIOMAS, NOMBRES_IDIOMA, type Idioma } from '../i18n';
+import { CLAVE_IDIOMA, IDIOMAS, NOMBRES_IDIOMA, PARAM_IDIOMA, type Idioma } from '../i18n';
 
 export { IDIOMAS, NOMBRES_IDIOMA, type Idioma };
 
@@ -38,6 +38,27 @@ export function useIdioma() {
       }
 
       /*
+       * Quitar el `?lang=` de la barra al elegir a mano.
+       *
+       * Quien llega por un `hreflang` (`?lang=en`) y luego pulsa
+       * «Español» dejaría el parámetro puesto: la elección vale para esta
+       * pantalla, pero al recargar o al compartir la URL volvería a ganar
+       * el `?lang=en`, que es más fuerte que el `localStorage` recién
+       * escrito. Se limpia con `replaceState` —no `pushState`— para no
+       * meter una entrada en el historial que devolvería al idioma
+       * anterior con el botón «atrás».
+       */
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has(PARAM_IDIOMA)) {
+          url.searchParams.delete(PARAM_IDIOMA);
+          window.history.replaceState(null, '', url.toString());
+        }
+      } catch {
+        // Si el historial no se deja tocar, la elección sigue aplicada.
+      }
+
+      /*
        * Con sesión abierta se persiste en la cuenta, pero **sin esperar a
        * la respuesta ni deshacer si falla**: el idioma ya cambió en
        * pantalla, y revertirlo porque una petición de fondo no llegó sería
@@ -61,13 +82,21 @@ export function useIdioma() {
  * Aplica el idioma guardado en la cuenta cuando llega la sesión.
  *
  * Orden de prioridades, de más a menos fuerte:
- *  1. Lo que el usuario eligió **en este navegador** (`localStorage`).
- *  2. Lo que tiene guardado **en su cuenta**.
- *  3. El idioma del navegador o del sistema (lo resuelve `detectarIdioma`).
+ *  1. El `?lang=` de la URL (Fase 12) — un enlace explícito a esta página
+ *     en un idioma concreto.
+ *  2. Lo que el usuario eligió **en este navegador** (`localStorage`).
+ *  3. Lo que tiene guardado **en su cuenta**.
+ *  4. El idioma del navegador o del sistema (lo resuelve `detectarIdioma`).
  *
- * El 1 va por delante del 2 a propósito: si alguien acaba de pulsar
+ * El 2 va por delante del 3 a propósito: si alguien acaba de pulsar
  * «English» en esta máquina, que `/auth/yo` responda `es` medio segundo
  * después no puede devolverle la página al español delante de sus ojos.
+ *
+ * Y el 1 va por delante de los dos por el mismo motivo, un paso más
+ * arriba: `detectarIdioma` ya respetó el `?lang=` en el primer render, y
+ * sin esta comprobación la cuenta lo desharía en cuanto respondiera
+ * `/auth/yo` — el `hreflang` llevaría a una página que parpadea al idioma
+ * equivocado justo delante de quien siguió el enlace.
  */
 export function useSincronizarIdiomaDeCuenta() {
   const { i18n } = useTranslation();
@@ -75,6 +104,12 @@ export function useSincronizarIdiomaDeCuenta() {
 
   useEffect(() => {
     if (!usuario?.idioma) return;
+
+    try {
+      if (new URLSearchParams(window.location.search).get(PARAM_IDIOMA)) return;
+    } catch {
+      // URL rara: se sigue con las demás prioridades.
+    }
 
     try {
       if (localStorage.getItem(CLAVE_IDIOMA)) return;
